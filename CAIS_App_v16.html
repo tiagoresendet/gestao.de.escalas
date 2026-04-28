@@ -1369,21 +1369,49 @@ function populaLogin(){
   const sel=document.getElementById('lp');const v=sel.value;
   sel.innerHTML='<option value="">— Selecione seu nome —</option>';
   const g=LOGINS.find(l=>l.role==='gestor');
-  if(g){const o=document.createElement('option');o.value=g.id;o.dataset.pw=g.pw;o.textContent='Tiago Resende Telles';sel.appendChild(o)}
+  if(g){
+    const o=document.createElement('option');
+    o.value=g.id;
+    // Sem dataset.pw — senha nunca vai para o HTML
+    o.textContent='Tiago Resende Telles';
+    sel.appendChild(o);
+  }
   const sep=document.createElement('option');sep.disabled=true;sep.textContent='────────────────────';sel.appendChild(sep);
   LOGINS.filter(l=>l.role==='plantonista').sort((a,b)=>a.n.localeCompare(b.n)).forEach(l=>{
-    const o=document.createElement('option');o.value=l.id;o.dataset.pw=l.pw;
+    const o=document.createElement('option');
+    o.value=l.id;
+    // Sem dataset.pw — senha nunca vai para o HTML
     o.textContent=l.n.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
     sel.appendChild(o);
   });
   if(v)sel.value=v;
 }
-function autoSenha(){const o=document.getElementById('lp').selectedOptions[0];if(o&&o.dataset.pw)document.getElementById('ls').value=o.dataset.pw}
-function fazerLogin(){
-  const sel=document.getElementById('lp');const o=sel.selectedOptions[0];
+
+async function fazerLogin(){
+  const sel=document.getElementById('lp');
   if(!sel.value){showToast('Selecione seu nome',true);return}
-  if(document.getElementById('ls').value!==o.dataset.pw){showToast('Senha incorreta',true);return}
+  const senhaDigitada=document.getElementById('ls').value;
+  if(!senhaDigitada){showToast('Digite sua senha',true);return}
   const l=LOGINS.find(x=>x.id===sel.value);
+  if(!l){showToast('Usuário não encontrado',true);return}
+
+  // Verificar senha — primeiro tenta no Supabase, depois no fallback local
+  let senhaOk=false;
+  try{
+    const {data,error}=await sb.from('logins').select('senha,perfil').eq('crm',l.c).single();
+    if(!error&&data){
+      senhaOk=(senhaDigitada===data.senha);
+    } else {
+      // fallback local
+      senhaOk=(senhaDigitada===l.pw);
+    }
+  }catch(e){
+    // fallback local se Supabase offline
+    senhaOk=(senhaDigitada===l.pw);
+  }
+
+  if(!senhaOk){showToast('Senha incorreta',true);document.getElementById('ls').value='';return}
+
   curRole=l.role;
   const np=l.n.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
   curUser={n:np,nU:l.n,c:l.c,ava:ini2(l.n),cargo:curRole==='gestor'?'Gestor de Escala':'Plantonista'};
@@ -1396,14 +1424,13 @@ function fazerLogin(){
   document.getElementById('nav-m').style.display=curRole==='plantonista'?'block':'none';
   document.getElementById('escala-ph-r').style.display=curRole==='gestor'?'flex':'none';
   document.getElementById('cc-ph-r').style.display=curRole==='gestor'?'flex':'none';
-  // Reinicializar listeners do menu pois nav items podem ter mudado
   initSidebar();
   if(curRole==='gestor')navTo('dashboard');
   else navTo('meu-plantao');
   renderAll();
-  // Verificar primeiro acesso e mostrar modal de perfil se necessário
   verificarPrimeiroAcesso();
 }
+function autoSenha(){} // removido por segurança — usuário deve digitar a senha
 function fazerLogout(){document.getElementById('screen-app').style.display='none';document.getElementById('screen-login').style.display='flex';document.getElementById('ls').value='';sbClose()}
 function abrirViewer(){document.getElementById('screen-login').style.display='none';document.getElementById('screen-viewer').style.display='flex';renderViewer()}
 function voltarLogin(){document.getElementById('screen-viewer').style.display='none';document.getElementById('screen-login').style.display='flex'}
