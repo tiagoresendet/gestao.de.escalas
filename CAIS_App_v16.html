@@ -350,7 +350,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <select class="ls" id="lp" onchange="autoSenha()"><option value="">— Selecione seu nome —</option></select>
   </div>
   <div class="lg"><label class="ll">Senha</label>
-    <input type="password" class="li" id="ls" placeholder="••••••" onkeydown="if(event.key==='Enter')fazerLogin()">
+    <div style="position:relative">
+      <input type="password" class="li" id="ls" placeholder="••••••" onkeydown="if(event.key==='Enter')fazerLogin()" style="padding-right:40px">
+      <button type="button" onclick="toggleVerSenha()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5a6485;font-size:16px;padding:4px;line-height:1" id="btn-ver-senha" title="Ver senha">👁</button>
+    </div>
   </div>
   <button class="btn-login" onclick="fazerLogin()">Entrar</button>
   <button class="btn-visor" onclick="abrirViewer()">👁 Ver escala sem login</button>
@@ -915,10 +918,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div class="m-t">👋 Bem-vindo ao CAIS Campinas!</div>
     <div class="m-s">Configure seu perfil para personalizar a experiência. Você pode atualizar a qualquer momento clicando nas suas iniciais no canto superior direito.</div>
     <div class="fg"><label class="fl">Como deseja que seu nome apareça na escala?</label><input type="text" class="fi" id="pa-nome-escala" placeholder="Ex: João Silva, Dra. Ana Lima"><div style="font-size:11px;color:var(--text3);margin-top:5px">Primeiro nome e um sobrenome. Se for nome composto, use apenas o primeiro nome.</div></div>
-    <div class="fg"><label class="fl">WhatsApp <span style="color:var(--text3);font-weight:400">(opcional)</span></label><input type="tel" class="fi" id="pa-whatsapp" placeholder="(62) 9 0000-0000"></div>
-    <div class="fg"><label class="fl">E-mail <span style="color:var(--text3);font-weight:400">(opcional)</span></label><input type="email" class="fi" id="pa-email" placeholder="seu@email.com"></div>
+    <div class="fg"><label class="fl">WhatsApp <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="tel" class="fi" id="pa-whatsapp" placeholder="(62) 9 0000-0000"></div>
+    <div class="fg"><label class="fl">E-mail <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="email" class="fi" id="pa-email" placeholder="seu@email.com"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Estas informações são necessárias para comunicações sobre a escala e recuperação de senha.</div>
     <div class="m-act">
-      <button class="btn btn-g" onclick="fecharMo('mo-primeiro-acesso')">Pular</button>
       <button class="btn btn-p" onclick="salvarPrimeiroAcesso()">✅ Salvar e Entrar</button>
     </div>
   </div>
@@ -1431,6 +1434,12 @@ async function fazerLogin(){
   verificarPrimeiroAcesso();
 }
 function autoSenha(){} // removido por segurança — usuário deve digitar a senha
+function toggleVerSenha(){
+  const inp=document.getElementById('ls');
+  const btn=document.getElementById('btn-ver-senha');
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
+  else{inp.type='password';btn.textContent='👁';}
+}
 function fazerLogout(){document.getElementById('screen-app').style.display='none';document.getElementById('screen-login').style.display='flex';document.getElementById('ls').value='';sbClose()}
 function abrirViewer(){document.getElementById('screen-login').style.display='none';document.getElementById('screen-viewer').style.display='flex';renderViewer()}
 function voltarLogin(){document.getElementById('screen-viewer').style.display='none';document.getElementById('screen-login').style.display='flex'}
@@ -1474,20 +1483,18 @@ function gerarHtmlSems(sems,canEdit){
         if(sem.dias[ab]===undefined){html+=`<td class="nd"></td>`;return}
         const fds2=isFDS(sem.dts[ab]);
         const arr=EB[sem.letra][ab]||[];
-        const val=ti<arr.length?arr[ti]:'';
         const click=canEdit?`onclick="abrirEditar('${sem.letra}','${ab}',${ti},'${t.l}',this)"`:'';
-        // Nome + CRM + vínculo — tudo centralizado em uma célula
-        let nomeCell='—', crmCell='', vincCell='';
+        // getSlotVal respeita substituições do mês SEM alterar a Escala Base
+        const val=getSlotVal(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti);
+        let nomeCell='—',crmCell='',vincCell='';
         if(val){
           const mV=val.match(/(CR|EF)$/);if(mV)vincCell=mV[1];
           const mCRM=val.match(/\((\d+)\)/);
-          if(mCRM){
-            crmCell=mCRM[1];
-            nomeCell=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();
-          } else { nomeCell=val.replace(/\s*(CR|EF)$/,'').trim(); }
+          if(mCRM){crmCell=mCRM[1];nomeCell=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();}
+          else{nomeCell=val.replace(/\s*(CR|EF)$/,'').trim();}
         }
         const subLine=val?(crmCell+(vincCell?' · '+vincCell:'')):'';
-        html+=`<td class="cell fds-cell" ${click} title="${val}">
+        html+=`<td class="cell" ${click} title="${val}">
           <div class="cn-wrap">
             <span class="cn${val?'':' vz'}">${val?nomeCell:'—'}</span>
             ${subLine?`<span class="cn-sub">${subLine}</span>`:''}
@@ -1686,8 +1693,16 @@ function salvarEditMed(){
   if(vc==='EF')EFETIVOS.add(nn);else EFETIVOS.delete(nn);
   fecharMo('mo-edit-med');renderCC('');showToast('Atualizado!');
 }
-function excluirMed(idx){if(!confirm(`Excluir ${MEDICOS[idx].n}?`))return;MEDICOS.splice(idx,1);renderCC('');showToast('Removido.')}
-function addMedico(){
+async function excluirMed(idx){
+  const m=MEDICOS[idx];
+  if(!confirm('Excluir '+m.n+' do corpo clínico?'))return;
+  try{
+    const {error}=await sb.from('profissionais').delete().eq('crm',m.c);
+    if(error)throw error;
+  }catch(e){console.error('Erro ao excluir no banco:',e)}
+  MEDICOS.splice(idx,1);renderCC('');showToast('Removido!');
+}
+async function addMedico(){
   const n=document.getElementById('add-nome').value.trim().toUpperCase();
   const c=parseInt(document.getElementById('add-crm').value);
   const v=document.getElementById('add-vinc').value;
@@ -1699,9 +1714,21 @@ function addMedico(){
   const uni=isExt?document.getElementById('add-ext-uni').value:'';
   if(isExt&&!uni){showToast('Selecione a unidade',true);return}
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
-  MEDICOS.push({n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined});
+  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined};
   if(v==='EF')EFETIVOS.add(n);
-  fecharMo('mo-add-med');renderCC('');preencherSelects();showToast('Adicionado!');
+  // Salvar no Supabase
+  try{
+    await sb.from('profissionais').upsert({
+      nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,
+      externo:isExt,unidade:isExt?uni:null
+    },{onConflict:'crm'});
+    // Criar login automático (senha = CRM)
+    await sb.from('logins').upsert({
+      crm:c,nome:n,senha:String(c),perfil:'plantonista'
+    },{onConflict:'crm'});
+  }catch(e){console.error('Erro ao salvar no banco:',e)}
+  MEDICOS.push(novoMed);
+  fecharMo('mo-add-med');renderCC('');preencherSelects();showToast('Adicionado e salvo no banco!');
   document.getElementById('add-nome').value='';document.getElementById('add-crm').value='';
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
   document.getElementById('add-is-ext').checked=false;
@@ -1709,18 +1736,38 @@ function addMedico(){
 }
 
 // ══ TROCAS ══
+// ══ SUBSTITUIÇÕES DO MÊS (separado da Escala Base) ══
+// Chave: "mes-ano-semLetra-ab-turnoIdx" → valor do substituto
+// Nunca altera o EB — apenas sobrescreve na renderização
+let SUBS={};// substituições aprovadas por troca
+
+function keySlot(semLetra,ab,ti){return `${semLetra}-${ab}-${ti}`}
+function keySub(mes,ano,semLetra,ab,ti){return `${mes}-${ano}-${semLetra}-${ab}-${ti}`}
+
 function aplicarTrocaEscala(troca){
+  // Encontra o slot correto na escala base para aquele dia/turno
   const dt=troca.dt;const col=JTC[dt.getDay()];const ab=DA[col];const ciclo=getCiclo(dt);
   if(!EB[ciclo]||!EB[ciclo][ab])return false;
   const arr=EB[ciclo][ab];const busca=`(${troca.sCRM})`;
   for(let i=0;i<arr.length;i++){
     if(arr[i]&&arr[i].includes(busca)){
+      // ✅ Registra substituição APENAS para este mês — NÃO altera EB
       const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
-      if(mSub){const p=mSub.n.split(' ');arr[i]=`${p[0]} ${p[p.length-1]} (${mSub.c}) ${getVinc(mSub.n)}`;return true}
-      const ps=troca.sub.split(' ');arr[i]=`${ps[0]} ${ps[ps.length-1]} (${troca.bCRM||'?'}) CR`;return true;
+      const novoVal=mSub
+        ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
+        :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
+      SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
+      return true;
     }
   }
   return false;
+}
+
+// Retorna o valor do slot, considerando substituições do mês
+function getSlotVal(mes,ano,semLetra,ab,ti){
+  const sub=SUBS[keySub(mes,ano,semLetra,ab,ti)];
+  if(sub!==undefined)return sub;
+  return (EB[semLetra][ab]||[])[ti]||'';
 }
 
 function renderTrocas(filtro=trFiltro){
@@ -2860,9 +2907,12 @@ function salvarPrimeiroAcesso(){
   var ne=document.getElementById('pa-nome-escala').value.trim();
   var wpp=document.getElementById('pa-whatsapp').value.trim();
   var em=document.getElementById('pa-email').value.trim();
+  if(!ne){showToast('Informe como quer ser chamado na escala',true);return}
+  if(!wpp){showToast('WhatsApp é obrigatório',true);return}
+  if(!em||!em.includes('@')){showToast('E-mail válido é obrigatório',true);return}
   setPerfil(curUser.c,{nomeEscala:ne,whatsapp:wpp,email:em,cpf:'',primeiroAcesso:false});
   aplicarPerfil(curUser.c);
-  fecharMo('mo-primeiro-acesso');showToast('Bem-vindo!');
+  fecharMo('mo-primeiro-acesso');showToast('Bem-vindo, '+ne+'!');
 }
 // Máscara CPF
 document.addEventListener('input',function(e){
