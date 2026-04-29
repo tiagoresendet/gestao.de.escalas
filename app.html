@@ -1408,8 +1408,7 @@ function gerarPlantoesMes(mes,ano){
       if(sem.dias[ab]===undefined)return;
       const dt=sem.dts[ab];const fds=isFDS(dt);
       TURNOS.forEach((t,ti)=>{
-        const arr=EB[sem.letra][ab]||[];
-        const val=ti<arr.length?arr[ti]:'';
+        const val=getSlotVal(mes,ano,sem.letra,ab,ti);
         if(!val)return;
         const match=val.match(/\((\d+)\)/);
         if(!match)return;
@@ -1903,13 +1902,11 @@ async function salvarEdicao(){
   }
   const ok=await salvarSlotMes(m,a,letra,ab,ti,val);
   if(!ok){showToast('Erro ao salvar slot do mês',true);return}
-  // CRÍTICO: garantir que ESCMES local foi atualizado
   initESCMES(m,a);
   ESCMES[keyMes(m,a)][letra][ab][ti]=val;
-  // Re-render imediato
   fecharMo('mo-editar');
-  await renderEscala();
-  showToast('Salvo apenas neste mês — Escala Base preservada!');
+  renderAll();
+  showToast('Plantão vinculado e visível em todos os painéis!');
 }
 
 // ══ ESCALA BASE ══
@@ -2069,7 +2066,7 @@ async function excluirMed(idx){
     MEDICOS.splice(idx,1);
     const li=LOGINS.findIndex(l=>l.c==m.c);
     if(li>=0)LOGINS.splice(li,1);
-    renderCC('');renderLogins();populaLogin();
+    renderAll();populaLogin();
     showToast('Profissional e acesso removidos!');
   }catch(e){
     console.error('Erro ao excluir:',e);
@@ -2115,7 +2112,7 @@ async function addMedico(){
     const novoLogin={id:'L'+Date.now(),n,c,role:'plantonista',pw:String(c),ok:true};
     LOGINS.push(novoLogin);
   }
-  fecharMo('mo-add-med');renderCC('');preencherSelects();renderLogins();populaLogin();
+  fecharMo('mo-add-med');renderAll();preencherSelects();populaLogin();
   showToast('Profissional adicionado e acesso criado!');
   document.getElementById('add-nome').value='';document.getElementById('add-crm').value='';
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
@@ -2317,17 +2314,17 @@ function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trM
 async function aprovarTr(i){
   const ok=await aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
   await atualizarStatusTroca(TROCAS[i].id,'aprovado');
-  renderTrocas();renderDashboard();renderEscala();showToast(ok?'Aprovada e aplicada!':'Troca aprovada!');
+  renderAll();showToast(ok?'Aprovada e aplicada!':'Troca aprovada!');
 }
 async function rejeitarTr(i){
   TROCAS[i].status='rejeitado';
   await atualizarStatusTroca(TROCAS[i].id,'rejeitado');
-  renderTrocas();renderDashboard();showToast('Rejeitada.');
+  renderAll();showToast('Rejeitada.');
 }
 async function reverterTr(i){
   TROCAS[i].status='pendente';
   await atualizarStatusTroca(TROCAS[i].id,'pendente');
-  renderTrocas();renderDashboard();renderEscala();showToast('Revertida para pendente.');
+  renderAll();showToast('Revertida para pendente.');
 }
 
 // CANCELAR TROCA — só o próprio solicitante (ou gestor) pode cancelar pendentes
@@ -2341,7 +2338,7 @@ async function cancelarTr(i){
     const {error}=await sb.from('trocas').delete().eq('codigo',t.id);
     if(error)throw error;
     TROCAS.splice(i,1);
-    renderTrocas();renderDashboard();
+    renderAll();
     showToast('Solicitação cancelada!');
   }catch(e){console.error('cancelarTr:',e);showToast('Erro ao cancelar',true);}
 }
@@ -2452,7 +2449,7 @@ async function enviarTroca(){
   const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${curUser.n.toUpperCase()}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${pi.turno}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
   document.getElementById('wpp-msg').textContent=msg;
   document.getElementById('btn-cp').textContent='Copiar';document.getElementById('btn-cp').classList.remove('ok');
-  fecharMo('mo-troca');abrirMo('mo-conf');renderTrocas();renderDashboard();atualizarBadge();
+  fecharMo('mo-troca');abrirMo('mo-conf');renderAll();
 }
 function copiarMsg(){navigator.clipboard.writeText(document.getElementById('wpp-msg').textContent).then(()=>{const b=document.getElementById('btn-cp');b.textContent='✓ Copiado!';b.classList.add('ok')})}
 
@@ -2503,16 +2500,14 @@ async function publicar(k){
   }
   PUB[k]={ok:true,d:fmtData(new Date())};
   await salvarPublicacao(m,a,true,curUser.c);
-  renderPublicacao();renderDashboard();
-  showToast('Mês publicado com snapshot independente!');
+  renderAll();showToast('Mês publicado com snapshot independente!');
 }
 async function despublicar(k){
   const [m,a]=k.split('-');
   PUB[k]={ok:false,d:null};
   await salvarPublicacao(parseInt(m),parseInt(a),false,curUser.c);
   // IMPORTANTE: não apagar o snapshot — ele preserva o estado para histórico
-  renderPublicacao();renderDashboard();
-  showToast('Mês bloqueado. Snapshot preservado para histórico.');
+  renderAll();showToast('Mês bloqueado. Snapshot preservado.');
 }
 
 // ══ MEU PLANTÃO — COM FINANCEIRO ══
@@ -3922,7 +3917,7 @@ document.addEventListener('input',function(e){
 const SESSION_KEY='cais_session_v1';
 function salvarSessao(){
   if(!curUser.loginId&&!curUser.c)return;
-  try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({
+  try{localStorage.setItem(SESSION_KEY,JSON.stringify({
     loginId:curUser.loginId,crm:curUser.c,cpf:curUser.cpf,
     nU:curUser.nU,n:curUser.n,
     isGestor:curUser.isGestor,isPlantonista:curUser.isPlantonista,
@@ -3930,10 +3925,10 @@ function salvarSessao(){
     ts:Date.now()
   }));}catch(e){}
 }
-function limparSessao(){try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}}
+function limparSessao(){try{localStorage.removeItem(SESSION_KEY);}catch(e){}}
 async function restaurarSessao(){
   try{
-    const raw=sessionStorage.getItem(SESSION_KEY);
+    const raw=localStorage.getItem(SESSION_KEY);
     if(!raw)return false;
     const s=JSON.parse(raw);
     if(!s||(!s.loginId&&!s.crm&&!s.cpf))return false;
