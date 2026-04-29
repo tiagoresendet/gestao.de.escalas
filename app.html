@@ -2279,16 +2279,38 @@ async function criarSnapshotMes(mes,ano){
 }
 
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
-async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor){
+async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
-  ESCMES[k][semLetra][ab][ti]=valor;
+  // Atualizar local
+  if(diaMes){
+    if(!ESCMES[k]['DIA_'+diaMes])ESCMES[k]['DIA_'+diaMes]=Array(16).fill(undefined);
+    ESCMES[k]['DIA_'+diaMes][ti]=valor;
+  } else {
+    if(!ESCMES[k][semLetra])ESCMES[k][semLetra]={};
+    if(!ESCMES[k][semLetra][ab])ESCMES[k][semLetra][ab]=Array(16).fill(undefined);
+    ESCMES[k][semLetra][ab][ti]=valor;
+  }
+  // Persistir: DELETE + INSERT garante que não há resíduo antigo
   try{
-    const {error}=await sb.from('escala_mensal').upsert({
-      mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
-      valor:valor||'',origem:'manual'
-    },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
-    if(error)throw error;
+    let qDel=sb.from('escala_mensal').delete()
+      .eq('mes',mes).eq('ano',ano).eq('semana_letra',semLetra)
+      .eq('dia_semana',ab).eq('turno_idx',ti);
+    if(diaMes)qDel=qDel.eq('dia_mes',diaMes);
+    else qDel=qDel.is('dia_mes',null);
+    await qDel;
+    const payload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
+      valor:valor||'',origem:diaMes?'manual':'snapshot'};
+    if(diaMes)payload.dia_mes=diaMes;
+    const {error}=await sb.from('escala_mensal').insert(payload);
+    if(error){
+      // Fallback se coluna dia_mes não existe ainda
+      console.warn('insert falhou, tentando upsert sem dia_mes:',error.message);
+      const fbPayload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,valor:valor||'',origem:'manual'};
+      const {error:e2}=await sb.from('escala_mensal').upsert(fbPayload,
+        {onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
+      if(e2)throw e2;
+    }
     return true;
   }catch(e){console.error('salvarSlotMes:',e);return false}
 }
@@ -2757,29 +2779,58 @@ function renderDashboard(){
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhuma troca pendente ✓</div>';
 
   // ═══ Plantonistas Externos no Mês ═══
-  // Lê de gerarPlantoesMes (que já considera ESCMES + manuais + trocas)
-  const todosPlantoesMes=gerarPlantoesMes(mesMes,mesAno);
+  // Estratégia: 3 fontes - manuais ESCMES por dia + plantões gerados + trocas aprovadas
   const externosMap={};
+  const k=keyMes(mesMes,mesAno);
+
+  // FONTE 1: Slots manuais (DIA_X em ESCMES) — alterações pontuais por dia
+  if(ESCMES[k]){
+    Object.keys(ESCMES[k]).filter(key=>key.startsWith('DIA_')).forEach(dk=>{
+      const diaMes=parseInt(dk.replace('DIA_',''));
+      const diaArr=ESCMES[k][dk]||[];
+      diaArr.forEach((val,ti)=>{
+        if(!val)return;
+        const match=val.match(/\((\d+)\)/);
+        if(!match)return;
+        const crm=parseInt(match[1]);
+        const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
+        if(!med)return;
+        if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
+        const t=TURNOS[ti];
+        externosMap[crm].plantoes.push({
+          dia:diaMes,
+          data:String(diaMes).padStart(2,'0')+'/'+String(mesMes).padStart(2,'0')+'/'+mesAno,
+          turno:t?t.l:'?',
+          area:t?t.a:'?',
+          h:t?t.h:0
+        });
+      });
+    });
+  }
+
+  // FONTE 2: Plantões gerados normalmente (snapshot/EB para externos pré-cadastrados)
+  const todosPlantoesMes=gerarPlantoesMes(mesMes,mesAno);
   todosPlantoesMes.forEach(p=>{
     const med=MEDICOS.find(m=>m.c===p.crm);
     if(med&&med.ext===true){
       if(!externosMap[med.c])externosMap[med.c]={prof:med,plantoes:[]};
-      externosMap[med.c].plantoes.push({
-        dia:p.dia,
-        data:p.dt.toLocaleDateString('pt-BR'),
-        turno:p.turno,
-        area:p.area,
-        h:p.h
-      });
+      // Não duplicar
+      const dataStr=p.dt.toLocaleDateString('pt-BR');
+      const jaTem=externosMap[med.c].plantoes.find(x=>x.data===dataStr&&x.turno===p.turno);
+      if(!jaTem){
+        externosMap[med.c].plantoes.push({
+          dia:p.dia,data:dataStr,turno:p.turno,area:p.area,h:p.h
+        });
+      }
     }
   });
-  // Adicionar também os de TROCAS aprovadas (caso o externo ainda não tenha sido salvo no slot)
+
+  // FONTE 3: Trocas aprovadas com substituto externo
   const trocasMes=TROCAS.filter(t=>t.mes===mesMes&&t.ano===mesAno&&t.status==='aprovado');
   trocasMes.forEach(t=>{
     const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext===true);
     if(ext){
       if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
-      // Evitar duplicar se já tinha vindo dos plantões
       const jaTem=externosMap[ext.c].plantoes.find(p=>p.data===t.data&&p.turno===t.turno);
       if(!jaTem){
         externosMap[ext.c].plantoes.push({data:t.data,turno:t.turno,area:t.area,h:0});
