@@ -579,11 +579,35 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <!-- ══ ACESSOS ══ -->
       <div class="page" id="page-logins">
         <div class="ph">
-          <div><div class="pt">Gestão de Acessos</div></div>
+          <div><div class="pt">Gestão de Acessos e Cadastros</div></div>
           <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
         </div>
-        <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar profissional..." oninput="buscarLogin(this.value)"></div>
-        <div class="lt-wrap"><table class="lt"><thead><tr><th>Profissional</th><th>CRM</th><th>Perfil</th><th>Senha</th><th>Ações</th></tr></thead><tbody id="login-tbody"></tbody></table></div>
+        <div class="filtros" style="margin-bottom:10px">
+          <button class="f-b active" id="btn-aba-acessos" onclick="mudarAbaLogin('acessos',this)">🔑 Acessos e Permissões</button>
+          <button class="f-b" id="btn-aba-cadastros" onclick="mudarAbaLogin('cadastros',this)">📋 Cadastros Completos</button>
+        </div>
+        <!-- ABA ACESSOS -->
+        <div id="aba-acessos">
+          <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar profissional..." oninput="buscarLogin(this.value)"></div>
+          <div class="lt-wrap"><table class="lt"><thead><tr><th>Profissional</th><th>Identificação</th><th>Permissões</th><th>Senha</th><th>Ações</th></tr></thead><tbody id="login-tbody"></tbody></table></div>
+        </div>
+        <!-- ABA CADASTROS -->
+        <div id="aba-cadastros" style="display:none">
+          <div class="al info" style="margin-bottom:12px">
+            <span>ℹ️</span>
+            <div style="font-size:12px">Visualização consolidada dos dados pessoais coletados em cada perfil. Apenas o gestor tem acesso a esta aba.</div>
+          </div>
+          <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar por nome, CRM ou CPF..." oninput="buscarCadastro(this.value)"></div>
+          <div class="lt-wrap"><table class="lt"><thead><tr>
+            <th>Nome Completo</th>
+            <th>Nome na Escala</th>
+            <th>CRM</th>
+            <th>CPF</th>
+            <th>WhatsApp</th>
+            <th>E-mail</th>
+            <th>Status</th>
+          </tr></thead><tbody id="cadastros-tbody"></tbody></table></div>
+        </div>
       </div>
 
       <!-- ══ RELATÓRIOS GESTOR ══ -->
@@ -1234,18 +1258,31 @@ async function carregarSupabase(){
       });
     }
 
+    // Snapshots de escala mensal (CRUCIAL — preserva escalas publicadas)
+    await carregarESCMES();
+
     // Trocas
     const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
     if(eT)throw eT;
     TROCAS.length=0;
-    trs.forEach(t=>TROCAS.push({
-      id:t.codigo,sol:t.solicitante_nome,sCRM:t.solicitante_crm,
-      sub:t.substituto_nome,bCRM:t.substituto_crm,
-      data:t.data_plantao?new Date(t.data_plantao).toLocaleDateString('pt-BR'):'-',
-      dt:t.data_plantao?new Date(t.data_plantao):new Date(),
-      turno:t.turno,area:t.area,motivo:t.motivo||'',
-      status:t.status,mes:t.mes,ano:t.ano,vis:t.visivel_para||[]
-    }));
+    trs.forEach(t=>{
+      // Parse de data SEM timezone — força interpretação local
+      let dt=new Date();
+      if(t.data_plantao){
+        const partes=String(t.data_plantao).split('T')[0].split('-');
+        if(partes.length===3){
+          dt=new Date(parseInt(partes[0]),parseInt(partes[1])-1,parseInt(partes[2]),12,0,0);
+        }
+      }
+      TROCAS.push({
+        id:t.codigo,sol:t.solicitante_nome,sCRM:t.solicitante_crm,
+        sub:t.substituto_nome,bCRM:t.substituto_crm,
+        data:dt.toLocaleDateString('pt-BR'),
+        dt:dt,
+        turno:t.turno,area:t.area,motivo:t.motivo||'',
+        status:t.status,mes:t.mes,ano:t.ano,vis:t.visivel_para||[]
+      });
+    });
 
     dbOk=true;
     mostrarStatusDB(true,'Conectado');
@@ -1296,7 +1333,8 @@ async function salvarTroca(troca){
     codigo:troca.id,
     solicitante_nome:troca.sol,solicitante_crm:troca.sCRM||null,
     substituto_nome:troca.sub,substituto_crm:troca.bCRM||null,
-    data_plantao:troca.dt instanceof Date?troca.dt.toISOString().split('T')[0]:null,
+    data_plantao:troca.dt instanceof Date?
+    (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
     visivel_para:troca.vis||[],updated_at:new Date().toISOString()
@@ -1469,7 +1507,21 @@ function populaLogin(){
 }
 
 function formatarNome(nome){
+  if(!nome)return '';
   return nome.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
+}
+
+// Retorna o nome de exibição do profissional, considerando preferência (nome_escala)
+function nomeExibicao(nomeOriginal,crm){
+  if(!nomeOriginal)return '';
+  if(crm){
+    const pf=getPerfil(crm);
+    if(pf&&pf.nomeEscala&&pf.nomeEscala.trim())return pf.nomeEscala.trim();
+  }
+  // Padrão: Primeiro + Último
+  const partes=nomeOriginal.trim().split(' ');
+  if(partes.length<=1)return formatarNome(nomeOriginal);
+  return formatarNome(partes[0]+' '+partes[partes.length-1]);
 }
 
 // Remover acentos para busca tolerante
@@ -1635,15 +1687,20 @@ function gerarHtmlSems(sems,canEdit){
         if(sem.dias[ab]===undefined){html+=`<td class="nd"></td>`;return}
         const fds2=isFDS(sem.dts[ab]);
         const arr=EB[sem.letra][ab]||[];
-        const click=canEdit?`onclick="abrirEditar('${sem.letra}','${ab}',${ti},'${t.l}',this)"`:'';
+        const click=canEdit?`onclick="abrirEditarMes('${sem.letra}','${ab}',${ti},'${t.l}',this)"`:'';
         // getSlotVal respeita substituições do mês SEM alterar a Escala Base
         const val=getSlotVal(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti);
         let nomeCell='—',crmCell='',vincCell='';
         if(val){
           const mV=val.match(/(CR|EF)$/);if(mV)vincCell=mV[1];
           const mCRM=val.match(/\((\d+)\)/);
-          if(mCRM){crmCell=mCRM[1];nomeCell=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();}
-          else{nomeCell=val.replace(/\s*(CR|EF)$/,'').trim();}
+          if(mCRM){
+            crmCell=mCRM[1];
+            const med=MEDICOS.find(m=>m.c===parseInt(crmCell));
+            // Usar nome preferido se cadastrado, senão nome curto padrão
+            nomeCell=med?nomeExibicao(med.n,med.c):
+              val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();
+          } else { nomeCell=val.replace(/\s*(CR|EF)$/,'').trim(); }
         }
         const subLine=val?(crmCell+(vincCell?' · '+vincCell:'')):'';
         html+=`<td class="cell" ${click} title="${val}">
@@ -1706,15 +1763,25 @@ function irParaUltimaPublicada(){
 }
 function gerarEscala(){mesMes=parseInt(document.getElementById('gen-mes').value);mesAno=parseInt(document.getElementById('gen-ano').value);fecharMo('mo-gerar');renderEscala();showToast('Escala gerada!')}
 
-function abrirEditar(letra,ab,ti,turnoL,el){
-  editCtx={letra,ab,ti,el};
-  document.getElementById('mo-ed-ctx').textContent=`${turnoL} · ${ab} · Sem.${letra}`;
-  // Pré-preencher com o valor atual
-  const cur=(EB[letra][ab]||[])[ti]||'';
+function abrirEditarBase(letra,ab,ti,turnoL,el){
+  editCtx={letra,ab,ti,el,contexto:'escala_base'};
+  document.getElementById('mo-ed-ctx').textContent=`📋 ESCALA BASE (template) · ${turnoL} · ${ab} · Sem.${letra}`;
+  preencherEdMedModal((EB[letra][ab]||[])[ti]||'');
+}
+
+function abrirEditarMes(letra,ab,ti,turnoL,el){
+  // Edita SOMENTE o snapshot do mês — nunca toca o EB
+  editCtx={letra,ab,ti,el,contexto:'escala_mensal',mes:mesMes,ano:mesAno};
+  const k=keyMes(mesMes,mesAno);
+  const valAtual=getSlotVal(mesMes,mesAno,letra,ab,ti);
+  document.getElementById('mo-ed-ctx').textContent=`📅 ${MP[mesMes]} ${mesAno} · ${turnoL} · ${ab} · Sem.${letra}`;
+  preencherEdMedModal(valAtual);
+}
+
+function preencherEdMedModal(cur){
   const vm=cur.replace(/ (CR|EF)$/,'');
   const vv=(cur.match(/(CR|EF)$/)||['','CR'])[1];
   document.getElementById('ed-med').value=vm;
-  // Mostrar nome formatado no campo de busca
   const mAtual=MEDICOS.find(m=>{const p=m.n.split(' ');return `${p[0]} ${p[p.length-1]} (${m.c})`===vm});
   document.getElementById('ed-med-busca').value=mAtual?formatarNome(mAtual.n):(vm||'');
   document.getElementById('ed-vinc').value=vv;
@@ -1758,27 +1825,40 @@ document.addEventListener('click',function(e){
 });
 async function salvarEdicao(){
   if(!editCtx)return;
-  const{letra,ab,ti,el}=editCtx;
+  const{letra,ab,ti,el,contexto,mes,ano}=editCtx;
   const med=document.getElementById('ed-med').value;
   const vinc=document.getElementById('ed-vinc').value;
   const val=med?`${med} ${vinc}`:'';
-  // PERSISTIR NO BANCO PRIMEIRO
-  try{
-    const {error}=await sb.from('escala_base').upsert({
-      semana:letra,dia_semana:ab,turno_idx:ti,valor:val,
-      updated_at:new Date().toISOString()
-    },{onConflict:'semana,dia_semana,turno_idx'});
-    if(error)throw error;
-  }catch(e){
-    console.error('Erro ao salvar slot:',e);
-    showToast('Erro ao salvar — tente novamente',true);return;
+  // ROTEAMENTO: Escala Base (template) vs Escala Mensal (snapshot)
+  if(contexto==='escala_base'){
+    try{
+      const {error}=await sb.from('escala_base').upsert({
+        semana:letra,dia_semana:ab,turno_idx:ti,valor:val,
+        updated_at:new Date().toISOString()
+      },{onConflict:'semana,dia_semana,turno_idx'});
+      if(error)throw error;
+    }catch(e){
+      console.error('Erro escala_base:',e);
+      showToast('Erro ao salvar na Escala Base',true);return;
+    }
+    if(!EB[letra][ab])EB[letra][ab]=[];
+    EB[letra][ab][ti]=val;
+    renderEB();
+    fecharMo('mo-editar');
+    showToast('Slot salvo na Escala Base (template)!');
+    return;
   }
-  // Estado local após confirmação
-  if(!EB[letra][ab])EB[letra][ab]=[];
-  EB[letra][ab][ti]=val;
-  // Re-renderizar célula
-  renderEscala();renderEB();
-  fecharMo('mo-editar');showToast('Slot salvo no banco!');
+  // contexto = 'escala_mensal' — salva APENAS no snapshot, nunca toca o EB
+  const m=mes||mesMes,a=ano||mesAno;
+  if(!temSnapshot(m,a)){
+    const ok=await criarSnapshotMes(m,a);
+    if(!ok){showToast('Erro ao criar snapshot do mês',true);return}
+  }
+  const ok=await salvarSlotMes(m,a,letra,ab,ti,val);
+  if(!ok){showToast('Erro ao salvar slot do mês',true);return}
+  renderEscala();
+  fecharMo('mo-editar');
+  showToast('Salvo apenas neste mês — Escala Base preservada!');
 }
 
 // ══ ESCALA BASE ══
@@ -1800,7 +1880,7 @@ function renderEB(){
       html+=`<tr class="trow ${t.cls}"><td class="col-h">${t.l}</td>`;
       DA.forEach(ab=>{
         const arr=EB[sem][ab]||[];const val=ti<arr.length?arr[ti]:'';
-        const click=canEdit?`onclick="abrirEditar('${sem}','${ab}',${ti},'${t.l}',this)"`:'';
+        const click=canEdit?`onclick="abrirEditarBase('${sem}','${ab}',${ti},'${t.l}',this)"`:'';
         let nE='—', cE='', vE='';
         if(val){
           const mV2=val.match(/(CR|EF)$/);if(mV2)vE=mV2[1];
@@ -1993,26 +2073,122 @@ async function addMedico(){
 }
 
 // ══ TROCAS ══
-// ══ SUBSTITUIÇÕES DO MÊS (separado da Escala Base) ══
-// Chave: "mes-ano-semLetra-ab-turnoIdx" → valor do substituto
-// Nunca altera o EB — apenas sobrescreve na renderização
-let SUBS={};// substituições aprovadas por troca
+// ══════════════════════════════════════════════════════
+// ESCALA MENSAL (SNAPSHOT) — instância independente da Base
+// ESCMES[mes-ano] = {A:{SEG:[16 vals],...}, B:{...}}
+// Carregada do banco. Se um mês existe aqui, é a fonte da verdade.
+// Edições manuais e trocas afetam SOMENTE o snapshot do mês.
+// A Escala Base (EB) nunca é tocada por essas operações.
+// ══════════════════════════════════════════════════════
+const ESCMES={};
+const SUBS={};// trocas aprovadas (compat — agora também salva em ESCMES)
 
+function keyMes(mes,ano){return mes+'-'+ano}
 function keySlot(semLetra,ab,ti){return `${semLetra}-${ab}-${ti}`}
 function keySub(mes,ano,semLetra,ab,ti){return `${mes}-${ano}-${semLetra}-${ab}-${ti}`}
 
-function aplicarTrocaEscala(troca){
-  // Encontra o slot correto na escala base para aquele dia/turno
+// Verifica se existe snapshot do mês (foi publicado pelo menos uma vez)
+function temSnapshot(mes,ano){
+  const k=keyMes(mes,ano);
+  return ESCMES[k]&&Object.keys(ESCMES[k]).length>0;
+}
+
+// Inicializa estrutura vazia para um mês
+function initESCMES(mes,ano){
+  const k=keyMes(mes,ano);
+  if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
+  ['A','B'].forEach(s=>{
+    if(!ESCMES[k][s])ESCMES[k][s]={};
+    DA.forEach(ab=>{if(!ESCMES[k][s][ab])ESCMES[k][s][ab]=Array(16).fill(undefined);});
+  });
+}
+
+// Cria snapshot do mês a partir da Escala Base — chamado ao publicar
+async function criarSnapshotMes(mes,ano){
+  initESCMES(mes,ano);
+  const k=keyMes(mes,ano);
+  // Copia EB para o mês
+  ['A','B'].forEach(s=>{
+    DA.forEach(ab=>{
+      const arr=EB[s][ab]||[];
+      for(let ti=0;ti<16;ti++){
+        ESCMES[k][s][ab][ti]=arr[ti]||'';
+      }
+    });
+  });
+  // Persistir no banco em batch
+  const rows=[];
+  ['A','B'].forEach(s=>{
+    DA.forEach(ab=>{
+      for(let ti=0;ti<16;ti++){
+        rows.push({mes,ano,semana_letra:s,dia_semana:ab,turno_idx:ti,
+          valor:(EB[s][ab]||[])[ti]||'',origem:'snapshot',
+          updated_at:new Date().toISOString()});
+      }
+    });
+  });
+  try{
+    // Inserir em lotes de 100
+    for(let i=0;i<rows.length;i+=100){
+      const batch=rows.slice(i,i+100);
+      const {error}=await sb.from('escala_mensal').upsert(batch,
+        {onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
+      if(error)throw error;
+    }
+    return true;
+  }catch(e){console.error('snapshot:',e);return false}
+}
+
+// Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
+async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor){
+  initESCMES(mes,ano);
+  const k=keyMes(mes,ano);
+  ESCMES[k][semLetra][ab][ti]=valor;
+  try{
+    const {error}=await sb.from('escala_mensal').upsert({
+      mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
+      valor:valor||'',origem:'manual',updated_at:new Date().toISOString()
+    },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
+    if(error)throw error;
+    return true;
+  }catch(e){console.error('salvarSlotMes:',e);return false}
+}
+
+// Carrega snapshots de todos os meses já publicados
+async function carregarESCMES(){
+  try{
+    const {data,error}=await sb.from('escala_mensal').select('*');
+    if(error)throw error;
+    Object.keys(ESCMES).forEach(k=>delete ESCMES[k]);
+    (data||[]).forEach(r=>{
+      const k=keyMes(r.mes,r.ano);
+      if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
+      if(!ESCMES[k][r.semana_letra])ESCMES[k][r.semana_letra]={};
+      if(!ESCMES[k][r.semana_letra][r.dia_semana])
+        ESCMES[k][r.semana_letra][r.dia_semana]=Array(16).fill(undefined);
+      ESCMES[k][r.semana_letra][r.dia_semana][r.turno_idx]=r.valor||'';
+    });
+  }catch(e){console.error('carregarESCMES:',e)}
+}
+
+async function aplicarTrocaEscala(troca){
+  // Aplica troca APENAS no snapshot do mês (ESCMES) — NUNCA toca o EB
   const dt=troca.dt;const col=JTC[dt.getDay()];const ab=DA[col];const ciclo=getCiclo(dt);
   if(!EB[ciclo]||!EB[ciclo][ab])return false;
   const arr=EB[ciclo][ab];const busca=`(${troca.sCRM})`;
   for(let i=0;i<arr.length;i++){
     if(arr[i]&&arr[i].includes(busca)){
-      // ✅ Registra substituição APENAS para este mês — NÃO altera EB
       const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
       const novoVal=mSub
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
+      // Garantir snapshot do mês
+      if(!temSnapshot(troca.mes,troca.ano)){
+        await criarSnapshotMes(troca.mes,troca.ano);
+      }
+      // Salvar APENAS no snapshot — origem='troca'
+      await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal);
+      // Compat: SUBS continua para retrocompatibilidade
       SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
       return true;
     }
@@ -2080,7 +2256,7 @@ function renderTrocas(filtro=trFiltro){
 function filtrarTr(f,btn){document.querySelectorAll('#tr-wrap .f-b').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTrocas(f)}
 function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('todos');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
 async function aprovarTr(i){
-  const ok=aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
+  const ok=await aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
   await atualizarStatusTroca(TROCAS[i].id,'aprovado');
   renderTrocas();renderDashboard();renderEscala();showToast(ok?'Aprovada e aplicada!':'Troca aprovada!');
 }
@@ -2210,17 +2386,28 @@ function renderPublicacao(){
     </div>`;
   }).join('');atualizarBadge();
 }
-function publicar(k){
+async function publicar(k){
+  const [mStr,aStr]=k.split('-');
+  const m=parseInt(mStr),a=parseInt(aStr);
+  // Criar snapshot ANTES de marcar como publicada
+  // (só se ainda não existir — preserva edições anteriores)
+  if(!temSnapshot(m,a)){
+    showToast('Criando snapshot do mês...');
+    const ok=await criarSnapshotMes(m,a);
+    if(!ok){showToast('Erro ao criar snapshot',true);return}
+  }
   PUB[k]={ok:true,d:fmtData(new Date())};
-  const [m,a]=k.split('-');
-  salvarPublicacao(parseInt(m),parseInt(a),true,curUser.c);
-  renderPublicacao();renderDashboard();showToast('Publicada!');
+  await salvarPublicacao(m,a,true,curUser.c);
+  renderPublicacao();renderDashboard();
+  showToast('Mês publicado com snapshot independente!');
 }
-function despublicar(k){
-  PUB[k]={ok:false,d:null};
+async function despublicar(k){
   const [m,a]=k.split('-');
-  salvarPublicacao(parseInt(m),parseInt(a),false,curUser.c);
-  renderPublicacao();renderDashboard();showToast('Bloqueada.');
+  PUB[k]={ok:false,d:null};
+  await salvarPublicacao(parseInt(m),parseInt(a),false,curUser.c);
+  // IMPORTANTE: não apagar o snapshot — ele preserva o estado para histórico
+  renderPublicacao();renderDashboard();
+  showToast('Mês bloqueado. Snapshot preservado para histórico.');
 }
 
 // ══ MEU PLANTÃO — COM FINANCEIRO ══
@@ -2572,35 +2759,110 @@ function alternarSenhaCelula(el){
 // Toggle permissão (gestor/plantonista) — persiste no banco imediatamente
 async function togglePerm(idx,tipo,ativo){
   const l=LOGINS[idx];
-  const update={updated_at:new Date().toISOString()};
-  if(tipo==='gestor')update.is_gestor=ativo;
-  if(tipo==='plantonista')update.is_plantonista=ativo;
-  // Atualizar perfil legado para manter compatibilidade
-  const novoIsGestor=tipo==='gestor'?ativo:l.isGestor;
-  const novoIsPlant=tipo==='plantonista'?ativo:l.isPlantonista;
-  update.perfil=novoIsGestor?'gestor':'plantonista';
-  // Validar: precisa ter ao menos um
+  const novoIsGestor=tipo==='gestor'?ativo:(l.isGestor===true);
+  const novoIsPlant=tipo==='plantonista'?ativo:(l.isPlantonista!==false);
+  // Validar: precisa ter ao menos um papel ativo
   if(!novoIsGestor&&!novoIsPlant){
-    showToast('Usuário precisa ter ao menos uma permissão',true);
+    showToast('Usuário precisa ter ao menos uma permissão (Gestor ou Plantonista)',true);
     renderLogins();return;
   }
+  // Construir update completo — sem mexer na constraint antiga
+  const update={
+    is_gestor:novoIsGestor,
+    is_plantonista:novoIsPlant,
+    perfil:novoIsGestor?'gestor':'plantonista',
+    updated_at:new Date().toISOString()
+  };
   try{
     let q=sb.from('logins').update(update);
+    // Priorizar id, depois crm, depois cpf
     if(l.loginId)q=q.eq('id',l.loginId);
-    else q=q.eq('crm',l.c);
-    const {error}=await q;
+    else if(l.c)q=q.eq('crm',l.c);
+    else if(l.cpf)q=q.eq('cpf',l.cpf);
+    else throw new Error('Login sem identificador');
+    const {data,error}=await q.select();
     if(error)throw error;
-    if(tipo==='gestor')l.isGestor=ativo;
-    if(tipo==='plantonista')l.isPlantonista=ativo;
+    if(!data||!data.length)throw new Error('Nenhum registro atualizado');
+    // Atualizar estado local APÓS confirmação
+    l.isGestor=novoIsGestor;
+    l.isPlantonista=novoIsPlant;
     l.role=novoIsGestor?'gestor':'plantonista';
-    showToast('Permissões atualizadas!');
+    showToast(`${tipo==='gestor'?'Gestor':'Plantonista'} ${ativo?'ativado':'desativado'}!`);
   }catch(e){
     console.error('togglePerm:',e);
-    showToast('Erro ao salvar',true);
+    const msg=e.message||e.details||e.hint||'Erro desconhecido';
+    showToast('Erro: '+msg.slice(0,60),true);
     renderLogins();
   }
 }
 function buscarLogin(v){renderLogins(v)}
+function buscarCadastro(v){renderCadastros(v)}
+
+function mudarAbaLogin(aba,btn){
+  document.getElementById('btn-aba-acessos').classList.toggle('active',aba==='acessos');
+  document.getElementById('btn-aba-cadastros').classList.toggle('active',aba==='cadastros');
+  document.getElementById('aba-acessos').style.display=aba==='acessos'?'block':'none';
+  document.getElementById('aba-cadastros').style.display=aba==='cadastros'?'block':'none';
+  if(aba==='cadastros')renderCadastros();
+}
+
+async function renderCadastros(filtro=''){
+  const tbody=document.getElementById('cadastros-tbody');
+  if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text3)">Carregando...</td></tr>';
+  // Buscar perfis do banco (fonte da verdade)
+  let perfisBanco={};
+  try{
+    const {data,error}=await sb.from('perfis').select('*');
+    if(!error&&data){
+      data.forEach(p=>{perfisBanco[String(p.crm)]=p;});
+    }
+  }catch(e){console.error('renderCadastros:',e)}
+  // Combinar com LOGINS
+  const lista=LOGINS.map(l=>{
+    const pf=l.c?perfisBanco[String(l.c)]:null;
+    const pfLocal=l.c?(getPerfil(l.c)||{}):{};
+    return {
+      login:l,
+      nomeCompleto:l.n,
+      nomeEscala:(pf&&pf.nome_escala)||pfLocal.nomeEscala||'',
+      crm:l.c,
+      cpf:l.cpf||(pf&&pf.cpf)||pfLocal.cpf||'',
+      whatsapp:(pf&&pf.whatsapp)||pfLocal.whatsapp||'',
+      email:(pf&&pf.email)||pfLocal.email||'',
+      primeiroAcesso:(pf?pf.primeiro_acesso:pfLocal.primeiroAcesso)!==false,
+      isAdminPuro:!l.isClinico
+    };
+  });
+  // Filtrar
+  const f=filtro?semAcento(filtro):'';
+  const filtrado=f?lista.filter(x=>
+    semAcento(x.nomeCompleto).includes(f)||
+    String(x.crm||'').includes(f)||
+    (x.cpf||'').includes(f)
+  ):lista;
+  if(!filtrado.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text3)">Nenhum cadastro encontrado</td></tr>';
+    return;
+  }
+  tbody.innerHTML=filtrado.map(x=>{
+    const fmtCPF=x.cpf?(x.cpf.length===11?
+      `${x.cpf.slice(0,3)}.${x.cpf.slice(3,6)}.${x.cpf.slice(6,9)}-${x.cpf.slice(9)}`:x.cpf):'—';
+    const statusBadge=x.primeiroAcesso?
+      '<span class="badge b-amber" style="font-size:9px">⚠ 1º acesso pendente</span>':
+      '<span class="badge b-green" style="font-size:9px">✓ Cadastro completo</span>';
+    const adminBadge=x.isAdminPuro?'<span class="badge b-purple" style="font-size:9px;margin-left:4px">ADM</span>':'';
+    return `<tr>
+      <td style="font-size:12px;font-weight:600">${formatarNome(x.nomeCompleto)}${adminBadge}</td>
+      <td style="font-size:11px">${x.nomeEscala||'<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${x.crm||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtCPF}</td>
+      <td style="font-size:11px">${x.whatsapp||'<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-size:11px">${x.email||'<span style="color:var(--text3)">—</span>'}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
 async function mudarRole(i,r){
   const l=LOGINS[i];
   try{
