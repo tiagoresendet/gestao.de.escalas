@@ -1955,33 +1955,22 @@ async function salvarEdicao(){
     showToast('Slot salvo na Escala Base (template)!');
     return;
   }
-  // contexto = 'escala_mensal' — salva por dia específico (não propaga)
+  // contexto = 'escala_mensal' — usa salvarSlotMes (lógica robusta com fallbacks)
   const m=mes||mesMes,a=ano||mesAno;
   const dm=editCtx.diaMes;
-  // Persistir no banco com dia_mes (ponto específico)
-  try{
-    const {error}=await sb.from('escala_mensal').upsert({
-      mes:m,ano:a,semana_letra:letra,dia_semana:ab,turno_idx:ti,
-      valor:val,origem:'manual',
-      dia_mes:dm
-    },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx,dia_mes'});
-    if(error){
-      // Fallback se coluna dia_mes ainda não existe — usa upsert sem dia_mes
-      console.warn('dia_mes pode não existir, tentando sem:', error.message);
-      await sb.from('escala_mensal').upsert({
-        mes:m,ano:a,semana_letra:letra,dia_semana:ab,turno_idx:ti,
-        valor:val,origem:'manual'
-      },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
-    }
-  }catch(e){console.error('save manual:',e);showToast('Erro ao salvar',true);return;}
-  // Atualizar estado local com chave específica do dia
-  initESCMES(m,a);
-  const k=keyMes(m,a);
-  if(!ESCMES[k]['DIA_'+dm])ESCMES[k]['DIA_'+dm]=Array(16).fill(undefined);
-  ESCMES[k]['DIA_'+dm][ti]=val;
+  if(!dm){
+    console.error('salvarEdicao: diaMes não definido!',editCtx);
+    showToast('Erro: dia do mês não identificado',true);
+    return;
+  }
+  const ok=await salvarSlotMes(m,a,letra,ab,ti,val,dm);
+  if(!ok){
+    showToast('Erro ao salvar — verifique o console',true);
+    return;
+  }
   fecharMo('mo-editar');
   renderAll();
-  showToast('Plantão registrado para o dia '+dm+' (sem propagação)!');
+  showToast('Plantão salvo para o dia '+dm+'!');
 }
 
 // ══ ESCALA BASE ══
