@@ -2282,7 +2282,7 @@ async function criarSnapshotMes(mes,ano){
 async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
-  // Atualizar local
+  // Atualizar estado local primeiro
   if(diaMes){
     if(!ESCMES[k]['DIA_'+diaMes])ESCMES[k]['DIA_'+diaMes]=Array(16).fill(undefined);
     ESCMES[k]['DIA_'+diaMes][ti]=valor;
@@ -2291,28 +2291,48 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
     if(!ESCMES[k][semLetra][ab])ESCMES[k][semLetra][ab]=Array(16).fill(undefined);
     ESCMES[k][semLetra][ab][ti]=valor;
   }
-  // Persistir: DELETE + INSERT garante que não há resíduo antigo
+  // Persistir no banco
+  console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor,diaMes});
   try{
-    let qDel=sb.from('escala_mensal').delete()
-      .eq('mes',mes).eq('ano',ano).eq('semana_letra',semLetra)
-      .eq('dia_semana',ab).eq('turno_idx',ti);
-    if(diaMes)qDel=qDel.eq('dia_mes',diaMes);
-    else qDel=qDel.is('dia_mes',null);
-    await qDel;
-    const payload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
-      valor:valor||'',origem:diaMes?'manual':'snapshot'};
-    if(diaMes)payload.dia_mes=diaMes;
-    const {error}=await sb.from('escala_mensal').insert(payload);
-    if(error){
-      // Fallback se coluna dia_mes não existe ainda
-      console.warn('insert falhou, tentando upsert sem dia_mes:',error.message);
-      const fbPayload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,valor:valor||'',origem:'manual'};
-      const {error:e2}=await sb.from('escala_mensal').upsert(fbPayload,
+    // ESTRATÉGIA 1: Tentar com dia_mes (requer SQL v20 executado)
+    if(diaMes){
+      // Tenta upsert com onConflict incluindo dia_mes
+      const payload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
+        valor:valor||'',origem:'manual',dia_mes:diaMes};
+      const {data,error}=await sb.from('escala_mensal').upsert(payload,
+        {onConflict:'mes,ano,semana_letra,dia_semana,turno_idx,dia_mes'}).select();
+      if(error){
+        console.warn('Upsert com dia_mes falhou:',error.message,'— tentando estratégia 2');
+        // ESTRATÉGIA 2: DELETE + INSERT (sem onConflict)
+        await sb.from('escala_mensal').delete()
+          .eq('mes',mes).eq('ano',ano).eq('semana_letra',semLetra)
+          .eq('dia_semana',ab).eq('turno_idx',ti).eq('dia_mes',diaMes);
+        const {error:e2}=await sb.from('escala_mensal').insert(payload);
+        if(e2){
+          console.error('Estratégia 2 falhou:',e2.message);
+          // ESTRATÉGIA 3: sem dia_mes (coluna não existe)
+          const fbPayload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,valor:valor||'',origem:'manual'};
+          const {error:e3}=await sb.from('escala_mensal').upsert(fbPayload,
+            {onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
+          if(e3)throw e3;
+          console.warn('SQL v20 não foi executado. Salvo sem dia_mes (propagará para semana).');
+        }
+      }
+    } else {
+      // Sem dia_mes — snapshot da semana
+      const payload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
+        valor:valor||'',origem:'snapshot'};
+      const {error}=await sb.from('escala_mensal').upsert(payload,
         {onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
-      if(e2)throw e2;
+      if(error)throw error;
     }
+    console.log('[salvarSlotMes] SUCESSO');
     return true;
-  }catch(e){console.error('salvarSlotMes:',e);return false}
+  }catch(e){
+    console.error('[salvarSlotMes] ERRO FATAL:',e);
+    showToast('Banco rejeitou: '+(e.message||'erro').slice(0,50),true);
+    return false;
+  }
 }
 
 // Carrega snapshots de todos os meses já publicados
