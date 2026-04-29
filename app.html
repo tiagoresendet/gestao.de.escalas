@@ -346,8 +346,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   </div>
   <div class="l-title">Entrar na plataforma</div>
   <div class="l-sub2">Selecione seu nome — a senha é seu CRM</div>
-  <div class="lg"><label class="ll">Profissional</label>
-    <select class="ls" id="lp" onchange="autoSenha()"><option value="">— Selecione seu nome —</option></select>
+  <div class="lg" style="position:relative">
+    <label class="ll">Profissional</label>
+    <input type="text" class="li" id="lp-busca" autocomplete="off" placeholder="Digite seu nome..." oninput="filtrarLogin()" onfocus="filtrarLogin()" style="padding-right:30px">
+    <span style="position:absolute;right:14px;top:38px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+    <input type="hidden" id="lp" value="">
+    <div id="lp-sugestoes" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:280px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
   </div>
   <div class="lg"><label class="ll">Senha</label>
     <div style="position:relative">
@@ -357,7 +361,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   </div>
   <button class="btn-login" onclick="fazerLogin()">Entrar</button>
   <button class="btn-visor" onclick="abrirViewer()">👁 Ver escala sem login</button>
-  <div class="l-note">Plantonistas: senha = CRM &nbsp;·&nbsp; Gestor: senha definida</div>
+  <div class="l-note">Sua senha inicial é seu CRM. Altere após o primeiro acesso.</div>
 </div>
 </div>
 
@@ -389,7 +393,13 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <span class="tb-date" id="db-status" style="font-size:10px;margin-left:4px"></span>
     <div class="tb-r">
       <div style="display:flex;align-items:center;gap:7px">
-        <div class="u-ava" id="u-ava" style="cursor:pointer" title="Meu Perfil">TR</div>
+        <div style="position:relative;display:flex;align-items:center;gap:6px">
+  <div class="u-ava" id="u-ava" style="cursor:pointer;border:2px solid transparent;transition:all .2s;position:relative" title="Clique para editar seu perfil"
+    onmouseover="this.style.borderColor='var(--blue)';this.style.transform='scale(1.05)'"
+    onmouseout="this.style.borderColor='transparent';this.style.transform='scale(1)'">TR
+    <span style="position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;background:var(--blue);border-radius:50%;font-size:8px;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid var(--bg1);font-weight:700">✏</span>
+  </div>
+</div>
         <div class="u-info"><div class="u-nome" id="u-nome"></div><div class="u-cargo" id="u-cargo"></div></div>
       </div>
       <button class="btn-out" onclick="fazerLogout()">Sair</button>
@@ -1148,6 +1158,33 @@ async function carregarSupabase(){
       PUB[p.mes+'-'+p.ano]={ok:p.publicado,d:p.data_publicacao?p.data_publicacao.split('T')[0]:null};
     });
 
+    // Logins (substitui dados padrão por dados do banco)
+    const {data:lgs,error:eLg}=await sb.from('logins').select('*');
+    if(eLg)throw eLg;
+    LOGINS.length=0;
+    lgs.forEach(l=>{
+      LOGINS.push({id:'L'+l.crm,n:l.nome,c:l.crm,role:l.perfil,pw:l.senha,ok:l.ativo!==false});
+    });
+    loginsOk=true;
+    populaLogin();
+
+    // Perfis
+    const {data:pfs,error:ePf}=await sb.from('perfis').select('*');
+    if(!ePf&&pfs){
+      pfs.forEach(p=>{
+        // Salvar perfil em cache local
+        const obj=carregarPerfis();
+        obj[String(p.crm)]={
+          nomeEscala:p.nome_escala||'',
+          whatsapp:p.whatsapp||'',
+          email:p.email||'',
+          cpf:p.cpf||'',
+          primeiroAcesso:p.primeiro_acesso!==false
+        };
+        salvarPerfis(obj);
+      });
+    }
+
     // Trocas
     const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
     if(eT)throw eT;
@@ -1367,32 +1404,76 @@ function navTo(pg){
 function nav(el){if(!el)return;navTo(el.dataset.p);if(window.innerWidth<=900)sbClose();}
 
 // ══ LOGIN ══
+// Cache de logins ordenado para autocomplete
+let LOGINS_BUSCA=[];
 function populaLogin(){
   initLogins();
-  const sel=document.getElementById('lp');const v=sel.value;
-  sel.innerHTML='<option value="">— Selecione seu nome —</option>';
-  const g=LOGINS.find(l=>l.role==='gestor');
-  if(g){
-    const o=document.createElement('option');
-    o.value=g.id;
-    // Sem dataset.pw — senha nunca vai para o HTML
-    o.textContent='Tiago Resende Telles';
-    sel.appendChild(o);
+  // Construir cache: gestor primeiro, depois plantonistas em ordem alfabética
+  LOGINS_BUSCA=[];
+  const gestor=LOGINS.find(l=>l.role==='gestor');
+  if(gestor){
+    LOGINS_BUSCA.push({id:gestor.id,nome:gestor.n,nomeFmt:formatarNome(gestor.n),role:'gestor'});
   }
-  const sep=document.createElement('option');sep.disabled=true;sep.textContent='────────────────────';sel.appendChild(sep);
-  LOGINS.filter(l=>l.role==='plantonista').sort((a,b)=>a.n.localeCompare(b.n)).forEach(l=>{
-    const o=document.createElement('option');
-    o.value=l.id;
-    // Sem dataset.pw — senha nunca vai para o HTML
-    o.textContent=l.n.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
-    sel.appendChild(o);
+  LOGINS.filter(l=>l.role==='plantonista').sort((a,b)=>a.n.localeCompare(b.n,'pt-BR')).forEach(l=>{
+    LOGINS_BUSCA.push({id:l.id,nome:l.n,nomeFmt:formatarNome(l.n),role:'plantonista'});
   });
-  if(v)sel.value=v;
 }
 
+function formatarNome(nome){
+  return nome.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
+}
+
+// Remover acentos para busca tolerante
+function semAcento(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+
+function filtrarLogin(){
+  const inp=document.getElementById('lp-busca');
+  const sug=document.getElementById('lp-sugestoes');
+  const q=semAcento(inp.value.trim());
+  let lista=LOGINS_BUSCA;
+  if(q){
+    lista=LOGINS_BUSCA.filter(l=>semAcento(l.nomeFmt).includes(q));
+  }
+  if(!lista.length){
+    sug.innerHTML='<div style="padding:12px;color:#9aa3bf;font-size:13px;text-align:center">Nenhum profissional encontrado</div>';
+  } else {
+    sug.innerHTML=lista.slice(0,30).map(l=>`
+      <div onclick="selecionarLogin('${l.id}','${l.nomeFmt.replace(/'/g,"\\'")}')"
+        style="padding:10px 13px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:13px;color:#1a1f36;display:flex;align-items:center;gap:8px"
+        onmouseover="this.style.background='#eff4ff'"
+        onmouseout="this.style.background='#fff'">
+        ${l.role==='gestor'?'<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:10px;font-weight:700">GESTOR</span>':''}
+        <span>${l.nomeFmt}</span>
+      </div>`).join('');
+  }
+  sug.style.display='block';
+}
+
+function selecionarLogin(id,nomeFmt){
+  document.getElementById('lp').value=id;
+  document.getElementById('lp-busca').value=nomeFmt;
+  document.getElementById('lp-sugestoes').style.display='none';
+  document.getElementById('ls').focus();
+}
+
+// Fechar sugestões ao clicar fora
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#lp-busca')&&!e.target.closest('#lp-sugestoes')){
+    const sug=document.getElementById('lp-sugestoes');
+    if(sug)sug.style.display='none';
+  }
+});
+
 async function fazerLogin(){
-  const sel=document.getElementById('lp');
-  if(!sel.value){showToast('Selecione seu nome',true);return}
+  const lpVal=document.getElementById('lp').value;
+  const buscaVal=document.getElementById('lp-busca').value.trim();
+  if(!lpVal){
+    // Tentar match exato pelo texto digitado
+    const match=LOGINS_BUSCA.find(l=>semAcento(l.nomeFmt)===semAcento(buscaVal));
+    if(match){document.getElementById('lp').value=match.id;}
+    else{showToast('Selecione um profissional da lista',true);return}
+  }
+  const sel={value:document.getElementById('lp').value};
   const senhaDigitada=document.getElementById('ls').value;
   if(!senhaDigitada){showToast('Digite sua senha',true);return}
   const l=LOGINS.find(x=>x.id===sel.value);
@@ -1431,6 +1512,7 @@ async function fazerLogin(){
   if(curRole==='gestor')navTo('dashboard');
   else navTo('meu-plantao');
   renderAll();
+  salvarSessao();// persistir sessão
   verificarPrimeiroAcesso();
 }
 function autoSenha(){} // removido por segurança — usuário deve digitar a senha
@@ -1440,7 +1522,7 @@ function toggleVerSenha(){
   if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
   else{inp.type='password';btn.textContent='👁';}
 }
-function fazerLogout(){document.getElementById('screen-app').style.display='none';document.getElementById('screen-login').style.display='flex';document.getElementById('ls').value='';sbClose()}
+function fazerLogout(){limparSessao();document.getElementById('screen-app').style.display='none';document.getElementById('screen-login').style.display='flex';document.getElementById('ls').value='';sbClose()}
 function abrirViewer(){document.getElementById('screen-login').style.display='none';document.getElementById('screen-viewer').style.display='flex';renderViewer()}
 function voltarLogin(){document.getElementById('screen-viewer').style.display='none';document.getElementById('screen-login').style.display='flex'}
 function mudarViewerMes(d){viewerMes+=d;if(viewerMes>12){viewerMes=1;viewerAno++}if(viewerMes<1){viewerMes=12;viewerAno--}renderViewer()}
@@ -1567,14 +1649,29 @@ function abrirEditar(letra,ab,ti,turnoL,el){
   const vm=cur.replace(/ (CR|EF)$/,'');const vv=(cur.match(/(CR|EF)$/)||['','CR'])[1];
   sel.value=vm;document.getElementById('ed-vinc').value=vv;abrirMo('mo-editar');
 }
-function salvarEdicao(){
-  if(!editCtx)return;const{letra,ab,ti,el}=editCtx;
-  const med=document.getElementById('ed-med').value;const vinc=document.getElementById('ed-vinc').value;
+async function salvarEdicao(){
+  if(!editCtx)return;
+  const{letra,ab,ti,el}=editCtx;
+  const med=document.getElementById('ed-med').value;
+  const vinc=document.getElementById('ed-vinc').value;
   const val=med?`${med} ${vinc}`:'';
-  if(!EB[letra][ab])EB[letra][ab]=[];EB[letra][ab][ti]=val;
-  el.querySelector('.cn').textContent=val||'—';el.title=val||'—';
-  el.querySelector('.cn').classList.toggle('vz',!val);
-  fecharMo('mo-editar');showToast('Atualizado!');
+  // PERSISTIR NO BANCO PRIMEIRO
+  try{
+    const {error}=await sb.from('escala_base').upsert({
+      semana:letra,dia_semana:ab,turno_idx:ti,valor:val,
+      updated_at:new Date().toISOString()
+    },{onConflict:'semana,dia_semana,turno_idx'});
+    if(error)throw error;
+  }catch(e){
+    console.error('Erro ao salvar slot:',e);
+    showToast('Erro ao salvar — tente novamente',true);return;
+  }
+  // Estado local após confirmação
+  if(!EB[letra][ab])EB[letra][ab]=[];
+  EB[letra][ab][ti]=val;
+  // Re-renderizar célula
+  renderEscala();renderEB();
+  fecharMo('mo-editar');showToast('Slot salvo no banco!');
 }
 
 // ══ ESCALA BASE ══
@@ -1684,23 +1781,62 @@ function abrirEditMed(idx){
   });
   abrirMo('mo-edit-med');
 }
-function salvarEditMed(){
-  if(editMedIdx===null)return;const m=MEDICOS[editMedIdx];
-  const nn=document.getElementById('em-nome').value.trim().toUpperCase();const vc=document.getElementById('em-vinc').value;
+async function salvarEditMed(){
+  if(editMedIdx===null)return;
+  const m=MEDICOS[editMedIdx];
+  const crmAntigo=m.c;
+  const nn=document.getElementById('em-nome').value.trim().toUpperCase();
+  const vc=document.getElementById('em-vinc').value;
   const areas=[...document.querySelectorAll('#em-areas-check input:checked')].map(cb=>cb.value);
-  m.n=nn;m.c=parseInt(document.getElementById('em-crm').value)||m.c;
-  m.areas=areas;m.a=areas.join('/')||m.a;
+  const novoCRM=parseInt(document.getElementById('em-crm').value)||m.c;
+  if(!nn){showToast('Nome obrigatório',true);return}
+  if(!novoCRM){showToast('CRM inválido',true);return}
+  // PERSISTIR NO BANCO PRIMEIRO
+  try{
+    const {error}=await sb.from('profissionais').update({
+      nome:nn,crm:novoCRM,vinculo:vc,areas,
+      updated_at:new Date().toISOString()
+    }).eq('crm',crmAntigo);
+    if(error)throw error;
+    // Atualizar login se nome ou CRM mudaram
+    if(nn!==m.n||novoCRM!==crmAntigo){
+      await sb.from('logins').update({nome:nn,crm:novoCRM}).eq('crm',crmAntigo);
+    }
+  }catch(e){
+    console.error('Erro ao atualizar:',e);
+    showToast('Erro ao salvar — tente novamente',true);return;
+  }
+  // Estado local após confirmação do banco
+  m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;
   if(vc==='EF')EFETIVOS.add(nn);else EFETIVOS.delete(nn);
-  fecharMo('mo-edit-med');renderCC('');showToast('Atualizado!');
+  // Sincronizar LOGINS local
+  const li=LOGINS.findIndex(l=>l.c==crmAntigo);
+  if(li>=0){LOGINS[li].n=nn;LOGINS[li].c=novoCRM;}
+  fecharMo('mo-edit-med');renderCC('');renderLogins();populaLogin();
+  showToast('Profissional atualizado!');
 }
 async function excluirMed(idx){
   const m=MEDICOS[idx];
-  if(!confirm('Excluir '+m.n+' do corpo clínico?'))return;
+  if(!confirm('Excluir '+m.n+' do corpo clínico?\n\nIsso também removerá o acesso do profissional ao sistema.'))return;
   try{
+    // 1. Deletar logins primeiro (depende de profissionais via FK CASCADE, mas explicitamos)
+    const {error:eL}=await sb.from('logins').delete().eq('crm',m.c);
+    if(eL)console.error('logins delete:',eL);
+    // 2. Deletar perfil
+    await sb.from('perfis').delete().eq('crm',m.c);
+    // 3. Deletar profissional (CASCADE já cuida das FKs)
     const {error}=await sb.from('profissionais').delete().eq('crm',m.c);
     if(error)throw error;
-  }catch(e){console.error('Erro ao excluir no banco:',e)}
-  MEDICOS.splice(idx,1);renderCC('');showToast('Removido!');
+    // 4. Atualizar estado local APÓS confirmação do banco
+    MEDICOS.splice(idx,1);
+    const li=LOGINS.findIndex(l=>l.c==m.c);
+    if(li>=0)LOGINS.splice(li,1);
+    renderCC('');renderLogins();populaLogin();
+    showToast('Profissional e acesso removidos!');
+  }catch(e){
+    console.error('Erro ao excluir:',e);
+    showToast('Erro ao excluir — verifique sua conexão',true);
+  }
 }
 async function addMedico(){
   const n=document.getElementById('add-nome').value.trim().toUpperCase();
@@ -1716,19 +1852,33 @@ async function addMedico(){
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
   const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined};
   if(v==='EF')EFETIVOS.add(n);
-  // Salvar no Supabase
+  // PERSISTIR NO BANCO PRIMEIRO — só atualiza local após confirmação
   try{
-    await sb.from('profissionais').upsert({
+    // 1. Inserir profissional
+    const {error:eP}=await sb.from('profissionais').upsert({
       nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,
       externo:isExt,unidade:isExt?uni:null
     },{onConflict:'crm'});
-    // Criar login automático (senha = CRM)
-    await sb.from('logins').upsert({
-      crm:c,nome:n,senha:String(c),perfil:'plantonista'
-    },{onConflict:'crm'});
-  }catch(e){console.error('Erro ao salvar no banco:',e)}
+    if(eP)throw eP;
+    // 2. Criar login automaticamente (apenas para internos)
+    if(!isExt){
+      const {error:eL}=await sb.from('logins').upsert({
+        crm:c,nome:n,senha:String(c),perfil:'plantonista'
+      },{onConflict:'crm'});
+      if(eL)throw eL;
+    }
+  }catch(e){
+    console.error('Erro ao salvar no banco:',e);
+    showToast('Erro ao salvar — tente novamente',true);return;
+  }
+  // Atualizar estado local
   MEDICOS.push(novoMed);
-  fecharMo('mo-add-med');renderCC('');preencherSelects();showToast('Adicionado e salvo no banco!');
+  if(!isExt){
+    const novoLogin={id:'L'+Date.now(),n,c,role:'plantonista',pw:String(c),ok:true};
+    LOGINS.push(novoLogin);
+  }
+  fecharMo('mo-add-med');renderCC('');preencherSelects();renderLogins();populaLogin();
+  showToast('Profissional adicionado e acesso criado!');
   document.getElementById('add-nome').value='';document.getElementById('add-crm').value='';
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
   document.getElementById('add-is-ext').checked=false;
@@ -2254,27 +2404,82 @@ function renderLogins(filtro=''){
   }).join('');
 }
 function buscarLogin(v){renderLogins(v)}
-function mudarRole(i,r){LOGINS[i].role=r;showToast('Perfil atualizado!')}
-function removerLogin(i){if(!confirm('Remover acesso?'))return;LOGINS.splice(i,1);renderLogins();showToast('Removido.')}
+async function mudarRole(i,r){
+  const l=LOGINS[i];
+  try{
+    const {error}=await sb.from('logins').update({perfil:r}).eq('crm',l.c);
+    if(error)throw error;
+    LOGINS[i].role=r;
+    showToast('Perfil salvo no banco!');
+  }catch(e){
+    console.error('mudarRole:',e);
+    showToast('Erro ao salvar',true);
+    renderLogins();// reverter UI
+  }
+}
+async function removerLogin(i){
+  if(!confirm('Remover este acesso?\n\nO profissional não poderá mais entrar no sistema.'))return;
+  const l=LOGINS[i];
+  try{
+    const {error}=await sb.from('logins').delete().eq('crm',l.c);
+    if(error)throw error;
+    LOGINS.splice(i,1);
+    renderLogins();populaLogin();
+    showToast('Acesso removido!');
+  }catch(e){
+    console.error('Erro removerLogin:',e);
+    showToast('Erro ao remover',true);
+  }
+}
 function abrirSenha(i){editSenhaIdx=i;document.getElementById('ms-sub').textContent=LOGINS[i].n;document.getElementById('ms-nova').value='';document.getElementById('ms-conf').value='';abrirMo('mo-senha')}
-function salvarSenha(){const n=document.getElementById('ms-nova').value;const c=document.getElementById('ms-conf').value;if(!n){showToast('Digite a senha',true);return}if(n!==c){showToast('Senhas não coincidem',true);return}LOGINS[editSenhaIdx].pw=n;fecharMo('mo-senha');renderLogins();showToast('Senha alterada!')}
+async function salvarSenha(){
+  const n=document.getElementById('ms-nova').value;
+  const c=document.getElementById('ms-conf').value;
+  if(!n){showToast('Digite a senha',true);return}
+  if(n!==c){showToast('Senhas não coincidem',true);return}
+  if(n.length<4){showToast('Senha muito curta (mín. 4 caracteres)',true);return}
+  const login=LOGINS[editSenhaIdx];
+  if(!login){showToast('Login não encontrado',true);return}
+  try{
+    // Persiste no Supabase ANTES de atualizar local
+    const {data,error}=await sb.from('logins').update({senha:n}).eq('crm',login.c).select();
+    if(error)throw error;
+    if(!data||!data.length){throw new Error('Nenhum registro atualizado')}
+    // Só atualiza local após confirmação do banco
+    LOGINS[editSenhaIdx].pw=n;
+    fecharMo('mo-senha');renderLogins();
+    showToast('Senha alterada e salva no banco!');
+  }catch(e){
+    console.error('Erro ao salvar senha:',e);
+    showToast('Erro ao salvar — tente novamente',true);
+  }
+}
 function renderALForm(){const t=document.getElementById('al-tipo').value;document.getElementById('al-med').style.display=t==='med'?'block':'none';document.getElementById('al-ext').style.display=t==='ext'?'block':'none'}
-function addLogin(){
-  initLogins();const t=document.getElementById('al-tipo').value;
+async function addLogin(){
+  initLogins();
+  const t=document.getElementById('al-tipo').value;
   if(t==='med'){
     const crm=parseInt(document.getElementById('al-prof').value);
     if(!crm){showToast('Selecione o profissional',true);return}
-    const m=MEDICOS.find(x=>x.c===crm&&!x.ext&&x.a!=='GESTOR');
+    const m=MEDICOS.find(x=>x.c===crm);
     if(!m){showToast('Profissional não encontrado',true);return}
     const role=document.getElementById('al-role').value;
-    if(LOGINS.find(l=>l.c==m.c)){showToast('Já tem acesso',true);return}
-    LOGINS.push({id:'L'+(LOGINS.length+1).toString().padStart(3,'0'),n:m.n,c:m.c,role,pw:String(m.c),ok:true});
+    if(LOGINS.find(l=>l.c==m.c)){showToast('Profissional já tem acesso',true);return}
+    try{
+      const {error}=await sb.from('logins').upsert({
+        crm:m.c,nome:m.n,senha:String(m.c),perfil:role
+      },{onConflict:'crm'});
+      if(error)throw error;
+      LOGINS.push({id:'L'+Date.now(),n:m.n,c:m.c,role,pw:String(m.c),ok:true});
+    }catch(e){
+      console.error('addLogin med:',e);
+      showToast('Erro ao salvar — tente novamente',true);return;
+    }
   }else{
-    const n=document.getElementById('al-nome').value.trim().toUpperCase();const pw=document.getElementById('al-senha').value;
-    if(!n||!pw){showToast('Preencha nome e senha',true);return}
-    LOGINS.push({id:'L'+(LOGINS.length+1).toString().padStart(3,'0'),n,c:'ext',role:'plantonista',pw,ok:true});
+    showToast('Acesso externo deve ser criado via Corpo Clínico',true);return;
   }
-  fecharMo('mo-add-login');renderLogins();populaLogin();showToast('Acesso adicionado!');
+  fecharMo('mo-add-login');renderLogins();populaLogin();
+  showToast('Acesso criado e salvo no banco!');
 }
 
 // ══ SELECTS ══
@@ -2864,24 +3069,59 @@ function abrirPerfil(){
   document.getElementById('pf-pw-conf').value='';
   abrirMo('mo-perfil');
 }
-function salvarPerfil(){
-  var pf=getPerfil(curUser.c)||{};
-  var nomeEscala=document.getElementById('pf-nome-escala').value.trim();
-  var whatsapp=document.getElementById('pf-whatsapp').value.trim();
-  var email=document.getElementById('pf-email').value.trim();
-  var cpf=document.getElementById('pf-cpf').value.trim();
-  var pwAtual=document.getElementById('pf-pw-atual').value;
-  var pwNova=document.getElementById('pf-pw-nova').value;
-  var pwConf=document.getElementById('pf-pw-conf').value;
+async function salvarPerfil(){
+  const pf=getPerfil(curUser.c)||{};
+  const nomeEscala=document.getElementById('pf-nome-escala').value.trim();
+  const whatsapp=document.getElementById('pf-whatsapp').value.trim();
+  const email=document.getElementById('pf-email').value.trim();
+  const cpf=document.getElementById('pf-cpf').value.trim();
+  const pwAtual=document.getElementById('pf-pw-atual').value;
+  const pwNova=document.getElementById('pf-pw-nova').value;
+  const pwConf=document.getElementById('pf-pw-conf').value;
+  // 1. Validações
   if(pwNova){
-    var login=LOGINS.find(function(l){return l.c==curUser.c});
-    if(!login||pwAtual!==login.pw){showToast('Senha atual incorreta',true);return}
     if(pwNova!==pwConf){showToast('Nova senha não confere',true);return}
-    if(login)login.pw=pwNova;
+    if(pwNova.length<4){showToast('Senha muito curta',true);return}
+    // Validar senha atual contra o banco
+    try{
+      const {data,error}=await sb.from('logins').select('senha').eq('crm',curUser.c).single();
+      if(error)throw error;
+      if(!data||data.senha!==pwAtual){showToast('Senha atual incorreta',true);return}
+    }catch(e){
+      const login=LOGINS.find(l=>l.c==curUser.c);
+      if(!login||pwAtual!==login.pw){showToast('Senha atual incorreta',true);return}
+    }
   }
-  setPerfil(curUser.c,Object.assign({},pf,{nomeEscala:nomeEscala,whatsapp:whatsapp,email:email,cpf:cpf,primeiroAcesso:false}));
+  // 2. Persistir senha no banco PRIMEIRO
+  if(pwNova){
+    try{
+      const {data,error}=await sb.from('logins').update({senha:pwNova}).eq('crm',curUser.c).select();
+      if(error)throw error;
+      if(!data||!data.length)throw new Error('Senha não atualizada');
+      const login=LOGINS.find(l=>l.c==curUser.c);
+      if(login)login.pw=pwNova;
+    }catch(e){
+      console.error('Erro ao salvar senha:',e);
+      showToast('Erro ao salvar senha — tente novamente',true);return;
+    }
+  }
+  // 3. Persistir perfil no banco
+  try{
+    const {error}=await sb.from('perfis').upsert({
+      crm:curUser.c,nome_escala:nomeEscala,whatsapp:whatsapp,
+      email:email,cpf:cpf,primeiro_acesso:false,
+      updated_at:new Date().toISOString()
+    },{onConflict:'crm'});
+    if(error)throw error;
+  }catch(e){
+    console.error('Erro ao salvar perfil:',e);
+    showToast('Erro ao salvar perfil',true);return;
+  }
+  // 4. Atualizar local
+  setPerfil(curUser.c,Object.assign({},pf,{nomeEscala,whatsapp,email,cpf,primeiroAcesso:false}));
   aplicarPerfil(curUser.c);
-  fecharMo('mo-perfil');showToast('Perfil salvo!');
+  fecharMo('mo-perfil');
+  showToast(pwNova?'Perfil e senha salvos!':'Perfil salvo!');
 }
 function aplicarPerfil(crm){
   var pf=getPerfil(crm)||{};
@@ -2892,8 +3132,26 @@ function aplicarPerfil(crm){
     document.getElementById('u-ava').textContent=init||ini2(curUser.nU);
   }
 }
-function verificarPrimeiroAcesso(){
-  var pf=getPerfil(curUser.c);
+async function verificarPrimeiroAcesso(){
+  // Ler primeiro do banco (fonte da verdade)
+  let pf=null;
+  try{
+    const {data,error}=await sb.from('perfis').select('*').eq('crm',curUser.c).maybeSingle();
+    if(!error&&data){
+      pf={
+        nomeEscala:data.nome_escala||'',
+        whatsapp:data.whatsapp||'',
+        email:data.email||'',
+        cpf:data.cpf||'',
+        primeiroAcesso:data.primeiro_acesso!==false
+      };
+      // Atualizar cache local
+      const obj=carregarPerfis();
+      obj[String(curUser.c)]=pf;salvarPerfis(obj);
+    }
+  }catch(e){console.error('Verificar perfil:',e)}
+  // Fallback local se banco offline
+  if(!pf)pf=getPerfil(curUser.c);
   if(!pf||pf.primeiroAcesso!==false){
     document.getElementById('pa-nome-escala').value='';
     document.getElementById('pa-whatsapp').value='';
@@ -2903,16 +3161,28 @@ function verificarPrimeiroAcesso(){
     aplicarPerfil(curUser.c);
   }
 }
-function salvarPrimeiroAcesso(){
-  var ne=document.getElementById('pa-nome-escala').value.trim();
-  var wpp=document.getElementById('pa-whatsapp').value.trim();
-  var em=document.getElementById('pa-email').value.trim();
+async function salvarPrimeiroAcesso(){
+  const ne=document.getElementById('pa-nome-escala').value.trim();
+  const wpp=document.getElementById('pa-whatsapp').value.trim();
+  const em=document.getElementById('pa-email').value.trim();
   if(!ne){showToast('Informe como quer ser chamado na escala',true);return}
   if(!wpp){showToast('WhatsApp é obrigatório',true);return}
   if(!em||!em.includes('@')){showToast('E-mail válido é obrigatório',true);return}
+  // Persistir no banco
+  try{
+    const {error}=await sb.from('perfis').upsert({
+      crm:curUser.c,nome_escala:ne,whatsapp:wpp,email:em,cpf:'',
+      primeiro_acesso:false,updated_at:new Date().toISOString()
+    },{onConflict:'crm'});
+    if(error)throw error;
+  }catch(e){
+    console.error('salvarPrimeiroAcesso:',e);
+    showToast('Erro ao salvar — tente novamente',true);return;
+  }
   setPerfil(curUser.c,{nomeEscala:ne,whatsapp:wpp,email:em,cpf:'',primeiroAcesso:false});
   aplicarPerfil(curUser.c);
-  fecharMo('mo-primeiro-acesso');showToast('Bem-vindo, '+ne+'!');
+  fecharMo('mo-primeiro-acesso');
+  showToast('Bem-vindo, '+ne+'!');
 }
 // Máscara CPF
 document.addEventListener('input',function(e){
@@ -2925,18 +3195,59 @@ document.addEventListener('input',function(e){
   }
 });
 
+// ══ SESSÃO PERSISTENTE — F5 não desloga ══
+const SESSION_KEY='cais_session_v1';
+function salvarSessao(){
+  if(!curUser.c)return;
+  try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({
+    crm:curUser.c,nU:curUser.nU,n:curUser.n,role:curRole,
+    ts:Date.now()
+  }));}catch(e){}
+}
+function limparSessao(){try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}}
+async function restaurarSessao(){
+  try{
+    const raw=sessionStorage.getItem(SESSION_KEY);
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    if(!s||!s.crm)return false;
+    // Validar contra banco — se usuário ainda existe
+    const {data,error}=await sb.from('logins').select('crm,nome,perfil').eq('crm',s.crm).single();
+    if(error||!data)return false;
+    // Restaurar estado
+    curRole=data.perfil;
+    curUser={n:s.n,nU:data.nome,c:data.crm,ava:ini2(data.nome),
+             cargo:curRole==='gestor'?'Gestor de Escala':'Plantonista'};
+    document.getElementById('screen-login').style.display='none';
+    document.getElementById('screen-app').style.display='flex';
+    document.getElementById('u-ava').textContent=curUser.ava;
+    document.getElementById('u-nome').textContent=s.n.split(' ').slice(0,2).join(' ');
+    document.getElementById('u-cargo').textContent=curUser.cargo;
+    document.getElementById('nav-g').style.display=curRole==='gestor'?'block':'none';
+    document.getElementById('nav-m').style.display=curRole==='plantonista'?'block':'none';
+    document.getElementById('escala-ph-r').style.display=curRole==='gestor'?'flex':'none';
+    document.getElementById('cc-ph-r').style.display=curRole==='gestor'?'flex':'none';
+    initSidebar();
+    if(curRole==='gestor')navTo('dashboard');else navTo('meu-plantao');
+    return true;
+  }catch(e){console.error('Restaurar sessão:',e);return false}
+}
+
 // ══ INICIALIZAÇÃO ══
 initLogins();
 populaLogin();
-document.addEventListener('DOMContentLoaded',function(){
+async function bootApp(){
   initSidebar();
-  // Carregar dados do Supabase ao iniciar
-  carregarSupabase();
-});
-if(document.readyState!=='loading'){
-  initSidebar();
-  carregarSupabase();
+  await carregarSupabase();
+  // Tentar restaurar sessão depois que dados estão carregados
+  const restaurou=await restaurarSessao();
+  if(restaurou){
+    renderAll();
+    aplicarPerfil(curUser.c);
+  }
 }
+document.addEventListener('DOMContentLoaded',bootApp);
+if(document.readyState!=='loading'){bootApp();}
 </script>
 </body>
 </html>
