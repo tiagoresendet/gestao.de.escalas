@@ -401,11 +401,14 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div style="position:relative;display:flex;align-items:center;gap:6px">
   <div class="u-ava" id="u-ava" style="cursor:pointer;border:2px solid transparent;transition:all .2s;position:relative" title="Clique para editar seu perfil"
     onmouseover="this.style.borderColor='var(--blue)';this.style.transform='scale(1.05)'"
-    onmouseout="this.style.borderColor='transparent';this.style.transform='scale(1)'">TR
-    <span style="position:absolute;bottom:-3px;right:-3px;width:14px;height:14px;background:var(--blue);border-radius:50%;font-size:8px;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid var(--bg1);font-weight:700">✏</span>
+    onmouseout="this.style.borderColor='transparent';this.style.transform='scale(1)'"
+    onclick="abrirPerfil()">TR
   </div>
 </div>
         <div class="u-info"><div class="u-nome" id="u-nome"></div><div class="u-cargo" id="u-cargo"></div></div>
+        <button onclick="abrirPerfil()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s" title="Editar meu perfil"
+          onmouseover="this.style.background='var(--blue-bg)';this.style.borderColor='var(--blue)'"
+          onmouseout="this.style.background='var(--bg3)';this.style.borderColor='var(--border2)'">⚙️</button>
       </div>
       <button class="btn-out" onclick="fazerLogout()">Sair</button>
     </div>
@@ -772,7 +775,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <select class="fs" id="add-vinc"><option value="CR">CR — Credenciado</option><option value="EF">EF — Efetivo</option></select>
     </div>
     <div class="fg" id="add-ext-uni-wrap" style="display:none">
-      <label class="fl">Unidade de Lotação</label>
+      <label class="fl">Unidade de Lotação <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
       <select class="fs" id="add-ext-uni">
         <option value="">— Selecione —</option>
         <option>CAIS Bairro Goiá</option><option>CAIS Cândida de Morais</option>
@@ -781,9 +784,13 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option>UPA Itaipu</option><option>UPA Jardim América</option><option>UPA Noroeste</option>
       </select>
     </div>
+    <div class="fg" id="add-ext-wpp-wrap" style="display:none">
+      <label class="fl">WhatsApp do Externo <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
+      <input type="tel" class="fi" id="add-ext-wpp" placeholder="(62) 9 0000-0000">
+    </div>
     <div style="margin-bottom:12px">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text2)">
-        <input type="checkbox" id="add-is-ext" onchange="document.getElementById('add-ext-uni-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px;accent-color:var(--blue)">
+        <input type="checkbox" id="add-is-ext" onchange="toggleExtFields(this.checked)" style="width:16px;height:16px;accent-color:var(--blue)">
         Plantonista Externo (outra unidade)
       </label>
     </div>
@@ -1407,18 +1414,21 @@ function gerarPlantoesMes(mes,ano){
     DA.forEach(ab=>{
       if(sem.dias[ab]===undefined)return;
       const dt=sem.dts[ab];const fds=isFDS(dt);
+      const diaMes=sem.dias[ab];
       TURNOS.forEach((t,ti)=>{
-        const val=getSlotVal(mes,ano,sem.letra,ab,ti);
+        // Usa getSlotValDia para ler corretamente os plantões manuais por dia
+        const val=getSlotValDia(mes,ano,sem.letra,ab,ti,diaMes);
         if(!val)return;
         const match=val.match(/\((\d+)\)/);
         if(!match)return;
         const crm=parseInt(match[1]);
         const med=MEDICOS.find(m=>m.c===crm);
         plantoes.push({
-          id:`${mes}-${ano}-${sem.letra}-${ab}-${ti}`,
+          id:`${mes}-${ano}-${sem.letra}-${ab}-${ti}-${diaMes}`,
           crm,nome:med?med.n:val.replace(/\s*\(\d+\)\s*(CR|EF)$/,'').trim(),
-          area:t.a,dt,dia:sem.dias[ab],ab,semLetra:sem.letra,
-          turnoIdx:ti,turno:t.l,not:t.not,h:t.h,fds,valOriginal:val
+          area:t.a,dt,dia:diaMes,ab,semLetra:sem.letra,
+          turnoIdx:ti,turno:t.l,not:t.not,h:t.h,fds,valOriginal:val,
+          medExt:med?med.ext:false,medUnidade:med?med.unidade:null
         });
       });
     });
@@ -1718,9 +1728,10 @@ function gerarHtmlSems(sems,canEdit){
         if(sem.dias[ab]===undefined){html+=`<td class="nd"></td>`;return}
         const fds2=isFDS(sem.dts[ab]);
         const arr=EB[sem.letra][ab]||[];
-        const click=canEdit?`onclick="abrirEditarMes('${sem.letra}','${ab}',${ti},'${t.l}',this)"`:'';
-        // getSlotVal respeita substituições do mês SEM alterar a Escala Base
-        const val=getSlotVal(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti);
+        const diaMes=sem.dias[ab]||0;
+        const click=canEdit?`onclick="abrirEditarMes('${sem.letra}','${ab}',${ti},'${t.l}',${diaMes},this)"`:'';
+        // Pontual por dia, não propaga
+        const val=getSlotValDia(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti,diaMes);
         let nomeCell='—',crmCell='',vincCell='';
         if(val){
           const mV=val.match(/(CR|EF)$/);if(mV)vincCell=mV[1];
@@ -1815,13 +1826,28 @@ function abrirEditarBase(letra,ab,ti,turnoL,el){
   preencherEdMedModal((EB[letra][ab]||[])[ti]||'');
 }
 
-function abrirEditarMes(letra,ab,ti,turnoL,el){
-  // Edita SOMENTE o snapshot do mês — nunca toca o EB
-  editCtx={letra,ab,ti,el,contexto:'escala_mensal',mes:mesMes,ano:mesAno};
-  const k=keyMes(mesMes,mesAno);
-  const valAtual=getSlotVal(mesMes,mesAno,letra,ab,ti);
-  document.getElementById('mo-ed-ctx').textContent=`📅 ${MP[mesMes]} ${mesAno} · ${turnoL} · ${ab} · Sem.${letra}`;
+function abrirEditarMes(letra,ab,ti,turnoL,diaMes,el){
+  // Edita SOMENTE este dia específico — não propaga para outras semanas
+  editCtx={letra,ab,ti,el,diaMes,contexto:'escala_mensal',mes:mesMes,ano:mesAno};
+  const valAtual=getSlotValDia(mesMes,mesAno,letra,ab,ti,diaMes);
+  document.getElementById('mo-ed-ctx').textContent=`📅 ${MP[mesMes]} ${mesAno} — Dia ${diaMes} · ${turnoL}`;
   preencherEdMedModal(valAtual);
+}
+
+// getSlotVal específico por dia do mês (pontual, não propaga)
+function getSlotValDia(mes,ano,semLetra,ab,ti,diaMes){
+  const k=keyMes(mes,ano);
+  // 1. Override por dia específico (manual_dia)
+  if(ESCMES[k]&&ESCMES[k]['DIA_'+diaMes]&&ESCMES[k]['DIA_'+diaMes][ti]!==undefined){
+    return ESCMES[k]['DIA_'+diaMes][ti];
+  }
+  // 2. Snapshot da semana
+  if(ESCMES[k]&&ESCMES[k][semLetra]&&ESCMES[k][semLetra][ab]){
+    const v=ESCMES[k][semLetra][ab][ti];
+    if(v!==undefined&&v!==null)return v;
+  }
+  // 3. Fallback EB
+  return (EB[semLetra][ab]||[])[ti]||'';
 }
 
 function preencherEdMedModal(cur){
@@ -1894,19 +1920,33 @@ async function salvarEdicao(){
     showToast('Slot salvo na Escala Base (template)!');
     return;
   }
-  // contexto = 'escala_mensal' — salva APENAS no snapshot, nunca toca o EB
+  // contexto = 'escala_mensal' — salva por dia específico (não propaga)
   const m=mes||mesMes,a=ano||mesAno;
-  if(!temSnapshot(m,a)){
-    const ok=await criarSnapshotMes(m,a);
-    if(!ok){showToast('Erro ao criar snapshot do mês',true);return}
-  }
-  const ok=await salvarSlotMes(m,a,letra,ab,ti,val);
-  if(!ok){showToast('Erro ao salvar slot do mês',true);return}
+  const dm=editCtx.diaMes;
+  // Persistir no banco com dia_mes (ponto específico)
+  try{
+    const {error}=await sb.from('escala_mensal').upsert({
+      mes:m,ano:a,semana_letra:letra,dia_semana:ab,turno_idx:ti,
+      valor:val,origem:'manual',
+      dia_mes:dm
+    },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx,dia_mes'});
+    if(error){
+      // Fallback se coluna dia_mes ainda não existe — usa upsert sem dia_mes
+      console.warn('dia_mes pode não existir, tentando sem:', error.message);
+      await sb.from('escala_mensal').upsert({
+        mes:m,ano:a,semana_letra:letra,dia_semana:ab,turno_idx:ti,
+        valor:val,origem:'manual'
+      },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
+    }
+  }catch(e){console.error('save manual:',e);showToast('Erro ao salvar',true);return;}
+  // Atualizar estado local com chave específica do dia
   initESCMES(m,a);
-  ESCMES[keyMes(m,a)][letra][ab][ti]=val;
+  const k=keyMes(m,a);
+  if(!ESCMES[k]['DIA_'+dm])ESCMES[k]['DIA_'+dm]=Array(16).fill(undefined);
+  ESCMES[k]['DIA_'+dm][ti]=val;
   fecharMo('mo-editar');
   renderAll();
-  showToast('Plantão vinculado e visível em todos os painéis!');
+  showToast('Plantão registrado para o dia '+dm+' (sem propagação)!');
 }
 
 // ══ ESCALA BASE ══
@@ -2080,44 +2120,60 @@ async function addMedico(){
   const isExt=document.getElementById('add-is-ext').checked;
   if(!n||!c){showToast('Nome e CRM obrigatórios',true);return}
   if(MEDICOS.find(m=>m.c===c)){showToast('CRM já cadastrado',true);return}
-  // Fix 7: areas como array de checkboxes
   const areas=[...document.querySelectorAll('#add-areas-check input:checked')].map(cb=>cb.value);
   const uni=isExt?document.getElementById('add-ext-uni').value:'';
-  if(isExt&&!uni){showToast('Selecione a unidade',true);return}
+  const wppExt=isExt?document.getElementById('add-ext-wpp').value.trim():'';
+  if(isExt){
+    if(!uni){showToast('Selecione a unidade do externo',true);return}
+    if(!wppExt){showToast('WhatsApp do externo é obrigatório',true);return}
+  }
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
-  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined};
+  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v};
   if(v==='EF')EFETIVOS.add(n);
-  // PERSISTIR NO BANCO PRIMEIRO — só atualiza local após confirmação
   try{
-    // 1. Inserir profissional
     const {error:eP}=await sb.from('profissionais').upsert({
       nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,
       externo:isExt,unidade:isExt?uni:null
     },{onConflict:'crm'});
     if(eP)throw eP;
-    // 2. Criar login automaticamente (apenas para internos)
+    // INTERNOS: criar login automático com permissão plantonista
     if(!isExt){
       const {error:eL}=await sb.from('logins').upsert({
-        crm:c,nome:n,senha:String(c),perfil:'plantonista'
+        crm:c,nome:n,senha:String(c),perfil:'plantonista',
+        is_gestor:false,is_plantonista:true,is_clinico:true
       },{onConflict:'crm'});
       if(eL)throw eL;
+    } else {
+      // EXTERNOS: salvar WhatsApp em perfis
+      await sb.from('perfis').upsert({
+        crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:'',primeiro_acesso:true
+      },{onConflict:'crm'});
     }
   }catch(e){
-    console.error('Erro ao salvar no banco:',e);
+    console.error('Erro ao salvar:',e);
     showToast('Erro ao salvar — tente novamente',true);return;
   }
-  // Atualizar estado local
   MEDICOS.push(novoMed);
   if(!isExt){
-    const novoLogin={id:'L'+Date.now(),n,c,role:'plantonista',pw:String(c),ok:true};
+    const novoLogin={id:'L'+Date.now(),loginId:null,n,c,role:'plantonista',pw:String(c),
+      isGestor:false,isPlantonista:true,isClinico:true,ativo:true};
     LOGINS.push(novoLogin);
   }
-  fecharMo('mo-add-med');renderAll();preencherSelects();populaLogin();
-  showToast('Profissional adicionado e acesso criado!');
+  fecharMo('mo-add-med');
+  renderAll();preencherSelects();populaLogin();
+  showToast(isExt?'Externo cadastrado com WhatsApp!':'Interno + acesso plantonista criados!');
   document.getElementById('add-nome').value='';document.getElementById('add-crm').value='';
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
   document.getElementById('add-is-ext').checked=false;
   document.getElementById('add-ext-uni-wrap').style.display='none';
+  document.getElementById('add-ext-wpp-wrap').style.display='none';
+  document.getElementById('add-ext-wpp').value='';
+}
+
+// Toggle dos campos extras quando marca "externo"
+function toggleExtFields(checked){
+  document.getElementById('add-ext-uni-wrap').style.display=checked?'block':'none';
+  document.getElementById('add-ext-wpp-wrap').style.display=checked?'block':'none';
 }
 
 // ══ TROCAS ══
@@ -2211,10 +2267,18 @@ async function carregarESCMES(){
     (data||[]).forEach(r=>{
       const k=keyMes(r.mes,r.ano);
       if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
-      if(!ESCMES[k][r.semana_letra])ESCMES[k][r.semana_letra]={};
-      if(!ESCMES[k][r.semana_letra][r.dia_semana])
-        ESCMES[k][r.semana_letra][r.dia_semana]=Array(16).fill(undefined);
-      ESCMES[k][r.semana_letra][r.dia_semana][r.turno_idx]=r.valor||'';
+      // Se o registro tem dia_mes, é uma alteração pontual de um dia específico
+      if(r.dia_mes&&r.origem==='manual'){
+        const dk='DIA_'+r.dia_mes;
+        if(!ESCMES[k][dk])ESCMES[k][dk]=Array(16).fill(undefined);
+        ESCMES[k][dk][r.turno_idx]=r.valor||'';
+      } else {
+        // Snapshot por semana (origem='snapshot' ou 'troca')
+        if(!ESCMES[k][r.semana_letra])ESCMES[k][r.semana_letra]={};
+        if(!ESCMES[k][r.semana_letra][r.dia_semana])
+          ESCMES[k][r.semana_letra][r.dia_semana]=Array(16).fill(undefined);
+        ESCMES[k][r.semana_letra][r.dia_semana][r.turno_idx]=r.valor||'';
+      }
     });
   }catch(e){console.error('carregarESCMES:',e)}
 }
@@ -2874,7 +2938,7 @@ function renderLogins(filtro=''){
         <span class="senha-disp" data-pw="${l.pw||''}" style="cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--text2);user-select:none" onclick="alternarSenhaCelula(this)">••••••</span>
       </td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-g btn-xs" onclick="abrirSenha(${idx})" title="Trocar senha">🔑</button>
+        <button class="btn btn-g btn-xs" onclick="abrirSenha(${idx})" title="Editar senha">⚙️</button>
         ${isG&&!ehVoce?`<button class="btn btn-d btn-xs" onclick="removerLogin(${idx})" title="Remover acesso">✕</button>`:''}
       </td></tr>`;
   }).join('');
