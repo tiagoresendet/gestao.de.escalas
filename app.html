@@ -684,7 +684,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   <div class="m-box">
     <div class="m-t">Editar Plantonista na Escala</div>
     <div class="m-s" id="mo-ed-ctx"></div>
-    <div class="fg"><label class="fl">Profissional</label><select class="fs" id="ed-med"></select></div>
+    <div class="fg" style="position:relative"><label class="fl">Profissional</label>
+      <input type="text" class="fi" id="ed-med-busca" placeholder="Digite o nome ou CRM..." oninput="filtrarEdMed()" onfocus="filtrarEdMed()" autocomplete="off" style="padding-right:30px">
+      <span style="position:absolute;right:14px;top:38px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+      <input type="hidden" id="ed-med" value="">
+      <div id="ed-med-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
+    </div>
     <div class="fg"><label class="fl">Vínculo</label>
       <select class="fs" id="ed-vinc"><option value="CR">CR — Credenciado</option><option value="EF">EF — Efetivo</option></select>
     </div>
@@ -789,9 +794,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     </div>
     <div class="fg"><label class="fl">Turno</label><input type="text" class="fi" id="tr-turno" readonly style="color:var(--text2)"></div>
     <div class="fg"><label class="fl">Área</label><input type="text" class="fi" id="tr-area" readonly style="color:var(--text2)"></div>
-    <div class="fg" id="tr-sub-container">
+    <div class="fg" id="tr-sub-container" style="position:relative">
       <label class="fl">Substituto</label>
-      <select class="fs" id="tr-sub"><option value="">— Selecione —</option></select>
+      <input type="text" class="fi" id="tr-sub-busca" placeholder="Digite o nome..." oninput="filtrarTrSub()" onfocus="filtrarTrSub()" autocomplete="off" style="padding-right:30px">
+      <span style="position:absolute;right:14px;top:38px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+      <input type="hidden" id="tr-sub" value="">
+      <div id="tr-sub-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
     </div>
     <div class="fg" style="margin:6px 0 10px">
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text2)">
@@ -861,22 +869,50 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 <div class="mo" id="mo-add-login">
   <div class="m-box">
     <div class="m-t">Adicionar Acesso</div>
-    <div class="fg"><label class="fl">Tipo</label>
+    <div class="m-s">Crie acesso para profissional clínico ou administrativo</div>
+    <div class="fg"><label class="fl">Tipo de Acesso</label>
       <select class="fs" id="al-tipo" onchange="renderALForm()">
-        <option value="med">Profissional do sistema</option>
-        <option value="ext">Usuário externo</option>
+        <option value="clinico">🩺 Profissional Clínico (já cadastrado no Corpo Clínico)</option>
+        <option value="admin">💼 Administrativo (apenas gestão, não aparece em escalas)</option>
       </select>
     </div>
-    <div id="al-med">
-      <div class="fg"><label class="fl">Profissional</label><select class="fs" id="al-prof"></select></div>
-      <div class="fg"><label class="fl">Perfil</label>
-        <select class="fs" id="al-role"><option value="plantonista">Plantonista</option><option value="gestor">Gestor de Escala</option></select>
+    <!-- CLÍNICO -->
+    <div id="al-clinico">
+      <div class="fg" style="position:relative">
+        <label class="fl">Profissional</label>
+        <input type="text" class="fi" id="al-prof-busca" placeholder="Digite o nome..." oninput="filtrarALProf()" onfocus="filtrarALProf()" autocomplete="off" style="padding-right:30px">
+        <span style="position:absolute;right:14px;top:38px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+        <input type="hidden" id="al-prof">
+        <div id="al-prof-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:240px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
       </div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px">Senha automática = CRM</div>
+      <div class="fg">
+        <label class="fl">Permissões</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:var(--bg3);border-radius:var(--r2)">
+            <input type="checkbox" id="al-is-plant" checked style="accent-color:var(--blue)">
+            <span><strong>Plantonista</strong> — pode aparecer em escalas</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:8px;background:var(--bg3);border-radius:var(--r2)">
+            <input type="checkbox" id="al-is-gestor" style="accent-color:var(--blue)">
+            <span><strong>Gestor</strong> — acesso aos painéis de gestão</span>
+          </label>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:6px">Senha inicial automática = CRM</div>
+      </div>
     </div>
-    <div id="al-ext" style="display:none">
-      <div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="al-nome"></div>
-      <div class="fg"><label class="fl">Senha</label><input type="password" class="fi" id="al-senha"></div>
+    <!-- ADMINISTRATIVO -->
+    <div id="al-admin" style="display:none">
+      <div class="fg"><label class="fl">Nome Completo</label><input type="text" class="fi" id="al-adm-nome" placeholder="NOME COMPLETO"></div>
+      <div class="fg"><label class="fl">CPF</label><input type="text" class="fi" id="al-adm-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascararCPF(this)"></div>
+      <div style="background:var(--blue-bg);border:1px solid rgba(37,99,235,.2);border-radius:var(--r2);padding:10px 12px;font-size:11px;color:var(--blue);margin-bottom:10px">
+        ℹ️ Senha inicial será os <strong>6 primeiros dígitos do CPF</strong>. O usuário deverá trocá-la no primeiro acesso.
+      </div>
+      <div class="fg"><label class="fl">Permissões</label>
+        <div style="background:var(--bg3);border-radius:var(--r2);padding:8px 10px;font-size:12px;color:var(--text2)">
+          ✓ Acesso de Gestor (painéis administrativos)<br>
+          ✗ Não aparece nas escalas de plantão
+        </div>
+      </div>
     </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-add-login')">Cancelar</button>
@@ -1163,7 +1199,20 @@ async function carregarSupabase(){
     if(eLg)throw eLg;
     LOGINS.length=0;
     lgs.forEach(l=>{
-      LOGINS.push({id:'L'+l.crm,n:l.nome,c:l.crm,role:l.perfil,pw:l.senha,ok:l.ativo!==false});
+      // Suporte a dual role: is_gestor + is_plantonista podem ser ambos true
+      LOGINS.push({
+        id:'L'+(l.id||l.crm||l.cpf),
+        loginId:l.id,
+        n:l.nome,c:l.crm||null,
+        cpf:l.cpf||null,
+        isGestor:l.is_gestor===true,
+        isPlantonista:l.is_plantonista!==false,
+        isClinico:l.is_clinico!==false,
+        role:l.perfil||(l.is_gestor?'gestor':'plantonista'),// compat
+        pw:l.senha,
+        primeiroAcesso:l.primeiro_acesso!==false,
+        ativo:l.ativo!==false
+      });
     });
     loginsOk=true;
     populaLogin();
@@ -1479,33 +1528,54 @@ async function fazerLogin(){
   const l=LOGINS.find(x=>x.id===sel.value);
   if(!l){showToast('Usuário não encontrado',true);return}
 
-  // Verificar senha — primeiro tenta no Supabase, depois no fallback local
+  // Verificar senha contra o banco (usar id se possível, senão CRM ou CPF)
   let senhaOk=false;
   try{
-    const {data,error}=await sb.from('logins').select('senha,perfil').eq('crm',l.c).single();
+    let q=sb.from('logins').select('senha,is_gestor,is_plantonista,is_clinico,primeiro_acesso,id');
+    if(l.loginId){q=q.eq('id',l.loginId);}
+    else if(l.c){q=q.eq('crm',l.c);}
+    else if(l.cpf){q=q.eq('cpf',l.cpf);}
+    const {data,error}=await q.single();
     if(!error&&data){
       senhaOk=(senhaDigitada===data.senha);
+      // Atualizar flags em tempo real
+      if(senhaOk){
+        l.isGestor=data.is_gestor===true;
+        l.isPlantonista=data.is_plantonista!==false;
+        l.isClinico=data.is_clinico!==false;
+        l.primeiroAcesso=data.primeiro_acesso!==false;
+        l.loginId=data.id;
+      }
     } else {
-      // fallback local
       senhaOk=(senhaDigitada===l.pw);
     }
   }catch(e){
-    // fallback local se Supabase offline
     senhaOk=(senhaDigitada===l.pw);
   }
 
   if(!senhaOk){showToast('Senha incorreta',true);document.getElementById('ls').value='';return}
 
-  curRole=l.role;
+  // ═══ DUAL ROLE: usuário pode ter mais de um papel ═══
+  // curRole indica o papel ATIVO no momento. Padrão: gestor se for, senão plantonista
+  curRole=l.isGestor?'gestor':'plantonista';
   const np=l.n.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
-  curUser={n:np,nU:l.n,c:l.c,ava:ini2(l.n),cargo:curRole==='gestor'?'Gestor de Escala':'Plantonista'};
+  curUser={
+    n:np,nU:l.n,c:l.c,
+    cpf:l.cpf,loginId:l.loginId,
+    ava:ini2(l.n),
+    isGestor:l.isGestor,
+    isPlantonista:l.isPlantonista,
+    isClinico:l.isClinico,
+    cargo:l.isGestor&&l.isPlantonista?'Gestor + Plantonista':(l.isGestor?'Gestor':'Plantonista')
+  };
   document.getElementById('screen-login').style.display='none';
   const app=document.getElementById('screen-app');app.style.display='flex';
   document.getElementById('u-ava').textContent=curUser.ava;
   document.getElementById('u-nome').textContent=np.split(' ').slice(0,2).join(' ');
   document.getElementById('u-cargo').textContent=curUser.cargo;
-  document.getElementById('nav-g').style.display=curRole==='gestor'?'block':'none';
-  document.getElementById('nav-m').style.display=curRole==='plantonista'?'block':'none';
+  // Dual role: mostra navegação de gestor se for gestor; de plantonista se for plantonista
+  document.getElementById('nav-g').style.display=curUser.isGestor?'block':'none';
+  document.getElementById('nav-m').style.display=curUser.isPlantonista?'block':'none';
   document.getElementById('escala-ph-r').style.display=curRole==='gestor'?'flex':'none';
   document.getElementById('cc-ph-r').style.display=curRole==='gestor'?'flex':'none';
   initSidebar();
@@ -1639,16 +1709,53 @@ function gerarEscala(){mesMes=parseInt(document.getElementById('gen-mes').value)
 function abrirEditar(letra,ab,ti,turnoL,el){
   editCtx={letra,ab,ti,el};
   document.getElementById('mo-ed-ctx').textContent=`${turnoL} · ${ab} · Sem.${letra}`;
-  const sel=document.getElementById('ed-med');sel.innerHTML='<option value="">— Vaga —</option>';
-  MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext).forEach(m=>{
-    const o=document.createElement('option');
-    const p=m.n.split(' ');const abrev=`${p[0]} ${p[p.length-1]} (${m.c})`;
-    o.value=abrev;o.textContent=`${m.n} — CRM ${m.c}`;sel.appendChild(o);
-  });
+  // Pré-preencher com o valor atual
   const cur=(EB[letra][ab]||[])[ti]||'';
-  const vm=cur.replace(/ (CR|EF)$/,'');const vv=(cur.match(/(CR|EF)$/)||['','CR'])[1];
-  sel.value=vm;document.getElementById('ed-vinc').value=vv;abrirMo('mo-editar');
+  const vm=cur.replace(/ (CR|EF)$/,'');
+  const vv=(cur.match(/(CR|EF)$/)||['','CR'])[1];
+  document.getElementById('ed-med').value=vm;
+  // Mostrar nome formatado no campo de busca
+  const mAtual=MEDICOS.find(m=>{const p=m.n.split(' ');return `${p[0]} ${p[p.length-1]} (${m.c})`===vm});
+  document.getElementById('ed-med-busca').value=mAtual?formatarNome(mAtual.n):(vm||'');
+  document.getElementById('ed-vinc').value=vv;
+  abrirMo('mo-editar');
 }
+
+// Autocomplete editar slot da escala base
+function filtrarEdMed(){
+  const inp=document.getElementById('ed-med-busca');
+  const sug=document.getElementById('ed-med-sug');
+  const q=semAcento(inp.value.trim());
+  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext).map(m=>{
+    const p=m.n.split(' ');
+    return {c:m.c,n:m.n,fmt:formatarNome(m.n),abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
+  });
+  let lista=q?internos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):internos;
+  let html=`<div onclick="selecionarEdMed('','— Vaga —')"
+    style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px;color:var(--text3);font-style:italic"
+    onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">— Deixar vaga vazia —</div>`;
+  if(lista.length){
+    html+=lista.slice(0,30).map(p=>`
+      <div onclick="selecionarEdMed('${p.abrev.replace(/'/g,"\\\\'")}','${p.fmt.replace(/'/g,"\\\\'")}')"
+        style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
+        onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
+        <div style="font-weight:600">${p.fmt}</div>
+        <div style="font-size:10px;color:#9aa3bf">CRM ${p.c}</div>
+      </div>`).join('');
+  }
+  sug.innerHTML=html;
+  sug.style.display='block';
+}
+function selecionarEdMed(abrev,fmt){
+  document.getElementById('ed-med').value=abrev;
+  document.getElementById('ed-med-busca').value=fmt;
+  document.getElementById('ed-med-sug').style.display='none';
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#ed-med-busca')&&!e.target.closest('#ed-med-sug')){
+    const s=document.getElementById('ed-med-sug');if(s)s.style.display='none';
+  }
+});
 async function salvarEdicao(){
   if(!editCtx)return;
   const{letra,ab,ti,el}=editCtx;
@@ -1940,10 +2047,15 @@ function renderTrocas(filtro=trFiltro){
   const ac={'SV+ENF':'ch-sv','CM':'ch-cm','PED':'ch-ped','APOIO':'ch-apo'};
   document.getElementById('tr-list').innerHTML=lista.length?lista.map(t=>{
     const idx=TROCAS.indexOf(t);const isSub=t.vis&&t.vis.includes(nU)&&t.sol!==nU;
-    // Fix 5: gestor pode reverter aprovados E rejeitados; reverter volta para pendente
+    const ehSolicitante=(t.sol===nU);
+    // Gestor: aprovar/rejeitar/reverter
     const acoesGestor=isG?`
-      ${t.status==='pendente'?`<button class="btn btn-s btn-xs" onclick="aprovarTr(${idx})">✓</button><button class="btn btn-d btn-xs" onclick="rejeitarTr(${idx})">✕</button>`:''}
+      ${t.status==='pendente'?`<button class="btn btn-s btn-xs" onclick="aprovarTr(${idx})" title="Aprovar">✓ Aprovar</button><button class="btn btn-d btn-xs" onclick="rejeitarTr(${idx})" title="Rejeitar">✕ Rejeitar</button>`:''}
       ${(t.status==='aprovado'||t.status==='rejeitado')?`<button class="btn btn-g btn-xs" title="Reverter para pendente" onclick="reverterTr(${idx})">↩ Reverter</button>`:''}
+    `:'';
+    // Solicitante: cancelar a própria solicitação pendente
+    const acoesSolicitante=(ehSolicitante&&t.status==='pendente')?`
+      <button class="btn btn-d btn-xs" onclick="cancelarTr(${idx})" title="Cancelar minha solicitação">✕ Cancelar solicitação</button>
     `:'';
     return `<div class="tr-i">
       <div class="tr-dot ${t.status}"></div>
@@ -1951,12 +2063,15 @@ function renderTrocas(filtro=trFiltro){
         <div class="tr-t">${nomeCurto(t.sol)} → ${nomeCurto(t.sub)}</div>
         <div class="tr-m">📅 ${t.data} · ${t.turno}<br><span class="${ac[t.area]||'ch-cm'}" style="margin-top:2px">${t.area}</span>${t.motivo?` · 💬 ${t.motivo}`:''}</div>
         ${isSub&&t.status==='pendente'?'<div class="tr-tag">⚠️ Você é o substituto indicado</div>':''}
+        ${ehSolicitante&&t.status==='pendente'?'<div style="font-size:10px;color:var(--amber);margin-top:2px">⏳ Aguardando aprovação do gestor</div>':''}
         ${t.status==='aprovado'?'<div style="font-size:10px;color:var(--green);margin-top:2px">✓ Aplicada na escala</div>':''}
-        ${t.status==='revertido'?'<div style="font-size:10px;color:var(--purple);margin-top:2px">↩ Revertida para pendente</div>':''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         <span class="badge ${bm[t.status]||'b-blue'}">${t.status.charAt(0).toUpperCase()+t.status.slice(1)}</span>
-        <div class="tr-a">${acoesGestor}</div>
+        <div class="tr-a" style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+          ${acoesGestor}
+          ${acoesSolicitante}
+        </div>
       </div>
     </div>`;
   }).join(''):'<div style="color:var(--text3);text-align:center;padding:22px;font-size:13px">Nenhuma troca neste mês</div>';
@@ -1964,21 +2079,36 @@ function renderTrocas(filtro=trFiltro){
 }
 function filtrarTr(f,btn){document.querySelectorAll('#tr-wrap .f-b').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTrocas(f)}
 function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('todos');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
-function aprovarTr(i){
+async function aprovarTr(i){
   const ok=aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
-  atualizarStatusTroca(TROCAS[i].id,'aprovado');
-  if(ok)salvarLocal();
+  await atualizarStatusTroca(TROCAS[i].id,'aprovado');
   renderTrocas();renderDashboard();renderEscala();showToast(ok?'Aprovada e aplicada!':'Troca aprovada!');
 }
-function rejeitarTr(i){
+async function rejeitarTr(i){
   TROCAS[i].status='rejeitado';
-  atualizarStatusTroca(TROCAS[i].id,'rejeitado');
+  await atualizarStatusTroca(TROCAS[i].id,'rejeitado');
   renderTrocas();renderDashboard();showToast('Rejeitada.');
 }
-function reverterTr(i){
+async function reverterTr(i){
   TROCAS[i].status='pendente';
-  atualizarStatusTroca(TROCAS[i].id,'pendente');
+  await atualizarStatusTroca(TROCAS[i].id,'pendente');
   renderTrocas();renderDashboard();renderEscala();showToast('Revertida para pendente.');
+}
+
+// CANCELAR TROCA — só o próprio solicitante (ou gestor) pode cancelar pendentes
+async function cancelarTr(i){
+  const t=TROCAS[i];if(!t)return;
+  const nU=curUser.nU||curUser.n.toUpperCase();
+  if(t.sol!==nU&&!curUser.isGestor){showToast('Você só pode cancelar suas próprias trocas',true);return}
+  if(t.status!=='pendente'){showToast('Apenas pendentes podem ser canceladas',true);return}
+  if(!confirm('Cancelar a solicitação de troca?'))return;
+  try{
+    const {error}=await sb.from('trocas').delete().eq('codigo',t.id);
+    if(error)throw error;
+    TROCAS.splice(i,1);
+    renderTrocas();renderDashboard();
+    showToast('Solicitação cancelada!');
+  }catch(e){console.error('cancelarTr:',e);showToast('Erro ao cancelar',true);}
 }
 function atualizarBadge(){
   const p=TROCAS.filter(t=>t.status==='pendente').length;
@@ -2005,6 +2135,8 @@ function abrirMoTroca(){
   });
   document.getElementById('tr-turno').value='';document.getElementById('tr-area').value='';
   document.getElementById('tr-motivo').value='';
+  const tsBus=document.getElementById('tr-sub-busca');if(tsBus)tsBus.value='';
+  const tsHid=document.getElementById('tr-sub');if(tsHid)tsHid.value='';
   const chk=document.getElementById('tr-is-ext');if(chk)chk.checked=false;toggleExtForm();
   document.getElementById('mo-tr-sub').textContent=futuros.length?`${futuros.length} plantão(ões) disponíveis`:'Nenhum plantão futuro este mês';
   abrirMo('mo-troca');
@@ -2035,8 +2167,16 @@ function enviarTroca(){
   } else {
     const sv=document.getElementById('tr-sub').value;
     if(!sv){showToast('Selecione o substituto',true);return}
-    const mSub=MEDICOS.find(m=>`${m.n} — CRM ${m.c}`===sv);
-    if(mSub){subNome=mSub.n;subCRM=mSub.c}else{subNome=sv.split('—')[0].trim();subCRM=0}
+    // Formato novo: "__CRM__12345" do autocomplete
+    if(sv.startsWith('__CRM__')){
+      const crmSub=parseInt(sv.replace('__CRM__',''));
+      const mSub=MEDICOS.find(m=>m.c===crmSub);
+      if(mSub){subNome=mSub.n;subCRM=mSub.c}
+    } else {
+      // fallback compat antigo
+      const mSub=MEDICOS.find(m=>`${m.n} — CRM ${m.c}`===sv);
+      if(mSub){subNome=mSub.n;subCRM=mSub.c}else{subNome=sv.split('—')[0].trim();subCRM=0}
+    }
   }
   const pi=JSON.parse(pv);
   const nU=curUser.nU||curUser.n.toUpperCase();
@@ -2387,21 +2527,78 @@ function gerarPdfProfModal(){
 
 // ══ LOGINS ══
 function renderLogins(filtro=''){
-  initLogins();
-  const lista=filtro?LOGINS.filter(l=>l.n.toLowerCase().includes(filtro.toLowerCase())):LOGINS;
-  const isG=curRole==='gestor';
+  const lista=filtro?LOGINS.filter(l=>l.n.toLowerCase().includes(filtro.toLowerCase())||(l.cpf||'').includes(filtro)||(l.c?String(l.c):'').includes(filtro)):LOGINS;
+  const isG=curUser.isGestor;
   document.getElementById('login-tbody').innerHTML=lista.map(l=>{
     const idx=LOGINS.indexOf(l);
+    const isAdminPuro=!l.isClinico;
+    const idLabel=l.c?('CRM '+l.c):(l.cpf?('CPF '+l.cpf.slice(0,3)+'...'):'—');
+    const ehVoce=(l.loginId&&l.loginId===curUser.loginId);
     return `<tr>
-      <td style="font-size:12px">${l.n.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ')}</td>
-      <td style="font-family:var(--mono);font-size:11px">${l.c}</td>
-      <td>${isG?`<select class="rs" onchange="mudarRole(${idx},this.value)"><option value="plantonista"${l.role==='plantonista'?' selected':''}>Plantonista</option><option value="gestor"${l.role==='gestor'?' selected':''}>Gestor</option></select>`:`<span class="badge b-blue">${l.role}</span>`}</td>
-      <td><span style="cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--text2)" onclick="this.textContent=this.textContent==='••••••'?'${l.pw}':'••••••'">••••••</span></td>
+      <td style="font-size:12px">
+        ${formatarNome(l.n)}
+        ${isAdminPuro?'<span class="badge b-purple" style="margin-left:4px;font-size:9px">ADM</span>':''}
+        ${ehVoce?'<span style="font-size:9px;color:var(--blue);margin-left:4px">(você)</span>':''}
+      </td>
+      <td style="font-family:var(--mono);font-size:11px">${idLabel}</td>
+      <td>
+        ${isG?`
+          <div style="display:flex;flex-direction:column;gap:2px;font-size:11px">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="checkbox" ${l.isGestor?'checked':''} onchange="togglePerm(${idx},'gestor',this.checked)" style="accent-color:var(--blue);width:13px;height:13px"> Gestor
+            </label>
+            ${l.isClinico?`<label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="checkbox" ${l.isPlantonista?'checked':''} onchange="togglePerm(${idx},'plantonista',this.checked)" style="accent-color:var(--green);width:13px;height:13px"> Plantonista
+            </label>`:'<span style="font-size:10px;color:var(--text3)">só administrativo</span>'}
+          </div>
+        `:`<span class="badge b-blue">${l.isGestor?'Gestor':''}${l.isGestor&&l.isPlantonista?' + ':''}${l.isPlantonista?'Plantonista':''}</span>`}
+      </td>
+      <td>
+        <span class="senha-disp" data-pw="${l.pw||''}" style="cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--text2);user-select:none" onclick="alternarSenhaCelula(this)">••••••</span>
+      </td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-g btn-xs" onclick="abrirSenha(${idx})">🔑</button>
-        ${isG&&idx>0?`<button class="btn btn-d btn-xs" onclick="removerLogin(${idx})">✕</button>`:''}
+        <button class="btn btn-g btn-xs" onclick="abrirSenha(${idx})" title="Trocar senha">🔑</button>
+        ${isG&&!ehVoce?`<button class="btn btn-d btn-xs" onclick="removerLogin(${idx})" title="Remover acesso">✕</button>`:''}
       </td></tr>`;
   }).join('');
+}
+
+function alternarSenhaCelula(el){
+  const real=el.dataset.pw||'';
+  if(el.textContent==='••••••'){el.textContent=real||'(sem senha)';el.style.color='var(--blue)';}
+  else{el.textContent='••••••';el.style.color='var(--text2)';}
+}
+
+// Toggle permissão (gestor/plantonista) — persiste no banco imediatamente
+async function togglePerm(idx,tipo,ativo){
+  const l=LOGINS[idx];
+  const update={updated_at:new Date().toISOString()};
+  if(tipo==='gestor')update.is_gestor=ativo;
+  if(tipo==='plantonista')update.is_plantonista=ativo;
+  // Atualizar perfil legado para manter compatibilidade
+  const novoIsGestor=tipo==='gestor'?ativo:l.isGestor;
+  const novoIsPlant=tipo==='plantonista'?ativo:l.isPlantonista;
+  update.perfil=novoIsGestor?'gestor':'plantonista';
+  // Validar: precisa ter ao menos um
+  if(!novoIsGestor&&!novoIsPlant){
+    showToast('Usuário precisa ter ao menos uma permissão',true);
+    renderLogins();return;
+  }
+  try{
+    let q=sb.from('logins').update(update);
+    if(l.loginId)q=q.eq('id',l.loginId);
+    else q=q.eq('crm',l.c);
+    const {error}=await q;
+    if(error)throw error;
+    if(tipo==='gestor')l.isGestor=ativo;
+    if(tipo==='plantonista')l.isPlantonista=ativo;
+    l.role=novoIsGestor?'gestor':'plantonista';
+    showToast('Permissões atualizadas!');
+  }catch(e){
+    console.error('togglePerm:',e);
+    showToast('Erro ao salvar',true);
+    renderLogins();
+  }
 }
 function buscarLogin(v){renderLogins(v)}
 async function mudarRole(i,r){
@@ -2418,10 +2615,14 @@ async function mudarRole(i,r){
   }
 }
 async function removerLogin(i){
-  if(!confirm('Remover este acesso?\n\nO profissional não poderá mais entrar no sistema.'))return;
   const l=LOGINS[i];
+  if(!confirm('Remover o acesso de '+l.n+'?\n\nO usuário não poderá mais entrar no sistema.'))return;
   try{
-    const {error}=await sb.from('logins').delete().eq('crm',l.c);
+    let q=sb.from('logins').delete();
+    if(l.loginId)q=q.eq('id',l.loginId);
+    else if(l.c)q=q.eq('crm',l.c);
+    else if(l.cpf)q=q.eq('cpf',l.cpf);
+    const {error}=await q;
     if(error)throw error;
     LOGINS.splice(i,1);
     renderLogins();populaLogin();
@@ -2441,11 +2642,13 @@ async function salvarSenha(){
   const login=LOGINS[editSenhaIdx];
   if(!login){showToast('Login não encontrado',true);return}
   try{
-    // Persiste no Supabase ANTES de atualizar local
-    const {data,error}=await sb.from('logins').update({senha:n}).eq('crm',login.c).select();
+    let q=sb.from('logins').update({senha:n,updated_at:new Date().toISOString()});
+    if(login.loginId)q=q.eq('id',login.loginId);
+    else if(login.c)q=q.eq('crm',login.c);
+    else if(login.cpf)q=q.eq('cpf',login.cpf);
+    const {data,error}=await q.select();
     if(error)throw error;
-    if(!data||!data.length){throw new Error('Nenhum registro atualizado')}
-    // Só atualiza local após confirmação do banco
+    if(!data||!data.length)throw new Error('Nenhum registro atualizado');
     LOGINS[editSenhaIdx].pw=n;
     fecharMo('mo-senha');renderLogins();
     showToast('Senha alterada e salva no banco!');
@@ -2454,32 +2657,148 @@ async function salvarSenha(){
     showToast('Erro ao salvar — tente novamente',true);
   }
 }
-function renderALForm(){const t=document.getElementById('al-tipo').value;document.getElementById('al-med').style.display=t==='med'?'block':'none';document.getElementById('al-ext').style.display=t==='ext'?'block':'none'}
-async function addLogin(){
-  initLogins();
+function renderALForm(){
   const t=document.getElementById('al-tipo').value;
-  if(t==='med'){
+  document.getElementById('al-clinico').style.display=t==='clinico'?'block':'none';
+  document.getElementById('al-admin').style.display=t==='admin'?'block':'none';
+}
+
+// Máscara CPF reutilizável
+function mascararCPF(inp){
+  let v=inp.value.replace(/\D/g,'');
+  if(v.length>3)v=v.slice(0,3)+'.'+v.slice(3);
+  if(v.length>7)v=v.slice(0,7)+'.'+v.slice(7);
+  if(v.length>11)v=v.slice(0,11)+'-'+v.slice(11);
+  inp.value=v.slice(0,14);
+}
+
+// Cache + autocomplete de profissionais para "Adicionar acesso clínico"
+let AL_PROF_CACHE=[];
+function preencherALProfCache(){
+  AL_PROF_CACHE=MEDICOS.filter(m=>!m.ext).map(m=>({
+    crm:m.c,nome:m.n,nomeFmt:formatarNome(m.n)
+  })).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+}
+function filtrarALProf(){
+  if(!AL_PROF_CACHE.length)preencherALProfCache();
+  const inp=document.getElementById('al-prof-busca');
+  const sug=document.getElementById('al-prof-sug');
+  const q=semAcento(inp.value.trim());
+  let lista=q?AL_PROF_CACHE.filter(p=>semAcento(p.nomeFmt).includes(q)||String(p.crm).includes(q)):AL_PROF_CACHE;
+  if(!lista.length){
+    sug.innerHTML='<div style="padding:10px;color:#9aa3bf;font-size:12px;text-align:center">Nenhum profissional encontrado</div>';
+  } else {
+    sug.innerHTML=lista.slice(0,30).map(p=>`
+      <div onclick="selecionarALProf(${p.crm},'${p.nomeFmt.replace(/'/g,"\\'")}')"
+        style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
+        onmouseover="this.style.background='#eff4ff'"
+        onmouseout="this.style.background='#fff'">
+        <div style="font-weight:600">${p.nomeFmt}</div>
+        <div style="font-size:10px;color:#9aa3bf">CRM ${p.crm}</div>
+      </div>`).join('');
+  }
+  sug.style.display='block';
+}
+function filtrarTrSub(){
+  const inp=document.getElementById('tr-sub-busca');
+  const sug=document.getElementById('tr-sub-sug');
+  const q=semAcento(inp.value.trim());
+  const internos=MEDICOS.filter(m=>!m.ext&&m.c).map(m=>({c:m.c,n:m.n,fmt:formatarNome(m.n)}));
+  let lista=q?internos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):internos;
+  if(!lista.length){sug.innerHTML='<div style="padding:9px;color:#9aa3bf;font-size:11px;text-align:center">Nenhum encontrado</div>';}
+  else{sug.innerHTML=lista.slice(0,30).map(p=>`
+    <div onclick="selecionarTrSub(${p.c},'${p.fmt.replace(/'/g,"\\'")}')"
+      style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
+      onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
+      <div style="font-weight:600">${p.fmt}</div>
+      <div style="font-size:10px;color:#9aa3bf">CRM ${p.c}</div>
+    </div>`).join('');}
+  sug.style.display='block';
+}
+function selecionarTrSub(crm,fmt){
+  document.getElementById('tr-sub').value='__CRM__'+crm;
+  document.getElementById('tr-sub-busca').value=fmt;
+  document.getElementById('tr-sub-sug').style.display='none';
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#tr-sub-busca')&&!e.target.closest('#tr-sub-sug')){
+    const s=document.getElementById('tr-sub-sug');if(s)s.style.display='none';
+  }
+});
+
+function selecionarALProf(crm,nomeFmt){
+  document.getElementById('al-prof').value=crm;
+  document.getElementById('al-prof-busca').value=nomeFmt;
+  document.getElementById('al-prof-sug').style.display='none';
+}
+// Fechar sugestões clicando fora
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#al-prof-busca')&&!e.target.closest('#al-prof-sug')){
+    const s=document.getElementById('al-prof-sug');if(s)s.style.display='none';
+  }
+});
+async function addLogin(){
+  const t=document.getElementById('al-tipo').value;
+  if(t==='clinico'){
     const crm=parseInt(document.getElementById('al-prof').value);
     if(!crm){showToast('Selecione o profissional',true);return}
     const m=MEDICOS.find(x=>x.c===crm);
     if(!m){showToast('Profissional não encontrado',true);return}
-    const role=document.getElementById('al-role').value;
     if(LOGINS.find(l=>l.c==m.c)){showToast('Profissional já tem acesso',true);return}
+    const isPlant=document.getElementById('al-is-plant').checked;
+    const isGestor=document.getElementById('al-is-gestor').checked;
+    if(!isPlant&&!isGestor){showToast('Selecione ao menos uma permissão',true);return}
     try{
-      const {error}=await sb.from('logins').upsert({
-        crm:m.c,nome:m.n,senha:String(m.c),perfil:role
-      },{onConflict:'crm'});
+      const {data,error}=await sb.from('logins').insert({
+        crm:m.c,nome:m.n,senha:String(m.c),
+        perfil:isGestor?'gestor':'plantonista',// compat
+        is_gestor:isGestor,is_plantonista:isPlant,is_clinico:true,
+        primeiro_acesso:true
+      }).select().single();
       if(error)throw error;
-      LOGINS.push({id:'L'+Date.now(),n:m.n,c:m.c,role,pw:String(m.c),ok:true});
+      LOGINS.push({
+        id:'L'+data.id,loginId:data.id,n:m.n,c:m.c,
+        isGestor,isPlantonista:isPlant,isClinico:true,
+        role:isGestor?'gestor':'plantonista',pw:String(m.c),ativo:true,primeiroAcesso:true
+      });
     }catch(e){
-      console.error('addLogin med:',e);
+      console.error('addLogin clinico:',e);
       showToast('Erro ao salvar — tente novamente',true);return;
     }
-  }else{
-    showToast('Acesso externo deve ser criado via Corpo Clínico',true);return;
+  } else if(t==='admin'){
+    const nome=document.getElementById('al-adm-nome').value.trim().toUpperCase();
+    const cpfMasc=document.getElementById('al-adm-cpf').value.trim();
+    const cpf=cpfMasc.replace(/\D/g,'');
+    if(!nome){showToast('Nome obrigatório',true);return}
+    if(cpf.length!==11){showToast('CPF inválido — informe os 11 dígitos',true);return}
+    if(LOGINS.find(l=>l.cpf===cpf)){showToast('Já existe acesso com este CPF',true);return}
+    const senhaInicial=cpf.slice(0,6);// regra: primeiros 6 dígitos do CPF
+    try{
+      const {data,error}=await sb.from('logins').insert({
+        crm:null,nome,senha:senhaInicial,cpf,
+        perfil:'gestor',
+        is_gestor:true,is_plantonista:false,is_clinico:false,
+        primeiro_acesso:true
+      }).select().single();
+      if(error)throw error;
+      LOGINS.push({
+        id:'L'+data.id,loginId:data.id,n:nome,c:null,cpf,
+        isGestor:true,isPlantonista:false,isClinico:false,
+        role:'gestor',pw:senhaInicial,ativo:true,primeiroAcesso:true
+      });
+    }catch(e){
+      console.error('addLogin admin:',e);
+      showToast('Erro ao salvar — '+(e.message||''),true);return;
+    }
+    showToast('Administrativo criado! Senha inicial: '+senhaInicial);
   }
-  fecharMo('mo-add-login');renderLogins();populaLogin();
-  showToast('Acesso criado e salvo no banco!');
+  fecharMo('mo-add-login');
+  // Limpar campos
+  document.getElementById('al-adm-nome').value='';
+  document.getElementById('al-adm-cpf').value='';
+  document.getElementById('al-prof-busca').value='';
+  document.getElementById('al-prof').value='';
+  renderLogins();populaLogin();
 }
 
 // ══ SELECTS ══
@@ -3198,9 +3517,12 @@ document.addEventListener('input',function(e){
 // ══ SESSÃO PERSISTENTE — F5 não desloga ══
 const SESSION_KEY='cais_session_v1';
 function salvarSessao(){
-  if(!curUser.c)return;
+  if(!curUser.loginId&&!curUser.c)return;
   try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({
-    crm:curUser.c,nU:curUser.nU,n:curUser.n,role:curRole,
+    loginId:curUser.loginId,crm:curUser.c,cpf:curUser.cpf,
+    nU:curUser.nU,n:curUser.n,
+    isGestor:curUser.isGestor,isPlantonista:curUser.isPlantonista,
+    isClinico:curUser.isClinico,role:curRole,
     ts:Date.now()
   }));}catch(e){}
 }
@@ -3210,23 +3532,34 @@ async function restaurarSessao(){
     const raw=sessionStorage.getItem(SESSION_KEY);
     if(!raw)return false;
     const s=JSON.parse(raw);
-    if(!s||!s.crm)return false;
-    // Validar contra banco — se usuário ainda existe
-    const {data,error}=await sb.from('logins').select('crm,nome,perfil').eq('crm',s.crm).single();
+    if(!s||(!s.loginId&&!s.crm&&!s.cpf))return false;
+    // Validar contra banco
+    let q=sb.from('logins').select('*');
+    if(s.loginId)q=q.eq('id',s.loginId);
+    else if(s.crm)q=q.eq('crm',s.crm);
+    else if(s.cpf)q=q.eq('cpf',s.cpf);
+    const {data,error}=await q.single();
     if(error||!data)return false;
-    // Restaurar estado
-    curRole=data.perfil;
-    curUser={n:s.n,nU:data.nome,c:data.crm,ava:ini2(data.nome),
-             cargo:curRole==='gestor'?'Gestor de Escala':'Plantonista'};
+    // Restaurar com flags atualizadas do banco
+    curRole=data.is_gestor?'gestor':'plantonista';
+    curUser={
+      n:s.n,nU:data.nome,c:data.crm||null,cpf:data.cpf||null,
+      loginId:data.id,
+      ava:ini2(data.nome),
+      isGestor:data.is_gestor===true,
+      isPlantonista:data.is_plantonista!==false,
+      isClinico:data.is_clinico!==false,
+      cargo:data.is_gestor&&data.is_plantonista?'Gestor + Plantonista':(data.is_gestor?'Gestor':'Plantonista')
+    };
     document.getElementById('screen-login').style.display='none';
     document.getElementById('screen-app').style.display='flex';
     document.getElementById('u-ava').textContent=curUser.ava;
     document.getElementById('u-nome').textContent=s.n.split(' ').slice(0,2).join(' ');
     document.getElementById('u-cargo').textContent=curUser.cargo;
-    document.getElementById('nav-g').style.display=curRole==='gestor'?'block':'none';
-    document.getElementById('nav-m').style.display=curRole==='plantonista'?'block':'none';
-    document.getElementById('escala-ph-r').style.display=curRole==='gestor'?'flex':'none';
-    document.getElementById('cc-ph-r').style.display=curRole==='gestor'?'flex':'none';
+    document.getElementById('nav-g').style.display=curUser.isGestor?'block':'none';
+    document.getElementById('nav-m').style.display=curUser.isPlantonista?'block':'none';
+    document.getElementById('escala-ph-r').style.display=curUser.isGestor?'flex':'none';
+    document.getElementById('cc-ph-r').style.display=curUser.isGestor?'flex':'none';
     initSidebar();
     if(curRole==='gestor')navTo('dashboard');else navTo('meu-plantao');
     return true;
