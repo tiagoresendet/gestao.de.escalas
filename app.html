@@ -977,6 +977,41 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   </div>
 </div>
 
+<!-- ══ MODAL EDITAR USUÁRIO COMPLETO (Gestor) ══ -->
+<div class="mo" id="mo-edit-user">
+  <div class="m-box" style="max-width:520px">
+    <div class="m-t">⚙️ Editar Cadastro</div>
+    <div class="m-s" id="meu-sub" style="margin-bottom:12px"></div>
+    <div class="fg"><label class="fl">Nome Completo</label><input type="text" class="fi" id="meu-nome"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg"><label class="fl">CRM</label><input type="text" class="fi" id="meu-crm" placeholder="Apenas números"></div>
+      <div class="fg"><label class="fl">CPF</label><input type="text" class="fi" id="meu-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascararCPF(this)"></div>
+    </div>
+    <div class="fg"><label class="fl">Nome na Escala (2 nomes, Title Case)</label><input type="text" class="fi" id="meu-nome-escala" placeholder="Ex: Tiago Resende"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="fg"><label class="fl">WhatsApp</label><input type="tel" class="fi" id="meu-wpp" placeholder="(62) 9 0000-0000"></div>
+      <div class="fg"><label class="fl">E-mail</label><input type="email" class="fi" id="meu-email"></div>
+    </div>
+    <div class="fg"><label class="fl">Permissões</label>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:6px 8px;background:var(--bg3);border-radius:var(--r2)">
+          <input type="checkbox" id="meu-is-gestor" style="accent-color:var(--blue)">
+          <span><strong>Gestor</strong> — acesso aos painéis administrativos</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:6px 8px;background:var(--bg3);border-radius:var(--r2)">
+          <input type="checkbox" id="meu-is-plant" style="accent-color:var(--green)">
+          <span><strong>Plantonista</strong> — aparece em escalas de plantão</span>
+        </label>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Nova Senha <span style="color:var(--text3);font-weight:400">(opcional — deixe vazio para manter)</span></label><input type="password" class="fi" id="meu-senha-nova" placeholder="Mín. 4 caracteres"></div>
+    <div class="m-act">
+      <button class="btn btn-g" onclick="fecharMo('mo-edit-user')">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarEditUsuario()">💾 Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL PERFIL ══ -->
 <div class="mo" id="mo-perfil">
   <div class="m-box">
@@ -2722,30 +2757,50 @@ function renderDashboard(){
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhuma troca pendente ✓</div>';
 
   // ═══ Plantonistas Externos no Mês ═══
-  // Buscar trocas APROVADAS do mês onde o substituto é externo
-  const trocasMes=TROCAS.filter(t=>t.mes===mesMes&&t.ano===mesAno&&t.status==='aprovado');
+  // Lê de gerarPlantoesMes (que já considera ESCMES + manuais + trocas)
+  const todosPlantoesMes=gerarPlantoesMes(mesMes,mesAno);
   const externosMap={};
+  todosPlantoesMes.forEach(p=>{
+    const med=MEDICOS.find(m=>m.c===p.crm);
+    if(med&&med.ext===true){
+      if(!externosMap[med.c])externosMap[med.c]={prof:med,plantoes:[]};
+      externosMap[med.c].plantoes.push({
+        dia:p.dia,
+        data:p.dt.toLocaleDateString('pt-BR'),
+        turno:p.turno,
+        area:p.area,
+        h:p.h
+      });
+    }
+  });
+  // Adicionar também os de TROCAS aprovadas (caso o externo ainda não tenha sido salvo no slot)
+  const trocasMes=TROCAS.filter(t=>t.mes===mesMes&&t.ano===mesAno&&t.status==='aprovado');
   trocasMes.forEach(t=>{
-    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext);
+    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext===true);
     if(ext){
       if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
-      externosMap[ext.c].plantoes.push({data:t.data,turno:t.turno,area:t.area});
+      // Evitar duplicar se já tinha vindo dos plantões
+      const jaTem=externosMap[ext.c].plantoes.find(p=>p.data===t.data&&p.turno===t.turno);
+      if(!jaTem){
+        externosMap[ext.c].plantoes.push({data:t.data,turno:t.turno,area:t.area,h:0});
+      }
     }
   });
   const extList=Object.values(externosMap);
   document.getElementById('d-externos').innerHTML=extList.length?
     extList.map(x=>{
       const pf=getPerfil(x.prof.c)||{};
+      const totalH=x.plantoes.reduce((s,p)=>s+(p.h||0),0);
       return `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">
           <div style="flex:1;min-width:160px">
             <div style="font-size:13px;font-weight:700">${formatarNome(x.prof.n)}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:1px">CRM ${x.prof.c} · ${x.prof.unidade||'?'}${pf.whatsapp?' · 📱 '+pf.whatsapp:''}</div>
           </div>
-          <span class="badge b-purple">${x.plantoes.length} plantão${x.plantoes.length!==1?'es':''}</span>
+          <span class="badge b-purple">${x.plantoes.length} plantão${x.plantoes.length!==1?'es':''}${totalH?' · '+totalH+'h':''}</span>
         </div>
         <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
-          ${x.plantoes.map(p=>`<span style="font-size:10px;padding:2px 6px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;font-family:var(--mono)">${p.data} · ${p.turno}</span>`).join('')}
+          ${x.plantoes.map(p=>`<span style="font-size:10px;padding:3px 7px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;font-family:var(--mono)">${p.data} · ${p.turno}</span>`).join('')}
         </div>
       </div>`;
     }).join(''):
@@ -2938,7 +2993,7 @@ function renderLogins(filtro=''){
         <span class="senha-disp" data-pw="${l.pw||''}" style="cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--text2);user-select:none" onclick="alternarSenhaCelula(this)">••••••</span>
       </td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn btn-g btn-xs" onclick="abrirSenha(${idx})" title="Editar senha">⚙️</button>
+        <button class="btn btn-g btn-xs" onclick="abrirEditUsuario(${idx})" title="Editar perfil completo">⚙️</button>
         ${isG&&!ehVoce?`<button class="btn btn-d btn-xs" onclick="removerLogin(${idx})" title="Remover acesso">✕</button>`:''}
       </td></tr>`;
   }).join('');
@@ -3088,6 +3143,133 @@ async function removerLogin(i){
   }
 }
 function abrirSenha(i){editSenhaIdx=i;document.getElementById('ms-sub').textContent=LOGINS[i].n;document.getElementById('ms-nova').value='';document.getElementById('ms-conf').value='';abrirMo('mo-senha')}
+
+// ══ EDIÇÃO COMPLETA DE USUÁRIO (Gestor) ══
+let editUserIdx=null;
+async function abrirEditUsuario(i){
+  if(!curUser.isGestor){showToast('Apenas gestor pode editar cadastros',true);return}
+  editUserIdx=i;
+  const l=LOGINS[i];
+  if(!l)return;
+  document.getElementById('meu-sub').textContent='Editando: '+formatarNome(l.n);
+  document.getElementById('meu-nome').value=l.n||'';
+  document.getElementById('meu-crm').value=l.c||'';
+  document.getElementById('meu-cpf').value=l.cpf?formatCPF(l.cpf):'';
+  document.getElementById('meu-wpp').value='';
+  document.getElementById('meu-email').value='';
+  document.getElementById('meu-nome-escala').value='';
+  document.getElementById('meu-senha-nova').value='';
+  document.getElementById('meu-is-gestor').checked=l.isGestor===true;
+  document.getElementById('meu-is-plant').checked=l.isPlantonista!==false;
+  // Buscar perfil do banco
+  if(l.c){
+    try{
+      const {data}=await sb.from('perfis').select('*').eq('crm',l.c).maybeSingle();
+      if(data){
+        document.getElementById('meu-wpp').value=data.whatsapp||'';
+        document.getElementById('meu-email').value=data.email||'';
+        document.getElementById('meu-nome-escala').value=data.nome_escala||'';
+      }
+    }catch(e){console.error('abrirEditUsuario perfil:',e)}
+  }
+  abrirMo('mo-edit-user');
+}
+
+function formatCPF(cpf){
+  if(!cpf)return '';
+  cpf=cpf.replace(/\D/g,'');
+  if(cpf.length!==11)return cpf;
+  return cpf.slice(0,3)+'.'+cpf.slice(3,6)+'.'+cpf.slice(6,9)+'-'+cpf.slice(9);
+}
+
+async function salvarEditUsuario(){
+  if(editUserIdx===null)return;
+  const l=LOGINS[editUserIdx];
+  const novoNome=document.getElementById('meu-nome').value.trim().toUpperCase();
+  const novoCRM=parseInt(document.getElementById('meu-crm').value)||null;
+  const novoCPF=document.getElementById('meu-cpf').value.replace(/\D/g,'')||null;
+  const novoWpp=document.getElementById('meu-wpp').value.trim();
+  const novoEmail=document.getElementById('meu-email').value.trim();
+  const novoNomeEscala=document.getElementById('meu-nome-escala').value.trim();
+  const novaSenha=document.getElementById('meu-senha-nova').value;
+  const novoIsGestor=document.getElementById('meu-is-gestor').checked;
+  const novoIsPlant=document.getElementById('meu-is-plant').checked;
+
+  if(!novoNome){showToast('Nome é obrigatório',true);return}
+  if(!novoIsGestor&&!novoIsPlant){showToast('Marque ao menos uma permissão',true);return}
+  if(novoNomeEscala){
+    const v=validarNomeEscala(novoNomeEscala);
+    if(!v.ok){showToast(v.msg,true);return}
+  }
+  if(novaSenha&&novaSenha.length<4){showToast('Senha muito curta (mín. 4)',true);return}
+
+  // 1. Atualizar logins
+  try{
+    const updLogin={
+      nome:novoNome,
+      is_gestor:novoIsGestor,
+      is_plantonista:novoIsPlant
+    };
+    if(novaSenha)updLogin.senha=novaSenha;
+    if(novoCPF)updLogin.cpf=novoCPF;
+    if(novoCRM)updLogin.crm=novoCRM;
+
+    let q=sb.from('logins').update(updLogin);
+    if(l.loginId)q=q.eq('id',l.loginId);
+    else if(l.c)q=q.eq('crm',l.c);
+    else if(l.cpf)q=q.eq('cpf',l.cpf);
+    const {error:eL}=await q;
+    if(eL)throw eL;
+
+    // 2. Atualizar profissionais (se for clínico)
+    if(l.isClinico&&l.c){
+      const updProf={nome:novoNome};
+      if(novoCRM&&novoCRM!==l.c)updProf.crm=novoCRM;
+      const {error:eP}=await sb.from('profissionais').update(updProf).eq('crm',l.c);
+      if(eP)console.warn('profissionais update:',eP);
+    }
+
+    // 3. Atualizar/criar perfil
+    const crmParaPerfil=novoCRM||l.c;
+    if(crmParaPerfil){
+      const updPerfil={
+        crm:crmParaPerfil,
+        nome_escala:novoNomeEscala?titleCase2Nomes(novoNomeEscala):'',
+        whatsapp:novoWpp,
+        email:novoEmail,
+        cpf:novoCPF||'',
+        primeiro_acesso:false
+      };
+      const {error:ePf}=await sb.from('perfis').upsert(updPerfil,{onConflict:'crm'});
+      if(ePf)console.warn('perfis upsert:',ePf);
+    }
+  }catch(e){
+    console.error('salvarEditUsuario:',e);
+    showToast('Erro ao salvar: '+(e.message||''),true);
+    return;
+  }
+
+  // Atualizar estado local
+  l.n=novoNome;
+  if(novoCRM)l.c=novoCRM;
+  if(novoCPF)l.cpf=novoCPF;
+  l.isGestor=novoIsGestor;
+  l.isPlantonista=novoIsPlant;
+  if(novaSenha)l.pw=novaSenha;
+  // Atualizar MEDICOS local
+  const med=MEDICOS.find(m=>m.c===l.c);
+  if(med)med.n=novoNome;
+  // Atualizar perfil em cache
+  if(novoCRM||l.c){
+    setPerfil(novoCRM||l.c,{
+      nomeEscala:novoNomeEscala?titleCase2Nomes(novoNomeEscala):'',
+      whatsapp:novoWpp,email:novoEmail,cpf:novoCPF||'',primeiroAcesso:false
+    });
+  }
+  fecharMo('mo-edit-user');
+  renderAll();
+  showToast('Cadastro atualizado com sucesso!');
+}
 async function salvarSenha(){
   const n=document.getElementById('ms-nova').value;
   const c=document.getElementById('ms-conf').value;
