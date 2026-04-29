@@ -338,7 +338,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 
 
 <!-- ══ LOGIN ══ -->
-<div id="screen-login">
+<div id="screen-boot" style="position:fixed;inset:0;background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+  <div style="width:42px;height:42px;border:3px solid #d8e0f0;border-top-color:#2563eb;border-radius:50%;animation:spin .9s linear infinite"></div>
+  <div style="font-size:13px;color:#5a6485;font-weight:600">Carregando CAIS Campinas...</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<div id="screen-login" style="display:none">
 <div class="lw">
   <div class="l-brand">
     <div class="l-icon">🏥</div>
@@ -454,6 +459,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
           <div class="card"><div class="ct">⚠️ Abaixo de 48h no mês</div><div id="d-48"></div></div>
           <div class="card"><div class="ct">📤 Mais trocas solicitadas</div><div id="d-tr-top"></div></div>
         </div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="ct">🔄 Plantonistas Externos no Mês</div>
+          <div id="d-externos"></div>
+        </div>
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div class="ct" style="margin:0">Trocas Pendentes</div>
@@ -478,9 +487,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div id="escala-wrap">
           <div class="ec">
             <div class="mc">
-              <button class="mc-b" onclick="mudarMes(-1)">‹</button>
+              <button class="mc-b" onclick="mudarMes(-1)" title="Mês anterior">‹</button>
               <span class="mc-l" id="mc-l"></span>
-              <button class="mc-b" onclick="mudarMes(1)">›</button>
+              <button class="mc-b" onclick="mudarMes(1)" title="Próximo mês">›</button>
+              <button class="mc-b" onclick="voltarMesVigente()" title="Voltar para o mês vigente" style="margin-left:6px;font-size:11px">📅 Hoje</button>
             </div>
             <div class="sf" id="sf-btns" style="margin:0"></div>
           </div>
@@ -834,7 +844,9 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div id="tr-ext-fields" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:12px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em">Dados do Plantonista Externo</div>
       <div class="fg"><label class="fl">Nome Completo</label><input type="text" class="fi" id="tr-ext-nome"></div>
-      <div class="fg"><label class="fl">CRM</label><input type="text" class="fi" id="tr-ext-crm" placeholder="Apenas números"></div>
+      <div class="fg"><label class="fl">CRM <span style="color:var(--red);font-size:10px">*verificado contra duplicidade</span></label><input type="text" class="fi" id="tr-ext-crm" placeholder="Apenas números" oninput="verificarCRMExterno(this)"></div>
+      <div id="tr-ext-crm-aviso" style="font-size:11px;margin-top:-4px;margin-bottom:8px"></div>
+      <div class="fg"><label class="fl">WhatsApp <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="tel" class="fi" id="tr-ext-whatsapp" placeholder="(62) 9 0000-0000"></div>
       <div class="fg"><label class="fl">Vínculo</label>
         <select class="fs" id="tr-ext-vinc"><option value="CR">CR — Credenciado</option><option value="EF">EF — Efetivo</option></select>
       </div>
@@ -1305,7 +1317,7 @@ async function salvarLocal(){
   ['A','B'].forEach(sem=>{
     DA.forEach(ab=>{
       (EB[sem][ab]||[]).forEach((val,ti)=>{
-        slots.push({semana:sem,dia_semana:ab,turno_idx:ti,valor:val||'',updated_at:new Date().toISOString()});
+        slots.push({semana:sem,dia_semana:ab,turno_idx:ti,valor:val||''});
       });
     });
   });
@@ -1337,13 +1349,13 @@ async function salvarTroca(troca){
     (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
-    visivel_para:troca.vis||[],updated_at:new Date().toISOString()
+    visivel_para:troca.vis||[]
   },{onConflict:'codigo'});
   if(error)console.error('Erro troca:',error);
 }
 
 async function atualizarStatusTroca(codigo,status){
-  const {error}=await sb.from('trocas').update({status,updated_at:new Date().toISOString()}).eq('codigo',codigo);
+  const {error}=await sb.from('trocas').update({status}).eq('codigo',codigo);
   if(error)console.error('Erro status troca:',error);
 }
 
@@ -1508,7 +1520,27 @@ function populaLogin(){
 
 function formatarNome(nome){
   if(!nome)return '';
-  return nome.split(' ').map(p=>p.charAt(0)+p.slice(1).toLowerCase()).join(' ');
+  const conectivos=['de','da','do','das','dos','e'];
+  return nome.trim().split(/\s+/).map((p,i)=>{
+    const pl=p.toLowerCase();
+    if(i>0&&conectivos.includes(pl))return pl;
+    return p.charAt(0).toUpperCase()+p.slice(1).toLowerCase();
+  }).join(' ');
+}
+
+function titleCase2Nomes(input){
+  if(!input)return '';
+  const partes=input.trim().split(/\s+/).filter(p=>p.length>0);
+  return partes.map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join(' ');
+}
+
+function validarNomeEscala(nome){
+  if(!nome)return {ok:false,msg:'Informe seu nome na escala'};
+  const partes=nome.trim().split(/\s+/).filter(p=>p.length>0);
+  if(partes.length<2)return {ok:false,msg:'Informe Nome + Sobrenome (exatamente 2 nomes)'};
+  if(partes.length>2)return {ok:false,msg:'Use apenas 2 nomes (Nome + Sobrenome). Exemplo: Tiago Resende'};
+  if(partes.some(p=>p.length<2))return {ok:false,msg:'Cada nome deve ter pelo menos 2 letras'};
+  return {ok:true,formatted:titleCase2Nomes(nome)};
 }
 
 // Retorna o nome de exibição do profissional, considerando preferência (nome_escala)
@@ -1749,7 +1781,22 @@ function filtrarSem(idx,btn){
   const sems=gerarSemanas(mesMes,mesAno);
   document.getElementById('sem-all').innerHTML=gerarHtmlSems(idx==='todos'?sems:[sems[idx]].filter(Boolean),curRole==='gestor');
 }
-function mudarMes(d){mesMes+=d;if(mesMes>12){mesMes=1;mesAno++}if(mesMes<1){mesMes=12;mesAno--}renderEscala()}
+function mudarMes(d){
+  const novoMes=mesMes+d;let m=novoMes,a=mesAno;
+  if(m>12){m=1;a++}if(m<1){m=12;a--}
+  // Se o usuário é plantonista, só pode navegar para meses publicados
+  if(curRole==='plantonista'&&!ePub(m,a)){
+    showToast('Mês de '+MP[m]+' '+a+' não está publicado',true);return;
+  }
+  mesMes=m;mesAno=a;renderEscala();
+}
+
+function voltarMesVigente(){
+  const hj=new Date();
+  mesMes=hj.getMonth()+1;mesAno=hj.getFullYear();
+  renderEscala();
+  showToast('Voltou para '+MP[mesMes]+' '+mesAno);
+}
 function irParaUltimaPublicada(){
   // Primeiro tenta o mês atual
   var agora=new Date();var ma=agora.getMonth()+1;var aa=agora.getFullYear();
@@ -1834,7 +1881,7 @@ async function salvarEdicao(){
     try{
       const {error}=await sb.from('escala_base').upsert({
         semana:letra,dia_semana:ab,turno_idx:ti,valor:val,
-        updated_at:new Date().toISOString()
+        
       },{onConflict:'semana,dia_semana,turno_idx'});
       if(error)throw error;
     }catch(e){
@@ -1856,8 +1903,12 @@ async function salvarEdicao(){
   }
   const ok=await salvarSlotMes(m,a,letra,ab,ti,val);
   if(!ok){showToast('Erro ao salvar slot do mês',true);return}
-  renderEscala();
+  // CRÍTICO: garantir que ESCMES local foi atualizado
+  initESCMES(m,a);
+  ESCMES[keyMes(m,a)][letra][ab][ti]=val;
+  // Re-render imediato
   fecharMo('mo-editar');
+  await renderEscala();
   showToast('Salvo apenas neste mês — Escala Base preservada!');
 }
 
@@ -1982,7 +2033,7 @@ async function salvarEditMed(){
   try{
     const {error}=await sb.from('profissionais').update({
       nome:nn,crm:novoCRM,vinculo:vc,areas,
-      updated_at:new Date().toISOString()
+      
     }).eq('crm',crmAntigo);
     if(error)throw error;
     // Atualizar login se nome ou CRM mudaram
@@ -2123,7 +2174,7 @@ async function criarSnapshotMes(mes,ano){
       for(let ti=0;ti<16;ti++){
         rows.push({mes,ano,semana_letra:s,dia_semana:ab,turno_idx:ti,
           valor:(EB[s][ab]||[])[ti]||'',origem:'snapshot',
-          updated_at:new Date().toISOString()});
+          });
       }
     });
   });
@@ -2147,7 +2198,7 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor){
   try{
     const {error}=await sb.from('escala_mensal').upsert({
       mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
-      valor:valor||'',origem:'manual',updated_at:new Date().toISOString()
+      valor:valor||'',origem:'manual'
     },{onConflict:'mes,ano,semana_letra,dia_semana,turno_idx'});
     if(error)throw error;
     return true;
@@ -2196,10 +2247,18 @@ async function aplicarTrocaEscala(troca){
   return false;
 }
 
-// Retorna o valor do slot, considerando substituições do mês
+// Retorna o valor do slot — prioridade ESCMES > SUBS > EB(template)
 function getSlotVal(mes,ano,semLetra,ab,ti){
+  const k=keyMes(mes,ano);
+  // 1. Snapshot do mês é fonte da verdade absoluta
+  if(ESCMES[k]&&ESCMES[k][semLetra]&&ESCMES[k][semLetra][ab]){
+    const v=ESCMES[k][semLetra][ab][ti];
+    if(v!==undefined&&v!==null)return v;
+  }
+  // 2. Substituições legacy (compat)
   const sub=SUBS[keySub(mes,ano,semLetra,ab,ti)];
   if(sub!==undefined)return sub;
+  // 3. Fallback: Escala Base (preview de mês não publicado)
   return (EB[semLetra][ab]||[])[ti]||'';
 }
 
@@ -2327,7 +2386,7 @@ function toggleExtForm(){
   document.getElementById('tr-ext-fields').style.display=isExt?'block':'none';
   document.getElementById('tr-sub-container').style.display=isExt?'none':'block';
 }
-function enviarTroca(){
+async function enviarTroca(){
   const pv=document.getElementById('tr-plantao').value;
   if(!pv){showToast('Selecione o plantão',true);return}
   const isExt=document.getElementById('tr-is-ext').checked;
@@ -2336,20 +2395,45 @@ function enviarTroca(){
     subNome=document.getElementById('tr-ext-nome').value.trim().toUpperCase();
     subCRM=parseInt(document.getElementById('tr-ext-crm').value.trim())||0;
     const uni=document.getElementById('tr-ext-uni').value;
+    const wpp=document.getElementById('tr-ext-whatsapp').value.trim();
     if(!subNome||!subCRM||!uni){showToast('Preencha todos os dados do externo',true);return}
+    if(!wpp){showToast('WhatsApp do externo é obrigatório',true);return}
+    const vinc=document.getElementById('tr-ext-vinc').value;
+    // Validar CRM contra banco e local
     const existe=MEDICOS.find(m=>m.c===subCRM);
-    if(!existe){const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];MEDICOS.push({n:subNome,c:subCRM,a:'EXTERNO',cor:cores[MEDICOS.length%5],ext:true,unidade:uni});preencherSelects()}
-    else{subNome=existe.n;subCRM=existe.c}
+    if(existe){
+      // CRM já cadastrado — usar dados existentes
+      subNome=existe.n;subCRM=existe.c;
+    } else {
+      // Novo externo — cadastrar no banco e local
+      const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
+      const novoMed={n:subNome,c:subCRM,a:'EXTERNO',areas:['EXTERNO'],
+        cor:cores[MEDICOS.length%5],ext:true,unidade:uni,vinculo:vinc};
+      try{
+        await sb.from('profissionais').upsert({
+          nome:subNome,crm:subCRM,vinculo:vinc,areas:['EXTERNO'],
+          cor:novoMed.cor,externo:true,unidade:uni
+        },{onConflict:'crm'});
+        // Salvar WhatsApp em perfis
+        await sb.from('perfis').upsert({
+          crm:subCRM,nome_escala:'',whatsapp:wpp,email:'',cpf:'',
+          primeiro_acesso:true
+        },{onConflict:'crm'});
+      }catch(e){
+        console.error('Erro cadastro externo:',e);
+        showToast('Erro ao cadastrar externo no banco',true);return;
+      }
+      MEDICOS.push(novoMed);
+      preencherSelects();
+    }
   } else {
     const sv=document.getElementById('tr-sub').value;
     if(!sv){showToast('Selecione o substituto',true);return}
-    // Formato novo: "__CRM__12345" do autocomplete
     if(sv.startsWith('__CRM__')){
       const crmSub=parseInt(sv.replace('__CRM__',''));
       const mSub=MEDICOS.find(m=>m.c===crmSub);
       if(mSub){subNome=mSub.n;subCRM=mSub.c}
     } else {
-      // fallback compat antigo
       const mSub=MEDICOS.find(m=>`${m.n} — CRM ${m.c}`===sv);
       if(mSub){subNome=mSub.n;subCRM=mSub.c}else{subNome=sv.split('—')[0].trim();subCRM=0}
     }
@@ -2357,19 +2441,40 @@ function enviarTroca(){
   const pi=JSON.parse(pv);
   const nU=curUser.nU||curUser.n.toUpperCase();
   const df=`${pi.dia.toString().padStart(2,'0')}/${MA[pi.mes||meuMes]}/${pi.ano||meuAno}`;
+  // Data com hora 12:00 para evitar problemas de timezone
+  const dtPlantao=new Date(pi.ano||meuAno,(pi.mes||meuMes)-1,pi.dia,12,0,0);
   const nova={id:'T'+(TROCAS.length+1).toString().padStart(3,'0'),sol:nU,sCRM:curUser.c,sub:subNome,bCRM:subCRM,
-    data:df,dt:new Date(pi.ano||meuAno,(pi.mes||meuMes)-1,pi.dia),turno:pi.turno,area:pi.area,
+    data:df,dt:dtPlantao,turno:pi.turno,area:pi.area,
     motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[nU,subNome]};
   TROCAS.unshift(nova);
-  salvarTroca(nova);
-  const uniExt=isExt?' (Externo — '+document.getElementById('tr-ext-uni').value+')':'';
-  const areaTxt=pi.area==='SV+ENF'?'LÍDER':pi.area;
-  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${curUser.n.toUpperCase()}\n\nSUBSTITUTO\n${subNome}${uniExt}\n\nDATA: ${df}\nHORÁRIO: ${pi.turno}\nÁREA: ${areaTxt}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
+  await salvarTroca(nova);
+  const uniLinhaExt=isExt?'\nUnidade de origem: '+document.getElementById('tr-ext-uni').value:'';
+  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${curUser.n.toUpperCase()}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${pi.turno}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
   document.getElementById('wpp-msg').textContent=msg;
   document.getElementById('btn-cp').textContent='Copiar';document.getElementById('btn-cp').classList.remove('ok');
   fecharMo('mo-troca');abrirMo('mo-conf');renderTrocas();renderDashboard();atualizarBadge();
 }
 function copiarMsg(){navigator.clipboard.writeText(document.getElementById('wpp-msg').textContent).then(()=>{const b=document.getElementById('btn-cp');b.textContent='✓ Copiado!';b.classList.add('ok')})}
+
+// Verifica CRM duplicado em tempo real ao digitar
+function verificarCRMExterno(inp){
+  const aviso=document.getElementById('tr-ext-crm-aviso');
+  const crm=parseInt(inp.value.trim())||0;
+  if(!crm){aviso.innerHTML='';return}
+  const existe=MEDICOS.find(m=>m.c===crm);
+  if(existe){
+    aviso.innerHTML='<span style="color:var(--amber)">⚠ CRM já cadastrado: '+formatarNome(existe.n)+(existe.ext?' (externo - '+(existe.unidade||'?')+')':' (interno)')+'. Os dados serão reutilizados.</span>';
+    if(existe.ext){
+      // Pré-preencher campos com dados existentes
+      document.getElementById('tr-ext-nome').value=existe.n;
+      const pf=getPerfil(existe.c);
+      if(pf&&pf.whatsapp)document.getElementById('tr-ext-whatsapp').value=pf.whatsapp;
+      if(existe.unidade)document.getElementById('tr-ext-uni').value=existe.unidade;
+    }
+  } else {
+    aviso.innerHTML='<span style="color:var(--green)">✓ CRM novo — será cadastrado</span>';
+  }
+}
 
 // ══ PUBLICAÇÃO ══
 function renderPublicacao(){
@@ -2556,6 +2661,36 @@ function renderDashboard(){
       <span style="font-size:11px;color:var(--text2)">${t.data}</span>
       <span class="badge b-amber">Pendente</span></div>`).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhuma troca pendente ✓</div>';
+
+  // ═══ Plantonistas Externos no Mês ═══
+  // Buscar trocas APROVADAS do mês onde o substituto é externo
+  const trocasMes=TROCAS.filter(t=>t.mes===mesMes&&t.ano===mesAno&&t.status==='aprovado');
+  const externosMap={};
+  trocasMes.forEach(t=>{
+    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext);
+    if(ext){
+      if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
+      externosMap[ext.c].plantoes.push({data:t.data,turno:t.turno,area:t.area});
+    }
+  });
+  const extList=Object.values(externosMap);
+  document.getElementById('d-externos').innerHTML=extList.length?
+    extList.map(x=>{
+      const pf=getPerfil(x.prof.c)||{};
+      return `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:13px;font-weight:700">${formatarNome(x.prof.n)}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:1px">CRM ${x.prof.c} · ${x.prof.unidade||'?'}${pf.whatsapp?' · 📱 '+pf.whatsapp:''}</div>
+          </div>
+          <span class="badge b-purple">${x.plantoes.length} plantão${x.plantoes.length!==1?'es':''}</span>
+        </div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+          ${x.plantoes.map(p=>`<span style="font-size:10px;padding:2px 6px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;font-family:var(--mono)">${p.data} · ${p.turno}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join(''):
+    '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum externo neste mês</div>';
   atualizarBadge();
 }
 
@@ -2767,11 +2902,10 @@ async function togglePerm(idx,tipo,ativo){
     renderLogins();return;
   }
   // Construir update completo — sem mexer na constraint antiga
+  // Não enviar 'perfil' (constraint legada quebra) nem 'updated_at' (coluna pode não existir)
   const update={
     is_gestor:novoIsGestor,
-    is_plantonista:novoIsPlant,
-    perfil:novoIsGestor?'gestor':'plantonista',
-    updated_at:new Date().toISOString()
+    is_plantonista:novoIsPlant
   };
   try{
     let q=sb.from('logins').update(update);
@@ -2904,7 +3038,7 @@ async function salvarSenha(){
   const login=LOGINS[editSenhaIdx];
   if(!login){showToast('Login não encontrado',true);return}
   try{
-    let q=sb.from('logins').update({senha:n,updated_at:new Date().toISOString()});
+    let q=sb.from('logins').update({senha:n});
     if(login.loginId)q=q.eq('id',login.loginId);
     else if(login.c)q=q.eq('crm',login.c);
     else if(login.cpf)q=q.eq('cpf',login.cpf);
@@ -3652,10 +3786,16 @@ function abrirPerfil(){
 }
 async function salvarPerfil(){
   const pf=getPerfil(curUser.c)||{};
-  const nomeEscala=document.getElementById('pf-nome-escala').value.trim();
+  const nomeEscalaInput=document.getElementById('pf-nome-escala').value.trim();
   const whatsapp=document.getElementById('pf-whatsapp').value.trim();
   const email=document.getElementById('pf-email').value.trim();
   const cpf=document.getElementById('pf-cpf').value.trim();
+  // Validação: 2 nomes obrigatórios
+  if(nomeEscalaInput){
+    const v=validarNomeEscala(nomeEscalaInput);
+    if(!v.ok){showToast(v.msg,true);return}
+  }
+  const nomeEscala=nomeEscalaInput?titleCase2Nomes(nomeEscalaInput):'';
   const pwAtual=document.getElementById('pf-pw-atual').value;
   const pwNova=document.getElementById('pf-pw-nova').value;
   const pwConf=document.getElementById('pf-pw-conf').value;
@@ -3691,7 +3831,7 @@ async function salvarPerfil(){
     const {error}=await sb.from('perfis').upsert({
       crm:curUser.c,nome_escala:nomeEscala,whatsapp:whatsapp,
       email:email,cpf:cpf,primeiro_acesso:false,
-      updated_at:new Date().toISOString()
+      
     },{onConflict:'crm'});
     if(error)throw error;
   }catch(e){
@@ -3746,24 +3886,26 @@ async function salvarPrimeiroAcesso(){
   const ne=document.getElementById('pa-nome-escala').value.trim();
   const wpp=document.getElementById('pa-whatsapp').value.trim();
   const em=document.getElementById('pa-email').value.trim();
-  if(!ne){showToast('Informe como quer ser chamado na escala',true);return}
+  const validNome=validarNomeEscala(ne);
+  if(!validNome.ok){showToast(validNome.msg,true);return}
+  const neFormatado=validNome.formatted;
   if(!wpp){showToast('WhatsApp é obrigatório',true);return}
   if(!em||!em.includes('@')){showToast('E-mail válido é obrigatório',true);return}
   // Persistir no banco
   try{
     const {error}=await sb.from('perfis').upsert({
-      crm:curUser.c,nome_escala:ne,whatsapp:wpp,email:em,cpf:'',
-      primeiro_acesso:false,updated_at:new Date().toISOString()
+      crm:curUser.c,nome_escala:neFormatado,whatsapp:wpp,email:em,cpf:'',
+      primeiro_acesso:false
     },{onConflict:'crm'});
     if(error)throw error;
   }catch(e){
     console.error('salvarPrimeiroAcesso:',e);
     showToast('Erro ao salvar — tente novamente',true);return;
   }
-  setPerfil(curUser.c,{nomeEscala:ne,whatsapp:wpp,email:em,cpf:'',primeiroAcesso:false});
+  setPerfil(curUser.c,{nomeEscala:neFormatado,whatsapp:wpp,email:em,cpf:'',primeiroAcesso:false});
   aplicarPerfil(curUser.c);
   fecharMo('mo-primeiro-acesso');
-  showToast('Bem-vindo, '+ne+'!');
+  showToast('Bem-vindo, '+neFormatado+'!');
 }
 // Máscara CPF
 document.addEventListener('input',function(e){
@@ -3834,11 +3976,16 @@ populaLogin();
 async function bootApp(){
   initSidebar();
   await carregarSupabase();
-  // Tentar restaurar sessão depois que dados estão carregados
   const restaurou=await restaurarSessao();
+  // Esconder spinner após carregar tudo
+  const boot=document.getElementById('screen-boot');
+  if(boot)boot.style.display='none';
   if(restaurou){
     renderAll();
     aplicarPerfil(curUser.c);
+  } else {
+    // Não havia sessão — mostrar login
+    document.getElementById('screen-login').style.display='flex';
   }
 }
 document.addEventListener('DOMContentLoaded',bootApp);
