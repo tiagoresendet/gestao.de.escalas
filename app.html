@@ -2353,23 +2353,25 @@ async function carregarESCMES(){
 }
 
 async function aplicarTrocaEscala(troca){
-  // Aplica troca APENAS no snapshot do mês (ESCMES) — NUNCA toca o EB
-  const dt=troca.dt;const col=JTC[dt.getDay()];const ab=DA[col];const ciclo=getCiclo(dt);
+  // Aplica troca APENAS no DIA específico — não propaga para a semana inteira
+  const dt=troca.dt;
+  const col=JTC[dt.getDay()];
+  const ab=DA[col];
+  const ciclo=getCiclo(dt);
+  const diaMes=dt.getDate();// CRÍTICO: dia específico do mês
   if(!EB[ciclo]||!EB[ciclo][ab])return false;
-  const arr=EB[ciclo][ab];const busca=`(${troca.sCRM})`;
+  const arr=EB[ciclo][ab];
+  const busca=`(${troca.sCRM})`;
   for(let i=0;i<arr.length;i++){
     if(arr[i]&&arr[i].includes(busca)){
       const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
       const novoVal=mSub
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
-      // Garantir snapshot do mês
-      if(!temSnapshot(troca.mes,troca.ano)){
-        await criarSnapshotMes(troca.mes,troca.ano);
-      }
-      // Salvar APENAS no snapshot — origem='troca'
-      await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal);
-      // Compat: SUBS continua para retrocompatibilidade
+      // Salvar APENAS no DIA específico (passa diaMes!) — não propaga
+      console.log('[aplicarTrocaEscala] Aplicando troca apenas no dia',diaMes);
+      await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
+      // Compat
       SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
       return true;
     }
