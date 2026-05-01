@@ -459,9 +459,8 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ns">Principal</div>
         <div class="ni active" data-p="dashboard"><span class="ni-ic">◈</span>Dashboard</div>
         <div class="ni" data-p="escala"><span class="ni-ic">📅</span>Escala do Mês</div>
-        <div class="ni" data-p="historico"><span class="ni-ic">○</span>Histórico</div>
+        <div class="ni" data-p="gestao-escalas"><span class="ni-ic">🗂️</span>Gestão de Escalas<span class="ni-badge" id="badge-pub">!</span></div>
         <div class="ns">Gestão</div>
-        <div class="ni" data-p="publicacao"><span class="ni-ic">📢</span>Publicação<span class="ni-badge" id="badge-pub">!</span></div>
         <div class="ni" data-p="trocas"><span class="ni-ic">⇄</span>Trocas<span class="ni-badge" id="badge-tr">0</span></div>
         <div class="ni" data-p="cc"><span class="ni-ic">👥</span>Corpo Clínico</div>
         <div class="ni" data-p="eb"><span class="ni-ic">⊞</span>Escala Base</div>
@@ -518,7 +517,6 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ph">
           <div><div class="pt">Escala de Plantão</div><div class="ps" id="escala-sub"></div></div>
           <div class="ph-r" id="escala-ph-r">
-            <button class="btn btn-p btn-sm" onclick="abrirMo('mo-gerar')">⚡ Gerar Escala</button>
             <button class="btn btn-g btn-sm" onclick="pdfEscala()">🖨 PDF</button>
             <button class="btn btn-a btn-sm" onclick="exportXLSX()">📊 Excel</button>
             <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
@@ -540,15 +538,35 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       </div>
 
       <!-- ══ HISTÓRICO ══ -->
-      <div class="page" id="page-historico">
-        <div class="ph"><div><div class="pt">Histórico de Escalas</div></div></div>
-        <div class="hist-g" id="hist-grid"></div>
-      </div>
-
-      <!-- ══ PUBLICAÇÃO ══ -->
-      <div class="page" id="page-publicacao">
-        <div class="ph"><div><div class="pt">Publicação de Escalas</div><div class="ps">Controle o acesso dos plantonistas</div></div></div>
-        <div id="pub-list"></div>
+      <!-- ══ GESTÃO DE ESCALAS (Histórico + Publicação unificados) ══ -->
+      <div class="page" id="page-gestao-escalas">
+        <div class="ph">
+          <div>
+            <div class="pt">Gestão de Escalas</div>
+            <div class="ps">Controle de publicação e arquivo de escalas</div>
+          </div>
+          <div class="ph-r">
+            <button class="btn btn-p btn-sm" onclick="abrirMoGerarEscala()">+ Gerar Nova Escala</button>
+          </div>
+        </div>
+        <!-- Seção 1: Escalas Ativas -->
+        <div style="margin-top:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:50%"></span>
+            Escalas Ativas
+            <span style="font-size:11px;color:var(--text3);font-weight:400">— mês vigente e meses futuros</span>
+          </div>
+          <div id="ge-ativas"></div>
+        </div>
+        <!-- Seção 2: Histórico -->
+        <div style="margin-top:22px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--text3);border-radius:50%"></span>
+            Histórico de Escalas
+            <span style="font-size:11px;color:var(--text3);font-weight:400">— bloqueado para o público, visível apenas para a Gestão</span>
+          </div>
+          <div id="ge-historico"></div>
+        </div>
       </div>
 
       <!-- ══ TROCAS ══ -->
@@ -777,20 +795,21 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 
 <div class="mo" id="mo-gerar">
   <div class="m-box">
-    <div class="m-t">⚡ Gerar Escala do Mês</div>
-    <div class="m-s">Preenchimento automático a partir da escala base A/B</div>
-    <div class="fg"><label class="fl">Mês</label>
-      <select class="fs" id="gen-mes">
-        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-        <option value="4" selected>Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-        <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-      </select>
+    <div class="m-t">⚡ Gerar Nova Escala</div>
+    <div class="m-s">Cria um snapshot do mês baseado na Escala Base atual (semanas A/B). Nasce com status <strong>Bloqueada</strong>.</div>
+    <div class="fg" style="position:relative">
+      <label class="fl">Mês / Ano</label>
+      <input type="text" class="fi" id="gen-busca" placeholder="Digite mês ou ano... (ex: maio 2026)" oninput="filtrarGerarMes()" onfocus="filtrarGerarMes()" autocomplete="off" style="padding-right:30px">
+      <span style="position:absolute;right:14px;top:38px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+      <input type="hidden" id="gen-mes-ano" value="">
+      <div id="gen-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:240px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
     </div>
-    <div class="fg"><label class="fl">Ano</label><input type="number" class="fi" id="gen-ano" value="2026"></div>
+    <div style="background:var(--blue-bg);border:1px solid rgba(27,77,111,.2);border-radius:var(--r2);padding:10px 12px;font-size:11px;color:var(--blue);margin-bottom:8px">
+      ℹ️ A escala será gerada com base na <strong>Escala Base atual</strong> e na lógica de semanas A/B do mês escolhido. Ela ficará <strong>bloqueada</strong> até você publicá-la na aba "Gestão de Escalas".
+    </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-gerar')">Cancelar</button>
-      <button class="btn btn-p" onclick="gerarEscala()">⚡ Gerar</button>
+      <button class="btn btn-p" onclick="gerarEscala()">⚡ Gerar Escala</button>
     </div>
   </div>
 </div>
@@ -1249,8 +1268,11 @@ let TROCAS=[];
 // ══ ESTADO ══
 let curRole='gestor';
 let curUser={n:'Tiago Resende Telles',c:28691,ava:'TR',cargo:'Gestor de Escala',nU:'TIAGO RESENDE TELLES'};
-let mesMes=4,mesAno=2026,meuMes=4,meuAno=2026,trMes=4,trAno=2026;
-let relMes=4,relAno=2026,viewerMes=4,viewerAno=2026,calMes=4,calAno=2026;
+// Inicializar com mês vigente
+const _agora=new Date();
+let mesMes=_agora.getMonth()+1,mesAno=_agora.getFullYear();
+let meuMes=mesMes,meuAno=mesAno,trMes=mesMes,trAno=mesAno;
+let relMes=mesMes,relAno=mesAno,viewerMes=mesMes,viewerAno=mesAno,calMes=mesMes,calAno=mesAno;
 let editCtx=null,editMedIdx=null,editSenhaIdx=null,trFiltro='todos',relFiltroAtual='todos';
 let ccAbaAtual='int';
 
@@ -1352,6 +1374,7 @@ async function carregarSupabase(){
 
     // Snapshots de escala mensal (CRUCIAL — preserva escalas publicadas)
     await carregarESCMES();
+    await carregarDeclaracoes();
 
     // Trocas
     const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
@@ -1767,8 +1790,8 @@ function nav(el){if(!el)return;navTo(el.dataset.p);}
 
 function renderAll(){
   renderEscala();renderEB();renderCalAB();renderCC();renderTrocas();renderLogins();
-  renderMeusPlantoes();renderDashboard();renderRelatorio();renderPublicacao();
-  renderHistorico();preencherSelects();
+  renderMeusPlantoes();renderDashboard();renderRelatorio();
+  renderGestaoEscalas();preencherSelects();
   document.getElementById('tb-month').textContent='Escala Vigente: '+MP[mesMes]+' '+mesAno;
   const hj=hoje();const DIAS=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1864,34 +1887,127 @@ function filtrarSem(idx,btn){
   const sems=gerarSemanas(mesMes,mesAno);
   document.getElementById('sem-all').innerHTML=gerarHtmlSems(idx==='todos'?sems:[sems[idx]].filter(Boolean),curRole==='gestor');
 }
+// ═══════════════════════════════════════════════════════
+// VISIBILIDADE TEMPORAL
+// Plantonista vê: mês vigente + meses futuros publicados
+// Gestor vê: tudo (sem restrição)
+// ═══════════════════════════════════════════════════════
+function getMesVigente(){
+  const hj=new Date();
+  return {m:hj.getMonth()+1,a:hj.getFullYear()};
+}
+function plantonistaPodeVer(m,a){
+  // Plantonista vê: o mês vigente OU meses futuros publicados
+  const v=getMesVigente();
+  const isVigente=(m===v.m&&a===v.a);
+  const isFuturo=(a>v.a)||(a===v.a&&m>v.m);
+  if(isVigente)return true;
+  if(isFuturo&&ePub(m,a))return true;
+  return false;
+}
+
 function mudarMes(d){
   const novoMes=mesMes+d;let m=novoMes,a=mesAno;
   if(m>12){m=1;a++}if(m<1){m=12;a--}
-  // Se o usuário é plantonista, só pode navegar para meses publicados
-  if(curRole==='plantonista'&&!ePub(m,a)){
-    showToast('Mês de '+MP[m]+' '+a+' não está publicado',true);return;
+  // Plantonista: só vigente + futuros publicados
+  if(!curUser.isGestor&&!plantonistaPodeVer(m,a)){
+    showToast('Você só pode visualizar o mês vigente ou meses futuros publicados',true);return;
   }
   mesMes=m;mesAno=a;renderEscala();
 }
 
 function voltarMesVigente(){
-  const hj=new Date();
-  mesMes=hj.getMonth()+1;mesAno=hj.getFullYear();
+  const v=getMesVigente();
+  mesMes=v.m;mesAno=v.a;
   renderEscala();
   showToast('Voltou para '+MP[mesMes]+' '+mesAno);
 }
 function irParaUltimaPublicada(){
-  // Primeiro tenta o mês atual
   var agora=new Date();var ma=agora.getMonth()+1;var aa=agora.getFullYear();
   if(ePub(ma,aa)){mesMes=ma;mesAno=aa;renderEscala();return}
-  // Senão busca o mais recente publicado
   for(var m=ma,a=aa,i=0;i<24;i++){
     m--;if(m<1){m=12;a--}
     if(ePub(m,a)){mesMes=m;mesAno=a;renderEscala();return}
   }
   showToast('Nenhuma escala publicada encontrada','warn');
 }
-function gerarEscala(){mesMes=parseInt(document.getElementById('gen-mes').value);mesAno=parseInt(document.getElementById('gen-ano').value);fecharMo('mo-gerar');renderEscala();showToast('Escala gerada!')}
+
+// ═══════════════════════════════════════════════════════
+// GERAR ESCALA — autocomplete + cria snapshot bloqueado
+// ═══════════════════════════════════════════════════════
+function abrirMoGerarEscala(){
+  document.getElementById('gen-busca').value='';
+  document.getElementById('gen-mes-ano').value='';
+  document.getElementById('gen-sug').style.display='none';
+  abrirMo('mo-gerar');
+}
+
+function filtrarGerarMes(){
+  const inp=document.getElementById('gen-busca');
+  const sug=document.getElementById('gen-sug');
+  const q=semAcento(inp.value.trim());
+  // Gerar lista de 24 meses (12 passados + atual + 11 futuros)
+  const v=getMesVigente();
+  const opcoes=[];
+  // 12 meses passados + atual + 11 futuros
+  for(let i=-12;i<=11;i++){
+    let m=v.m+i,a=v.a;
+    while(m>12){m-=12;a++}
+    while(m<1){m+=12;a--}
+    const k=keyM(m,a);
+    const temEsc=temSnapshot(m,a);
+    const pub=PUB[k]&&PUB[k].ok;
+    opcoes.push({m,a,k,texto:`${MP[m]} ${a}`,jaTem:temEsc,pub});
+  }
+  let lista=q?opcoes.filter(o=>semAcento(o.texto).includes(q)||String(o.a).includes(q)):opcoes;
+  // Mostrar mês vigente primeiro depois futuros depois passados
+  if(!lista.length){
+    sug.innerHTML='<div style="padding:10px;color:#9aa3bf;font-size:12px;text-align:center">Nenhum mês encontrado</div>';
+  } else {
+    sug.innerHTML=lista.map(o=>{
+      const status=o.pub?'<span class="badge b-green" style="font-size:9px">Publicada</span>':
+        (o.jaTem?'<span class="badge b-amber" style="font-size:9px">Bloqueada</span>':
+        '<span style="font-size:10px;color:var(--text3)">— a gerar</span>');
+      return `<div onclick="selecionarGerarMes(${o.m},${o.a},'${o.texto}')"
+        style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px;display:flex;justify-content:space-between;align-items:center"
+        onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
+        <span style="font-weight:600">${o.texto}</span>
+        ${status}
+      </div>`;
+    }).join('');
+  }
+  sug.style.display='block';
+}
+
+function selecionarGerarMes(m,a,texto){
+  document.getElementById('gen-mes-ano').value=m+'-'+a;
+  document.getElementById('gen-busca').value=texto;
+  document.getElementById('gen-sug').style.display='none';
+}
+
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#gen-busca')&&!e.target.closest('#gen-sug')){
+    const s=document.getElementById('gen-sug');if(s)s.style.display='none';
+  }
+});
+
+async function gerarEscala(){
+  const v=document.getElementById('gen-mes-ano').value;
+  if(!v){showToast('Selecione o mês',true);return}
+  const [mStr,aStr]=v.split('-');
+  const m=parseInt(mStr),a=parseInt(aStr);
+  // Cria snapshot a partir da Escala Base — nasce bloqueada
+  showToast('Gerando escala de '+MP[m]+' '+a+'...');
+  const ok=await criarSnapshotMes(m,a);
+  if(!ok){showToast('Erro ao gerar escala',true);return}
+  // Marca como bloqueada explicitamente (não publicada)
+  const k=keyM(m,a);
+  PUB[k]={ok:false,d:null};
+  await salvarPublicacao(m,a,false,curUser.c);
+  fecharMo('mo-gerar');
+  renderAll();
+  showToast('✓ Escala de '+MP[m]+' '+a+' criada! Status: Bloqueada. Publique quando quiser liberar.');
+}
 
 function abrirEditarBase(letra,ab,ti,turnoL,el){
   editCtx={letra,ab,ti,el,contexto:'escala_base'};
@@ -2070,14 +2186,90 @@ function renderCalAB(){
 function mudarCalAB(d){calMes+=d;if(calMes>12){calMes=1;calAno++}if(calMes<1){calMes=12;calAno--}renderCalAB()}
 
 // ══ HISTÓRICO ══
-function renderHistorico(){
-  const meses=[];
-  for(let m=3;m>=1;m--)meses.push([m,2026]);
-  [12,11,10,9].forEach(m=>meses.push([m,2025]));
-  document.getElementById('hist-grid').innerHTML=meses.map(([m,a])=>
-    `<div class="hist-c"><div class="hist-m">${MA[m]}</div><div class="hist-a">${a}</div>
-      <div style="margin-top:8px"><span class="badge b-green">Arquivado</span></div></div>`).join('');
+// ═══════════════════════════════════════════════════════
+// GESTÃO DE ESCALAS — unificação de Histórico + Publicação
+// Lista APENAS meses que tenham escala gerada (snapshot)
+// ═══════════════════════════════════════════════════════
+function renderGestaoEscalas(){
+  if(!document.getElementById('ge-ativas'))return;
+  const v=getMesVigente();
+  // Coletar todos os meses que têm snapshot (escala gerada)
+  const mesesComEscala=[];
+  Object.keys(ESCMES).forEach(k=>{
+    const [m,a]=k.split('-').map(Number);
+    if(!isNaN(m)&&!isNaN(a))mesesComEscala.push({m,a,k:keyM(m,a)});
+  });
+  // Adicionar meses publicados mesmo sem snapshot (compat)
+  Object.keys(PUB).forEach(k=>{
+    const [m,a]=k.split('-').map(Number);
+    if(!isNaN(m)&&!isNaN(a)&&!mesesComEscala.find(x=>x.m===m&&x.a===a)){
+      if(temSnapshot(m,a))mesesComEscala.push({m,a,k});
+    }
+  });
+  // Separar entre Ativas (vigente + futuros) e Histórico (passados)
+  const ativas=[],historico=[];
+  mesesComEscala.forEach(x=>{
+    const ehPassado=(x.a<v.a)||(x.a===v.a&&x.m<v.m);
+    if(ehPassado)historico.push(x);else ativas.push(x);
+  });
+  // Ordenar: ativas crescente (mais próximo primeiro), histórico decrescente
+  ativas.sort((x,y)=>(x.a*12+x.m)-(y.a*12+y.m));
+  historico.sort((x,y)=>(y.a*12+y.m)-(x.a*12+x.m));
+  // Renderizar Ativas
+  const elAtivas=document.getElementById('ge-ativas');
+  elAtivas.innerHTML=ativas.length?ativas.map(x=>cardEscala(x,'ativa')).join(''):
+    '<div style="background:var(--bg2);border:1px dashed var(--border);border-radius:var(--r);padding:18px;text-align:center;color:var(--text3);font-size:12px">Nenhuma escala ativa. Clique em "+ Gerar Nova Escala" para começar.</div>';
+  // Renderizar Histórico
+  const elHist=document.getElementById('ge-historico');
+  elHist.innerHTML=historico.length?historico.map(x=>cardEscala(x,'historico')).join(''):
+    '<div style="background:var(--bg2);border:1px dashed var(--border);border-radius:var(--r);padding:18px;text-align:center;color:var(--text3);font-size:12px">Nenhuma escala arquivada ainda.</div>';
+  atualizarBadge();
 }
+
+function cardEscala(x,tipo){
+  const {m,a,k}=x;
+  const v=getMesVigente();
+  const p=PUB[k]||{ok:false,d:null};
+  const cnt=gerarPlantoesMes(m,a).length;
+  const isVigente=(m===v.m&&a===v.a);
+  const isHistorico=(tipo==='historico');
+  const labelStatus=p.ok?'Publicada':'Bloqueada';
+  const corStatus=p.ok?'b-green':'b-amber';
+  let acoes='';
+  if(isHistorico){
+    // Histórico: somente visualização, sem publicar/despublicar
+    acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})">📅 Ver escala</button>`;
+  } else {
+    // Ativas: botões de gerenciar
+    if(p.ok){
+      acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})">📅 Ver</button>
+        <button class="btn btn-d btn-sm" onclick="despublicar('${k}')">🔒 Bloquear</button>`;
+    } else {
+      acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})">📅 Ver</button>
+        <button class="btn btn-s btn-sm" onclick="publicar('${k}')">📢 Publicar</button>`;
+    }
+  }
+  const tagVigente=isVigente?'<span class="badge b-blue" style="margin-left:6px;font-size:9px">VIGENTE</span>':'';
+  return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+    <div style="font-size:18px;font-weight:800;min-width:50px;font-family:var(--mono);color:${isHistorico?'var(--text3)':'var(--text)'}">${MA[m]}</div>
+    <div style="flex:1;min-width:140px">
+      <div style="font-size:13px;font-weight:700">${MP[m]} ${a}${tagVigente}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${p.ok?'Publicada em '+p.d:(isHistorico?'Arquivada':'Bloqueada — plantonistas sem acesso')} · ${cnt} plantões</div>
+    </div>
+    <span class="badge ${corStatus}">${labelStatus}</span>
+    <div style="display:flex;gap:5px">${acoes}</div>
+  </div>`;
+}
+
+function navegarParaEscala(m,a){
+  mesMes=m;mesAno=a;
+  renderEscala();
+  nav(document.querySelector('[data-p="escala"]'));
+}
+
+// Compat: mantém a função antiga apontando para a nova
+function renderHistorico(){renderGestaoEscalas()}
+function renderPublicacao(){renderGestaoEscalas()}
 
 // ══ CC ══
 function mudarAbaCC(aba){
@@ -2647,20 +2839,8 @@ function verificarCRMExterno(inp){
 }
 
 // ══ PUBLICAÇÃO ══
-function renderPublicacao(){
-  const meses=[[4,2026],[5,2026],[6,2026],[7,2026],[8,2026],[9,2026]];
-  document.getElementById('pub-list').innerHTML=meses.map(([m,a])=>{
-    const k=keyM(m,a);const p=PUB[k]||{ok:false,d:null};
-    const cnt=gerarPlantoesMes(m,a).length;
-    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-      <div style="font-size:20px;font-weight:800;min-width:50px;font-family:var(--mono)">${MA[m]}</div>
-      <div style="flex:1;min-width:100px"><div style="font-size:13px;font-weight:700">${MP[m]} ${a}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:2px">${p.ok?'Publicada em '+p.d:'Bloqueada — plantonistas sem acesso'} · ${cnt} plantões</div></div>
-      <span class="badge ${p.ok?'b-green':'b-amber'}">${p.ok?'Publicada':'Bloqueada'}</span>
-      ${p.ok?`<button class="btn btn-d btn-sm" onclick="despublicar('${k}')">🔒 Bloquear</button>`:`<button class="btn btn-s btn-sm" onclick="publicar('${k}')">📢 Publicar</button>`}
-    </div>`;
-  }).join('');atualizarBadge();
-}
+// Função antiga delegada — Gestão de Escalas é a nova fonte
+function renderPublicacaoLegado(){renderGestaoEscalas()}
 async function publicar(k){
   const [mStr,aStr]=k.split('-');
   const m=parseInt(mStr),a=parseInt(aStr);
@@ -2894,13 +3074,23 @@ function renderDashboard(){
     extList.map(x=>{
       const pf=getPerfil(x.prof.c)||{};
       const totalH=x.plantoes.reduce((s,p)=>s+(p.h||0),0);
+      const decKey=x.prof.c+'-'+mesMes+'-'+mesAno;
+      const enviada=DECLARACOES[decKey]&&DECLARACOES[decKey].enviada;
+      const btnDec=enviada
+        ?`<button onclick="toggleDeclaracao(${x.prof.c},${mesMes},${mesAno})" style="background:#e8f7ee;border:1px solid #22a35a;color:#22a35a;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap" title="Declaração enviada · clique para desmarcar">✓ Declaração enviada</button>`
+        :`<button onclick="toggleDeclaracao(${x.prof.c},${mesMes},${mesAno})" style="background:#fff;border:1px dashed var(--text3);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap" title="Marcar como declaração enviada"
+            onmouseover="this.style.borderStyle='solid';this.style.borderColor='var(--blue)';this.style.color='var(--blue)'"
+            onmouseout="this.style.borderStyle='dashed';this.style.borderColor='var(--text3)';this.style.color='var(--text2)'">📄 Marcar declaração</button>`;
       return `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;margin-bottom:6px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
           <div style="flex:1;min-width:160px">
             <div style="font-size:13px;font-weight:700">${formatarNome(x.prof.n)}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:1px">CRM ${x.prof.c} · ${x.prof.unidade||'?'}${pf.whatsapp?' · 📱 '+pf.whatsapp:''}</div>
           </div>
-          <span class="badge b-purple">${x.plantoes.length} plantão${x.plantoes.length!==1?'es':''}${totalH?' · '+totalH+'h':''}</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="badge b-purple">${x.plantoes.length} plantão${x.plantoes.length!==1?'es':''}${totalH?' · '+totalH+'h':''}</span>
+            ${btnDec}
+          </div>
         </div>
         <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
           ${x.plantoes.map(p=>`<span style="font-size:10px;padding:3px 7px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;font-family:var(--mono)">${p.data} · ${p.turno}</span>`).join('')}
@@ -2909,6 +3099,56 @@ function renderDashboard(){
     }).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum externo neste mês</div>';
   atualizarBadge();
+}
+
+// ═══════════════════════════════════════════════════════
+// DECLARAÇÕES DE PLANTÃO (externos) — controle de envio
+// ═══════════════════════════════════════════════════════
+const DECLARACOES={};
+
+async function carregarDeclaracoes(){
+  try{
+    const {data,error}=await sb.from('declaracoes_externos').select('*');
+    if(error){
+      console.warn('declaracoes_externos não existe ainda:',error.message);
+      return;
+    }
+    Object.keys(DECLARACOES).forEach(k=>delete DECLARACOES[k]);
+    (data||[]).forEach(d=>{
+      DECLARACOES[d.crm+'-'+d.mes+'-'+d.ano]={
+        crm:d.crm,mes:d.mes,ano:d.ano,
+        enviada:d.enviada===true,
+        data_envio:d.data_envio
+      };
+    });
+  }catch(e){console.error('carregarDeclaracoes:',e)}
+}
+
+async function toggleDeclaracao(crm,mes,ano){
+  const k=crm+'-'+mes+'-'+ano;
+  const atual=DECLARACOES[k];
+  const novoStatus=!(atual&&atual.enviada);
+  const dataEnvio=novoStatus?new Date().toISOString():null;
+  // Atualizar local primeiro (UX)
+  DECLARACOES[k]={crm,mes,ano,enviada:novoStatus,data_envio:dataEnvio};
+  renderDashboard();
+  // Persistir no banco
+  try{
+    // DELETE + INSERT (mais seguro que upsert)
+    await sb.from('declaracoes_externos').delete()
+      .eq('crm',crm).eq('mes',mes).eq('ano',ano);
+    const {error}=await sb.from('declaracoes_externos').insert({
+      crm,mes,ano,enviada:novoStatus,data_envio:dataEnvio
+    });
+    if(error)throw error;
+    showToast(novoStatus?'✓ Declaração marcada como enviada':'Declaração desmarcada');
+  }catch(e){
+    console.error('toggleDeclaracao:',e);
+    showToast('Erro ao salvar — execute o SQL v22',true);
+    // Reverter local
+    if(atual)DECLARACOES[k]=atual;else delete DECLARACOES[k];
+    renderDashboard();
+  }
 }
 
 // ══ RELATÓRIO GESTOR ══
