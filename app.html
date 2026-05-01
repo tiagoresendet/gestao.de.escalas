@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>CAIS Campinas — Gestão de Escalas v16</title>
+<title>Kos App — Gestão de Plantões</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,7 +12,7 @@
   --bg0:#f0f2f7;--bg1:#ffffff;--bg2:#f7f8fc;--bg3:#eef0f6;--bg4:#e6e9f2;
   --border:#dde1ed;--border2:#c8cedd;
   --text:#1a1f36;--text2:#5a6485;--text3:#9aa3bf;
-  --blue:#2563eb;--blue2:#1d4ed8;--blue-bg:#eff4ff;
+  --blue:#1B4D6F;--blue2:#1d4ed8;--blue-bg:#eff4ff;
   --green:#059669;--green2:#047857;--green-bg:#ecfdf5;
   --red:#dc2626;--red2:#b91c1c;--red-bg:#fef2f2;
   --amber:#d97706;--amber-bg:#fffbeb;
@@ -36,8 +36,8 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 .lw{width:100%;max-width:400px;padding:28px 24px}
 .l-brand{display:flex;align-items:center;gap:12px;margin-bottom:32px}
 .l-icon{width:46px;height:46px;background:linear-gradient(135deg,var(--blue2),var(--purple));border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 0 24px rgba(90,156,248,.2)}
-.l-name{font-family:var(--display);font-size:17px;font-weight:700}
-.l-sub{font-size:11px;color:var(--text2);margin-top:1px}
+.l-name{font-family:Georgia,"Playfair Display",serif;font-size:30px;font-weight:400;color:#1B4D6F;letter-spacing:-1px;line-height:1}
+.l-sub{font-size:10px;color:#7A8D5C;margin-top:4px;letter-spacing:2.5px;text-transform:uppercase;font-weight:500}
 .l-title{font-size:22px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}
 .l-sub2{font-size:13px;color:var(--text2);margin-bottom:22px}
 .lg{margin-bottom:13px}
@@ -339,18 +339,28 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 
 <!-- ══ LOGIN ══ -->
 <div id="screen-boot" style="position:fixed;inset:0;background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
-  <div style="width:42px;height:42px;border:3px solid #d8e0f0;border-top-color:#2563eb;border-radius:50%;animation:spin .9s linear infinite"></div>
-  <div style="font-size:13px;color:#5a6485;font-weight:600">Carregando CAIS Campinas...</div>
+  <div style="width:42px;height:42px;border:3px solid #d8e0f0;border-top-color:#1B4D6F;border-radius:50%;animation:spin .9s linear infinite"></div>
+  <div style="font-size:13px;color:#5a6485;font-weight:600">Carregando Kos App...</div>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 <div id="screen-login" style="display:none">
 <div class="lw">
   <div class="l-brand">
-    <div class="l-icon">🏥</div>
-    <div><div class="l-name">CAIS Campinas</div><div class="l-sub">Gestão de Escalas v16</div></div>
+    <div class="l-logo-svg">
+      <svg width="56" height="56" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="60" height="60" fill="#1B4D6F" rx="14"/>
+        <path d="M 12 38 Q 21 30, 30 38 T 48 38" fill="none" stroke="#F8FAFC" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M 12 46 Q 21 38, 30 46 T 48 46" fill="none" stroke="#F8FAFC" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+        <circle cx="30" cy="22" r="6" fill="#D4A857"/>
+      </svg>
+    </div>
+    <div>
+      <div class="l-name">Kos</div>
+      <div class="l-sub">Gestão de Plantões</div>
+    </div>
   </div>
-  <div class="l-title">Entrar na plataforma</div>
-  <div class="l-sub2">Selecione seu nome — a senha é seu CRM</div>
+  <div class="l-title">Bem-vindo de volta</div>
+  <div class="l-sub2">Da ilha de Hipócrates ao seu plantão.</div>
   <div class="lg" style="position:relative">
     <label class="ll">Profissional</label>
     <input type="text" class="li" id="lp-busca" autocomplete="off" placeholder="Digite seu nome..." oninput="filtrarLogin()" onfocus="filtrarLogin()" style="padding-right:30px">
@@ -373,7 +383,21 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 <!-- ══ VIEWER ══ -->
 <div id="screen-viewer">
   <div class="vbar">
-    <div class="vbar-logo"><div class="vbar-icon">🏥</div>CAIS Campinas — Escala Pública</div>
+    <div class="vbar-logo">
+      <svg width="22" height="22" viewBox="0 0 60 60" style="margin-right:8px;flex-shrink:0">
+        <rect x="0" y="0" width="60" height="60" fill="#1B4D6F" rx="14"/>
+        <path d="M 12 38 Q 21 30, 30 38 T 48 38" fill="none" stroke="#F8FAFC" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M 12 46 Q 21 38, 30 46 T 48 46" fill="none" stroke="#F8FAFC" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+        <circle cx="30" cy="22" r="6" fill="#D4A857"/>
+      </svg>
+      <div style="display:flex;flex-direction:column;line-height:1.1">
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span style="font-family:Georgia,serif;font-size:18px;font-weight:400;color:#1B4D6F">Kos</span>
+          <span style="font-family:'Inter',sans-serif;font-size:9px;font-weight:500;color:#7A8D5C;letter-spacing:1px">app</span>
+        </div>
+        <span style="font-size:8px;color:#7A8D5C;letter-spacing:1.5px;text-transform:uppercase">Plantões</span>
+      </div>
+    </div>
     <div class="vbar-mc">
       <button class="vbar-btn" onclick="mudarViewerMes(-1)">‹</button>
       <span class="vbar-lbl" id="vmc-l"></span>
@@ -391,7 +415,21 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 <div id="screen-app">
   <div class="topbar">
     <button class="tb-hamburger" id="btn-hamburger">☰</button>
-    <div class="tb-logo"><div class="tb-ic">🏥</div>CAIS Campinas</div>
+    <div class="tb-logo">
+      <svg width="28" height="28" viewBox="0 0 60 60" style="margin-right:8px;flex-shrink:0">
+        <rect x="0" y="0" width="60" height="60" fill="#1B4D6F" rx="14"/>
+        <path d="M 12 38 Q 21 30, 30 38 T 48 38" fill="none" stroke="#F8FAFC" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M 12 46 Q 21 38, 30 46 T 48 46" fill="none" stroke="#F8FAFC" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+        <circle cx="30" cy="22" r="6" fill="#D4A857"/>
+      </svg>
+      <div style="display:flex;flex-direction:column;line-height:1">
+        <div style="display:flex;align-items:baseline;gap:5px">
+          <span style="font-family:Georgia,serif;font-size:22px;font-weight:400;color:#1B4D6F">Kos</span>
+          <span style="font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:#7A8D5C;letter-spacing:1.2px">app</span>
+        </div>
+        <span style="font-size:8px;color:#7A8D5C;letter-spacing:2px;text-transform:uppercase">Plantões</span>
+      </div>
+    </div>
     <div class="tb-sep"></div>
     <span class="tb-month" id="tb-month"></span>
     <span class="tb-date" id="tb-date"></span>
@@ -1039,7 +1077,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 <!-- ══ MODAL PRIMEIRO ACESSO ══ -->
 <div class="mo" id="mo-primeiro-acesso">
   <div class="m-box">
-    <div class="m-t">👋 Bem-vindo ao CAIS Campinas!</div>
+    <div class="m-t">👋 Bem-vindo ao Kos App!</div>
     <div class="m-s">Configure seu perfil para personalizar a experiência. Você pode atualizar a qualquer momento clicando nas suas iniciais no canto superior direito.</div>
     <div class="fg"><label class="fl">Como deseja que seu nome apareça na escala?</label><input type="text" class="fi" id="pa-nome-escala" placeholder="Ex: João Silva, Dra. Ana Lima"><div style="font-size:11px;color:var(--text3);margin-top:5px">Primeiro nome e um sobrenome. Se for nome composto, use apenas o primeiro nome.</div></div>
     <div class="fg"><label class="fl">WhatsApp <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="tel" class="fi" id="pa-whatsapp" placeholder="(62) 9 0000-0000"></div>
