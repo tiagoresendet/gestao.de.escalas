@@ -1906,15 +1906,15 @@ function gerarHtmlSems(sems,canEdit){
               }
               const tag=parte.match(/#([12])/);
               const metade=tag?tag[1]:String(idx+1);
-              const horario=t.not
-                ?(metade==='1'?'19h–01h':'01h–07h')
-                :(metade==='1'?'07h–13h':'13h–19h');
-              return `<div style="display:flex;flex-direction:column;line-height:1.15;${idx===0?'padding-bottom:3px;border-bottom:1px dashed var(--border2)':'padding-top:3px'}">
-                <span style="font-size:11px;font-weight:600">${nome}</span>
-                <span style="font-size:9px;color:var(--text2)">${crm} · ${vinc} · <strong style="color:var(--blue)">${horario} (6h)</strong></span>
+              const hCurto=t.not
+                ?(metade==='1'?'19–01':'01–07')
+                :(metade==='1'?'07–13':'13–19');
+              return `<div style="line-height:1.1;${idx===0?'border-bottom:1px dashed var(--border2);padding-bottom:1px;margin-bottom:1px':''}">
+                <div style="font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
+                <div style="font-size:8.5px;color:var(--text2);line-height:1">${crm} · ${vinc} · <strong style="color:var(--purple)">${hCurto}h</strong></div>
               </div>`;
             }).join('');
-            cellHTML=`<div class="cn-wrap" style="font-size:11px">${linhas}<div style="font-size:8px;color:var(--purple);margin-top:2px;font-weight:600">⇄ MEIO PLANTÃO</div></div>`;
+            cellHTML=`<div class="cn-wrap" style="padding:1px 0">${linhas}</div>`;
           } else {
             // ═══ PLANTÃO INTEIRO ═══
             let nomeCell='—',crmCell='',vincCell='';
@@ -2323,17 +2323,23 @@ function cardEscala(x,tipo){
   const corStatus=p.ok?'b-green':'b-amber';
   let acoes='';
   if(isHistorico){
-    // Histórico: somente visualização, sem publicar/despublicar
-    acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})">📅 Ver escala</button>`;
-  } else {
-    // Ativas: botões de gerenciar
+    // Histórico: pode ver, publicar/bloquear (gestor) e excluir
+    acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})" title="Ver escala">📅 Ver</button>`;
     if(p.ok){
-      acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})">📅 Ver</button>
-        <button class="btn btn-d btn-sm" onclick="despublicar('${k}')">🔒 Bloquear</button>`;
+      acoes+=`<button class="btn btn-d btn-sm" onclick="despublicar('${k}')" title="Bloquear escala">🔒 Bloquear</button>`;
     } else {
-      acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})">📅 Ver</button>
-        <button class="btn btn-s btn-sm" onclick="publicar('${k}')">📢 Publicar</button>`;
+      acoes+=`<button class="btn btn-s btn-sm" onclick="publicar('${k}')" title="Publicar escala">📢 Publicar</button>`;
     }
+    acoes+=`<button class="btn btn-d btn-sm" onclick="excluirEscala(${m},${a})" title="Excluir escala definitivamente">🗑 Excluir</button>`;
+  } else {
+    // Ativas: ver, publicar/bloquear, excluir
+    acoes=`<button class="btn btn-g btn-sm" onclick="navegarParaEscala(${m},${a})" title="Ver escala">📅 Ver</button>`;
+    if(p.ok){
+      acoes+=`<button class="btn btn-d btn-sm" onclick="despublicar('${k}')" title="Bloquear escala">🔒 Bloquear</button>`;
+    } else {
+      acoes+=`<button class="btn btn-s btn-sm" onclick="publicar('${k}')" title="Publicar escala">📢 Publicar</button>`;
+    }
+    acoes+=`<button class="btn btn-d btn-sm" onclick="excluirEscala(${m},${a})" title="Excluir escala definitivamente">🗑 Excluir</button>`;
   }
   const tagVigente=isVigente?'<span class="badge b-blue" style="margin-left:6px;font-size:9px">VIGENTE</span>':'';
   return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:13px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
@@ -2343,8 +2349,43 @@ function cardEscala(x,tipo){
       <div style="font-size:11px;color:var(--text2);margin-top:2px">${p.ok?'Publicada em '+p.d:(isHistorico?'Arquivada':'Bloqueada — plantonistas sem acesso')} · ${cnt} plantões</div>
     </div>
     <span class="badge ${corStatus}">${labelStatus}</span>
-    <div style="display:flex;gap:5px">${acoes}</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">${acoes}</div>
   </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// EXCLUIR ESCALA — apaga snapshot + publicação do banco
+// ═══════════════════════════════════════════════════════
+async function excluirEscala(m,a){
+  const k=keyM(m,a);
+  const cnt=gerarPlantoesMes(m,a).length;
+  const msg='⚠️ Excluir a escala de '+MP[m]+' '+a+'?\n\n'+
+    '• '+cnt+' plantões serão apagados\n'+
+    '• Alterações manuais e trocas aplicadas serão perdidas\n'+
+    '• Esta ação NÃO pode ser desfeita\n\n'+
+    'A Escala Base (template) NÃO será afetada.\n\n'+
+    'Confirma a exclusão?';
+  if(!confirm(msg))return;
+  try{
+    // 1. Apagar todos os registros do mês na escala_mensal
+    const {error:eEsc}=await sb.from('escala_mensal').delete()
+      .eq('mes',m).eq('ano',a);
+    if(eEsc)throw eEsc;
+    // 2. Apagar publicação
+    await sb.from('publicacoes').delete().eq('mes',m).eq('ano',a);
+    // 3. Limpar local
+    delete ESCMES[k];
+    delete PUB[k];
+    // Limpar SUBS deste mês
+    Object.keys(SUBS).forEach(sk=>{
+      if(sk.startsWith(m+'-'+a+'-'))delete SUBS[sk];
+    });
+    showToast('Escala de '+MP[m]+' '+a+' excluída!');
+    renderAll();
+  }catch(e){
+    console.error('excluirEscala:',e);
+    showToast('Erro ao excluir: '+(e.message||'').slice(0,60),true);
+  }
 }
 
 function navegarParaEscala(m,a){
