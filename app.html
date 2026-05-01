@@ -925,6 +925,26 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       </div>
     </div>
     <div class="fg"><label class="fl">Motivo (opcional)</label><textarea class="fta" id="tr-motivo" placeholder="Opcional..."></textarea></div>
+    <!-- ═══ MEIO PLANTÃO (apenas para turnos de 12h) ═══ -->
+    <div id="tr-meio-wrap" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r2);padding:11px 13px;margin-bottom:12px;display:none">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text)">
+        <input type="checkbox" id="tr-meio-check" onchange="toggleMeioPlantao()" style="accent-color:var(--purple);width:16px;height:16px">
+        ⇄ Trocar apenas metade do plantão (6h)
+      </label>
+      <div id="tr-meio-opcoes" style="display:none;margin-top:10px;padding-left:24px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:7px">Qual metade você quer trocar (que o substituto vai cobrir)?</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 9px;background:var(--bg3);border-radius:var(--r2)">
+            <input type="radio" name="tr-metade" value="1" id="tr-met-1" style="accent-color:var(--purple)">
+            <span><strong>Primeira metade</strong> — <span id="tr-met-1-label">primeiras 6h</span> (substituto cobre o início)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 9px;background:var(--bg3);border-radius:var(--r2)">
+            <input type="radio" name="tr-metade" value="2" id="tr-met-2" checked style="accent-color:var(--purple)">
+            <span><strong>Segunda metade</strong> — <span id="tr-met-2-label">últimas 6h</span> (substituto cobre o final)</span>
+          </label>
+        </div>
+      </div>
+    </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-troca')">Cancelar</button>
       <button class="btn btn-p" onclick="enviarTroca()">📤 Enviar</button>
@@ -1395,6 +1415,7 @@ async function carregarSupabase(){
         data:dt.toLocaleDateString('pt-BR'),
         dt:dt,
         turno:t.turno,area:t.area,motivo:t.motivo||'',
+        metade:t.metade||null,
         status:t.status,mes:t.mes,ano:t.ano,vis:t.visivel_para||[]
       });
     });
@@ -1444,7 +1465,7 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 }
 
 async function salvarTroca(troca){
-  const {error}=await sb.from('trocas').upsert({
+  const payload={
     codigo:troca.id,
     solicitante_nome:troca.sol,solicitante_crm:troca.sCRM||null,
     substituto_nome:troca.sub,substituto_crm:troca.bCRM||null,
@@ -1453,7 +1474,16 @@ async function salvarTroca(troca){
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
     visivel_para:troca.vis||[]
-  },{onConflict:'codigo'});
+  };
+  // Tentar salvar com metade — se coluna não existir, tenta sem
+  if(troca.metade)payload.metade=troca.metade;
+  let {error}=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
+  if(error&&error.message&&error.message.includes('metade')){
+    delete payload.metade;
+    const r=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
+    error=r.error;
+    console.warn('Coluna metade não existe — execute SQL v23');
+  }
   if(error)console.error('Erro troca:',error);
 }
 
@@ -1512,9 +1542,40 @@ function gerarPlantoesMes(mes,ano){
       const dt=sem.dts[ab];const fds=isFDS(dt);
       const diaMes=sem.dias[ab];
       TURNOS.forEach((t,ti)=>{
-        // Usa getSlotValDia para ler corretamente os plantões manuais por dia
         const val=getSlotValDia(mes,ano,sem.letra,ab,ti,diaMes);
         if(!val)return;
+        // ═══ MEIO PLANTÃO: separador "|" ═══
+        if(val.includes('|')&&t.h===12){
+          // Quebrar em 2 plantões de 6h cada
+          const partes=val.split('|').map(p=>p.trim());
+          partes.forEach((parte,idx)=>{
+            const match=parte.match(/\((\d+)\)/);
+            if(!match)return;
+            const crm=parseInt(match[1]);
+            const med=MEDICOS.find(m=>m.c===crm);
+            // Detectar metade pela tag #1 ou #2; senão usar ordem
+            const metadeTag=parte.match(/#([12])/);
+            const metade=metadeTag?metadeTag[1]:String(idx+1);
+            // Determinar horário da metade
+            let horarioMetade;
+            if(t.not){// noturno 19-07
+              horarioMetade=metade==='1'?'19:00–01:00':'01:00–07:00';
+            } else {// diurno 07-19
+              horarioMetade=metade==='1'?'07:00–13:00':'13:00–19:00';
+            }
+            const turnoLabel=`${horarioMetade}  ${t.a}${t.l.match(/\(\d+\)/)?(' '+t.l.match(/\(\d+\)/)[0]):''}`;
+            plantoes.push({
+              id:`${mes}-${ano}-${sem.letra}-${ab}-${ti}-${diaMes}-m${metade}`,
+              crm,nome:med?med.n:parte.replace(/\s*\(\d+\)\s*(CR|EF)?\s*#?[12]?$/,'').trim(),
+              area:t.a,dt,dia:diaMes,ab,semLetra:sem.letra,
+              turnoIdx:ti,turno:turnoLabel,not:t.not,h:6,fds,
+              valOriginal:val,meioPlantao:true,metade,
+              medExt:med?med.ext:false,medUnidade:med?med.unidade:null
+            });
+          });
+          return;
+        }
+        // ═══ PLANTÃO INTEIRO ═══
         const match=val.match(/\((\d+)\)/);
         if(!match)return;
         const crm=parseInt(match[1]);
@@ -1826,27 +1887,52 @@ function gerarHtmlSems(sems,canEdit){
         const arr=EB[sem.letra][ab]||[];
         const diaMes=sem.dias[ab]||0;
         const click=canEdit?`onclick="abrirEditarMes('${sem.letra}','${ab}',${ti},'${t.l}',${diaMes},this)"`:'';
-        // Pontual por dia, não propaga
         const val=getSlotValDia(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti,diaMes);
-        let nomeCell='—',crmCell='',vincCell='';
+        let cellHTML='<span class="cn vz">—</span>';
         if(val){
-          const mV=val.match(/(CR|EF)$/);if(mV)vincCell=mV[1];
-          const mCRM=val.match(/\((\d+)\)/);
-          if(mCRM){
-            crmCell=mCRM[1];
-            const med=MEDICOS.find(m=>m.c===parseInt(crmCell));
-            // Usar nome preferido se cadastrado, senão nome curto padrão
-            nomeCell=med?nomeExibicao(med.n,med.c):
-              val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();
-          } else { nomeCell=val.replace(/\s*(CR|EF)$/,'').trim(); }
+          // ═══ MEIO PLANTÃO: separador "|" ═══
+          if(val.includes('|')&&t.h===12){
+            const partes=val.split('|').map(p=>p.trim());
+            const linhas=partes.map((parte,idx)=>{
+              const mV=parte.match(/(CR|EF)/);
+              const vinc=mV?mV[1]:'';
+              const mCRM=parte.match(/\((\d+)\)/);
+              let nome='—',crm='';
+              if(mCRM){
+                crm=mCRM[1];
+                const med=MEDICOS.find(m=>m.c===parseInt(crm));
+                nome=med?nomeExibicao(med.n,med.c):
+                  parte.replace(/\s*\(\d+\)\s*(CR|EF)?\s*#?[12]?$/,'').trim();
+              }
+              const tag=parte.match(/#([12])/);
+              const metade=tag?tag[1]:String(idx+1);
+              const horario=t.not
+                ?(metade==='1'?'19h–01h':'01h–07h')
+                :(metade==='1'?'07h–13h':'13h–19h');
+              return `<div style="display:flex;flex-direction:column;line-height:1.15;${idx===0?'padding-bottom:3px;border-bottom:1px dashed var(--border2)':'padding-top:3px'}">
+                <span style="font-size:11px;font-weight:600">${nome}</span>
+                <span style="font-size:9px;color:var(--text2)">${crm} · ${vinc} · <strong style="color:var(--blue)">${horario} (6h)</strong></span>
+              </div>`;
+            }).join('');
+            cellHTML=`<div class="cn-wrap" style="font-size:11px">${linhas}<div style="font-size:8px;color:var(--purple);margin-top:2px;font-weight:600">⇄ MEIO PLANTÃO</div></div>`;
+          } else {
+            // ═══ PLANTÃO INTEIRO ═══
+            let nomeCell='—',crmCell='',vincCell='';
+            const mV=val.match(/(CR|EF)$/);if(mV)vincCell=mV[1];
+            const mCRM=val.match(/\((\d+)\)/);
+            if(mCRM){
+              crmCell=mCRM[1];
+              const med=MEDICOS.find(m=>m.c===parseInt(crmCell));
+              nomeCell=med?nomeExibicao(med.n,med.c):
+                val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();
+            } else { nomeCell=val.replace(/\s*(CR|EF)$/,'').trim(); }
+            const subLine=crmCell+(vincCell?' · '+vincCell:'');
+            cellHTML=`<div class="cn-wrap"><span class="cn">${nomeCell}</span>${subLine?`<span class="cn-sub">${subLine}</span>`:''}</div>`;
+          }
+        } else {
+          cellHTML='<div class="cn-wrap"><span class="cn vz">—</span></div>';
         }
-        const subLine=val?(crmCell+(vincCell?' · '+vincCell:'')):'';
-        html+=`<td class="cell" ${click} title="${val}">
-          <div class="cn-wrap">
-            <span class="cn${val?'':' vz'}">${val?nomeCell:'—'}</span>
-            ${subLine?`<span class="cn-sub">${subLine}</span>`:''}
-          </div>
-        </td>`;
+        html+=`<td class="cell" ${click} title="${val.replace(/"/g,'&quot;')}">${cellHTML}</td>`;
       });
       html+=`</tr>`;
     });
@@ -2583,29 +2669,68 @@ async function carregarESCMES(){
 }
 
 async function aplicarTrocaEscala(troca){
-  // Aplica troca APENAS no DIA específico — não propaga para a semana inteira
+  // Aplica troca APENAS no DIA específico — lê do estado REAL do dia (ESCMES + EB)
   const dt=troca.dt;
   const col=JTC[dt.getDay()];
   const ab=DA[col];
   const ciclo=getCiclo(dt);
-  const diaMes=dt.getDate();// CRÍTICO: dia específico do mês
-  if(!EB[ciclo]||!EB[ciclo][ab])return false;
-  const arr=EB[ciclo][ab];
-  const busca=`(${troca.sCRM})`;
-  for(let i=0;i<arr.length;i++){
-    if(arr[i]&&arr[i].includes(busca)){
+  const diaMes=dt.getDate();
+  const buscaCRM=`(${troca.sCRM})`;
+  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'em',{mes:troca.mes,ano:troca.ano,ciclo,ab,diaMes});
+
+  // Iterar TODOS os 16 slots, lendo do estado REAL (não da EB direto)
+  for(let i=0;i<16;i++){
+    const valAtual=getSlotValDia(troca.mes,troca.ano,ciclo,ab,i,diaMes);
+    if(!valAtual)continue;
+    // Se a célula tem meio plantão (separador |), tratar cada parte
+    if(valAtual.includes('|')){
+      const partes=valAtual.split('|').map(p=>p.trim());
+      const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
+      if(idxParte<0)continue;
+      // Substituir somente a parte do solicitante
       const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
-      const novoVal=mSub
+      const novoNome=mSub
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
-      // Salvar APENAS no DIA específico (passa diaMes!) — não propaga
-      console.log('[aplicarTrocaEscala] Aplicando troca apenas no dia',diaMes);
+      // Aplicar metade ou inteiro conforme tag
+      partes[idxParte]=novoNome+(troca.metade?' #'+troca.metade:'');
+      const novoVal=partes.join(' | ');
+      console.log('[aplicarTrocaEscala] Substituindo parte',idxParte,'em meio plantão');
       await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
-      // Compat
+      SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
+      return true;
+    }
+    // Slot inteiro com o solicitante
+    if(valAtual.includes(buscaCRM)){
+      const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
+      const novoSub=mSub
+        ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
+        :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
+      let novoVal;
+      if(troca.metade){
+        // MEIO PLANTÃO: cria string com pipe
+        // Solicitante fica com a metade que NÃO está sendo trocada
+        const metadeTrocada=troca.metade;// '1' ou '2'
+        const metadeSolicitante=metadeTrocada==='1'?'2':'1';
+        // Encontrar nome do solicitante (já está no valAtual)
+        const nomeOriginal=valAtual.replace(/\s*#[12]$/,'').trim();
+        if(metadeTrocada==='1'){
+          // Substituto pega 1ª metade, solicitante fica com 2ª
+          novoVal=`${novoSub} #1 | ${nomeOriginal} #2`;
+        } else {
+          // Solicitante fica com 1ª, substituto pega 2ª
+          novoVal=`${nomeOriginal} #1 | ${novoSub} #2`;
+        }
+      } else {
+        novoVal=novoSub;
+      }
+      console.log('[aplicarTrocaEscala] Aplicando troca no slot',i,'metade?',troca.metade);
+      await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
       SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
       return true;
     }
   }
+  console.warn('[aplicarTrocaEscala] Solicitante não encontrado em nenhum slot. Verifique se o plantão ainda existe na escala do mês.');
   return false;
 }
 
@@ -2725,8 +2850,9 @@ function abrirMoTroca(){
   sel.innerHTML='<option value="">— Selecione —</option>';
   futuros.forEach(p=>{
     const o=document.createElement('option');
-    o.value=JSON.stringify({dia:p.dia,turno:p.turno,area:p.area,not:p.not,mes:meuMes,ano:meuAno});
+    o.value=JSON.stringify({dia:p.dia,turno:p.turno,area:p.area,not:p.not,h:p.h,mes:meuMes,ano:meuAno});
     o.dataset.turno=p.turno;o.dataset.area=p.area;
+    o.dataset.horas=p.h;o.dataset.not=p.not?'1':'0';
     o.textContent=`${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${meuMes.toString().padStart(2,'0')} · ${p.turno}`;
     sel.appendChild(o);
   });
@@ -2735,6 +2861,10 @@ function abrirMoTroca(){
   const tsBus=document.getElementById('tr-sub-busca');if(tsBus)tsBus.value='';
   const tsHid=document.getElementById('tr-sub');if(tsHid)tsHid.value='';
   const chk=document.getElementById('tr-is-ext');if(chk)chk.checked=false;toggleExtForm();
+  // Reset meio plantão
+  const meioCk=document.getElementById('tr-meio-check');if(meioCk)meioCk.checked=false;
+  const meioOpc=document.getElementById('tr-meio-opcoes');if(meioOpc)meioOpc.style.display='none';
+  const meioWrap=document.getElementById('tr-meio-wrap');if(meioWrap)meioWrap.style.display='none';
   document.getElementById('mo-tr-sub').textContent=futuros.length?`${futuros.length} plantão(ões) disponíveis`:'Nenhum plantão futuro este mês';
   abrirMo('mo-troca');
 }
@@ -2742,7 +2872,32 @@ function atualizarTrTurno(){
   const o=document.getElementById('tr-plantao').selectedOptions[0];
   document.getElementById('tr-turno').value=(o&&o.dataset.turno)||'';
   document.getElementById('tr-area').value=(o&&o.dataset.area)||'';
+  // Mostrar opção de meio plantão APENAS se o plantão é de 12h
+  const horas=o&&o.dataset.horas?parseInt(o.dataset.horas):0;
+  const not=o&&o.dataset.not==='1';
+  const wrap=document.getElementById('tr-meio-wrap');
+  if(horas===12){
+    wrap.style.display='block';
+    // Atualizar labels com horários reais
+    if(not){
+      document.getElementById('tr-met-1-label').textContent='19:00 às 01:00';
+      document.getElementById('tr-met-2-label').textContent='01:00 às 07:00';
+    } else {
+      document.getElementById('tr-met-1-label').textContent='07:00 às 13:00';
+      document.getElementById('tr-met-2-label').textContent='13:00 às 19:00';
+    }
+  } else {
+    wrap.style.display='none';
+    document.getElementById('tr-meio-check').checked=false;
+    document.getElementById('tr-meio-opcoes').style.display='none';
+  }
 }
+
+function toggleMeioPlantao(){
+  const ck=document.getElementById('tr-meio-check').checked;
+  document.getElementById('tr-meio-opcoes').style.display=ck?'block':'none';
+}
+
 function toggleExtForm(){
   const isExt=document.getElementById('tr-is-ext').checked;
   document.getElementById('tr-ext-fields').style.display=isExt?'block':'none';
@@ -2803,15 +2958,34 @@ async function enviarTroca(){
   const pi=JSON.parse(pv);
   const nU=curUser.nU||curUser.n.toUpperCase();
   const df=`${pi.dia.toString().padStart(2,'0')}/${MA[pi.mes||meuMes]}/${pi.ano||meuAno}`;
-  // Data com hora 12:00 para evitar problemas de timezone
   const dtPlantao=new Date(pi.ano||meuAno,(pi.mes||meuMes)-1,pi.dia,12,0,0);
+  // Capturar meio plantão se marcado
+  const meioCk=document.getElementById('tr-meio-check');
+  const isMeio=meioCk&&meioCk.checked;
+  let metade=null;
+  if(isMeio){
+    const radioSel=document.querySelector('input[name="tr-metade"]:checked');
+    metade=radioSel?radioSel.value:'2';
+  }
+  // Calcular horário a exibir (turno completo ou metade)
+  let turnoExibir=pi.turno;
+  if(isMeio){
+    const not=pi.not===true;
+    if(metade==='1'){
+      turnoExibir=not?'19:00–01:00 (1ª metade)':'07:00–13:00 (1ª metade)';
+    } else {
+      turnoExibir=not?'01:00–07:00 (2ª metade)':'13:00–19:00 (2ª metade)';
+    }
+  }
   const nova={id:'T'+(TROCAS.length+1).toString().padStart(3,'0'),sol:nU,sCRM:curUser.c,sub:subNome,bCRM:subCRM,
-    data:df,dt:dtPlantao,turno:pi.turno,area:pi.area,
+    data:df,dt:dtPlantao,turno:turnoExibir,area:pi.area,
+    metade,// '1', '2' ou null
     motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[nU,subNome]};
   TROCAS.unshift(nova);
   await salvarTroca(nova);
   const uniLinhaExt=isExt?'\nUnidade de origem: '+document.getElementById('tr-ext-uni').value:'';
-  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${curUser.n.toUpperCase()}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${pi.turno}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
+  const tagMeio=isMeio?'\n⇄ MEIO PLANTÃO ('+(metade==='1'?'1ª':'2ª')+' metade — 6h)':'';
+  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${curUser.n.toUpperCase()}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${turnoExibir}${tagMeio}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
   document.getElementById('wpp-msg').textContent=msg;
   document.getElementById('btn-cp').textContent='Copiar';document.getElementById('btn-cp').classList.remove('ok');
   fecharMo('mo-troca');abrirMo('mo-conf');renderAll();
