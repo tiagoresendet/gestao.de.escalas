@@ -1946,7 +1946,7 @@ function gerarHtmlSems(sems,canEdit){
         } else {
           cellHTML='<div class="cn-wrap"><span class="cn vz">—</span></div>';
         }
-        html+=`<td class="cell" ${click} title="${val.replace(/"/g,'&quot;')}">${cellHTML}</td>`;
+        html+=`<td class="cell" ${click} title="${(val||'').replace(/"/g,'&quot;')}">${cellHTML}</td>`;
       });
       html+=`</tr>`;
     });
@@ -4766,18 +4766,39 @@ return true;
 initLogins();
 populaLogin();
 async function bootApp(){
+// Garantir que o spinner SEMPRE seja escondido, mesmo em caso de erro
+const esconderSpinner=()=>{
+const boot=document.getElementById(‘screen-boot’);
+if(boot)boot.style.display=‘none’;
+};
+// Timeout de segurança — se boot demorar mais que 15s, mostra login
+const timeoutId=setTimeout(()=>{
+console.warn(‘Boot timeout — forçando exibição do login’);
+esconderSpinner();
+const sl=document.getElementById(‘screen-login’);
+if(sl)sl.style.display=‘flex’;
+},15000);
+
+try{
 initSidebar();
 await carregarSupabase();
 const restaurou=await restaurarSessao();
-// Esconder spinner após carregar tudo
-const boot=document.getElementById(‘screen-boot’);
-if(boot)boot.style.display=‘none’;
+clearTimeout(timeoutId);
+esconderSpinner();
 if(restaurou){
-renderAll();
-aplicarPerfil(curUser.c);
+try{renderAll();}catch(e){console.error(‘renderAll erro:’,e);}
+try{aplicarPerfil(curUser.c);}catch(e){console.error(‘aplicarPerfil erro:’,e);}
 } else {
-// Não havia sessão — mostrar login
-document.getElementById(‘screen-login’).style.display=‘flex’;
+const sl=document.getElementById(‘screen-login’);
+if(sl)sl.style.display=‘flex’;
+}
+}catch(err){
+console.error(‘Boot erro:’,err);
+clearTimeout(timeoutId);
+esconderSpinner();
+const sl=document.getElementById(‘screen-login’);
+if(sl)sl.style.display=‘flex’;
+alert(‘Erro ao carregar o sistema: ‘+(err.message||err)+’\n\nTente atualizar a página (F5).’);
 }
 }
 document.addEventListener(‘DOMContentLoaded’,bootApp);
