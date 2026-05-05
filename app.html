@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -36,80 +35,80 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 #screen-login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%)}
 .lw{width:100%;max-width:400px;padding:28px 24px}
 .l-brand{display:flex;align-items:center;gap:12px;margin-bottom:32px}
-.l-icon{width:46px;height:46px;background:linear-gradient(135deg,var(–blue2),var(–purple));border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 0 24px rgba(90,156,248,.2)}
-.l-name{font-family:Georgia,“Playfair Display”,serif;font-size:30px;font-weight:400;color:#1B4D6F;letter-spacing:-1px;line-height:1}
+.l-icon{width:46px;height:46px;background:linear-gradient(135deg,var(--blue2),var(--purple));border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 0 24px rgba(90,156,248,.2)}
+.l-name{font-family:Georgia,"Playfair Display",serif;font-size:30px;font-weight:400;color:#1B4D6F;letter-spacing:-1px;line-height:1}
 .l-sub{font-size:10px;color:#7A8D5C;margin-top:4px;letter-spacing:2.5px;text-transform:uppercase;font-weight:500}
 .l-title{font-size:22px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px}
-.l-sub2{font-size:13px;color:var(–text2);margin-bottom:22px}
+.l-sub2{font-size:13px;color:var(--text2);margin-bottom:22px}
 .lg{margin-bottom:13px}
-.ll{font-size:11px;font-weight:600;color:var(–text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;display:block}
-.li,.ls{width:100%;background:var(–bg2);border:1.5px solid var(–border2);border-radius:var(–r2);padding:11px 13px;color:var(–text);font-family:var(–font);font-size:14px;outline:none;transition:border-color .2s}
-.li:focus,.ls:focus{border-color:var(–blue)}
-.ls{cursor:pointer;appearance:none;background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘12’ height=‘8’%3E%3Cpath d=‘M1 1l5 5 5-5’ stroke=’%237a85a8’ stroke-width=‘1.5’ fill=‘none’ stroke-linecap=‘round’/%3E%3C/svg%3E”);background-repeat:no-repeat;background-position:right 13px center;background-color:var(–bg2)}
-.ls option{background:var(–bg2)}
-.btn-login{width:100%;padding:12px;background:linear-gradient(135deg,var(–blue2),var(–blue));border:none;border-radius:var(–r2);color:#fff;font-family:var(–font);font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;transition:filter .2s}
+.ll{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;display:block}
+.li,.ls{width:100%;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--r2);padding:11px 13px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .2s}
+.li:focus,.ls:focus{border-color:var(--blue)}
+.ls{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a85a8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;background-color:var(--bg2)}
+.ls option{background:var(--bg2)}
+.btn-login{width:100%;padding:12px;background:linear-gradient(135deg,var(--blue2),var(--blue));border:none;border-radius:var(--r2);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;transition:filter .2s}
 .btn-login:hover{filter:brightness(1.1)}
-.btn-visor{width:100%;padding:9px;background:transparent;border:1.5px solid var(–border2);border-radius:var(–r2);color:var(–text2);font-family:var(–font);font-size:13px;cursor:pointer;transition:all .2s;margin-top:8px}
-.btn-visor:hover{border-color:var(–blue);color:var(–blue)}
-.l-note{text-align:center;font-size:11px;color:var(–text3);margin-top:10px}
+.btn-visor{width:100%;padding:9px;background:transparent;border:1.5px solid var(--border2);border-radius:var(--r2);color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-visor:hover{border-color:var(--blue);color:var(--blue)}
+.l-note{text-align:center;font-size:11px;color:var(--text3);margin-top:10px}
 
 /* ══ VIEWER ══ */
-#screen-viewer{position:fixed;inset:0;display:none;flex-direction:column;background:var(–bg0)}
-.vbar{height:var(–topbar-h);background:var(–bg1);border-bottom:1px solid var(–border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+#screen-viewer{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg0)}
+.vbar{height:var(--topbar-h);background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
 .vbar-logo{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;flex:1}
-.vbar-icon{width:26px;height:26px;background:linear-gradient(135deg,var(–blue2),var(–purple));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px}
-.vbar-mc{display:flex;align-items:center;background:var(–bg2);border:1px solid var(–border2);border-radius:var(–r2);overflow:hidden}
-.vbar-btn{background:none;border:none;color:var(–text2);padding:7px 12px;cursor:pointer;font-size:16px;transition:all .15s;min-width:40px;display:flex;align-items:center;justify-content:center}
-.vbar-btn:hover{background:var(–bg3);color:var(–text)}
-.vbar-lbl{font-size:12px;font-weight:600;padding:0 10px;min-width:110px;text-align:center;border-left:1px solid var(–border);border-right:1px solid var(–border);font-family:var(–mono)}
+.vbar-icon{width:26px;height:26px;background:linear-gradient(135deg,var(--blue2),var(--purple));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.vbar-mc{display:flex;align-items:center;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);overflow:hidden}
+.vbar-btn{background:none;border:none;color:var(--text2);padding:7px 12px;cursor:pointer;font-size:16px;transition:all .15s;min-width:40px;display:flex;align-items:center;justify-content:center}
+.vbar-btn:hover{background:var(--bg3);color:var(--text)}
+.vbar-lbl{font-size:12px;font-weight:600;padding:0 10px;min-width:110px;text-align:center;border-left:1px solid var(--border);border-right:1px solid var(--border);font-family:var(--mono)}
 .vbody{flex:1;overflow-y:auto;padding:14px 16px;-webkit-overflow-scrolling:touch}
 
 /* ══ APP ══ */
 #screen-app{position:fixed;inset:0;display:none;flex-direction:column}
 
 /* ══ TOPBAR ══ */
-.topbar{height:var(–topbar-h);background:var(–bg1);border-bottom:1px solid var(–border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.tb-hamburger{background:none;border:none;color:var(–text2);font-size:18px;cursor:pointer;padding:6px 8px;border-radius:var(–r3);transition:all .15s;flex-shrink:0;line-height:1}
-.tb-hamburger:hover{background:var(–bg3);color:var(–text)}
-.tb-logo{display:flex;align-items:center;gap:8px;font-family:var(–display);font-size:14px;font-weight:700;letter-spacing:-.2px}
-.tb-ic{width:26px;height:26px;background:linear-gradient(135deg,var(–blue2),var(–purple));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
-.tb-sep{width:1px;height:16px;background:var(–border2)}
-.tb-month{font-size:12px;font-weight:500;color:var(–text2);font-family:var(–mono)}
+.topbar{height:var(--topbar-h);background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tb-hamburger{background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:6px 8px;border-radius:var(--r3);transition:all .15s;flex-shrink:0;line-height:1}
+.tb-hamburger:hover{background:var(--bg3);color:var(--text)}
+.tb-logo{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:-.2px}
+.tb-ic{width:26px;height:26px;background:linear-gradient(135deg,var(--blue2),var(--purple));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.tb-sep{width:1px;height:16px;background:var(--border2)}
+.tb-month{font-size:12px;font-weight:500;color:var(--text2);font-family:var(--mono)}
 .tb-r{margin-left:auto;display:flex;align-items:center;gap:8px}
-.u-ava{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(–blue2),var(–purple));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.u-ava{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--blue2),var(--purple));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
 .u-info{display:flex;flex-direction:column}
 .u-nome{font-size:12px;font-weight:600;line-height:1.2}
-.u-cargo{font-size:10px;color:var(–text2)}
-.btn-out{background:none;border:1px solid var(–border2);border-radius:var(–r3);padding:4px 10px;color:var(–text2);font-size:11px;cursor:pointer;font-family:var(–font);transition:all .15s}
-.btn-out:hover{border-color:var(–red);color:var(–red)}
-.tb-date{font-size:11px;color:var(–text2);font-family:var(–font);margin-left:6px}
+.u-cargo{font-size:10px;color:var(--text2)}
+.btn-out{background:none;border:1px solid var(--border2);border-radius:var(--r3);padding:4px 10px;color:var(--text2);font-size:11px;cursor:pointer;font-family:var(--font);transition:all .15s}
+.btn-out:hover{border-color:var(--red);color:var(--red)}
+.tb-date{font-size:11px;color:var(--text2);font-family:var(--font);margin-left:6px}
 @media(max-width:600px){.u-info,.tb-sep,.tb-month,.tb-date{display:none}}
 
 /* ══ BODY ══ */
 .bwrap{display:flex;flex:1;overflow:hidden}
 
 /* ══ SIDEBAR ══ */
-.sidebar{width:var(–sidebar-w);background:var(–bg1);border-right:1px solid var(–border);display:flex;flex-direction:column;padding:8px;flex-shrink:0;overflow-y:auto;transition:transform .22s ease}
+.sidebar{width:var(--sidebar-w);background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:8px;flex-shrink:0;overflow-y:auto;transition:transform .22s ease}
 @media(max-width:900px){
-.sidebar{
-position:fixed;top:var(–topbar-h);bottom:0;left:0;
-z-index:50;
-transform:translateX(-110%);
-box-shadow:4px 0 18px rgba(0,0,0,.15);
-}
-.sidebar.sb-open{transform:translateX(0)}
-/* Botão hamburger visível só no mobile */
+  .sidebar{
+    position:fixed;top:var(--topbar-h);bottom:0;left:0;
+    z-index:50;
+    transform:translateX(-110%);
+    box-shadow:4px 0 18px rgba(0,0,0,.15);
+  }
+  .sidebar.sb-open{transform:translateX(0)}
+  /* Botão hamburger visível só no mobile */
 }
 @media(min-width:901px){
-/* Desktop: hamburger escondido, sidebar sempre visível */
-#btn-hamburger{display:none}
+  /* Desktop: hamburger escondido, sidebar sempre visível */
+  #btn-hamburger{display:none}
 }
-.ns{font-size:10px;font-weight:700;color:var(–text3);text-transform:uppercase;letter-spacing:.1em;padding:10px 8px 4px;margin-top:2px}
-.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(–r2);cursor:pointer;color:var(–text2);font-size:13px;font-weight:500;transition:all .12s;margin-bottom:1px;user-select:none}
-.ni:hover{background:var(–bg3);color:var(–text)}
-.ni.active{background:var(–blue-bg);color:var(–blue)}
+.ns{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:10px 8px 4px;margin-top:2px}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r2);cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .12s;margin-bottom:1px;user-select:none}
+.ni:hover{background:var(--bg3);color:var(--text)}
+.ni.active{background:var(--blue-bg);color:var(--blue)}
 .ni-ic{font-size:14px;width:18px;text-align:center;flex-shrink:0}
-.ni-badge{margin-left:auto;background:var(–red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;display:none}
+.ni-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;display:none}
 
 /* ══ MAIN ══ */
 .main{flex:1;overflow-y:auto;padding:18px 20px;-webkit-overflow-scrolling:touch}
@@ -117,51 +116,51 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 .page{display:none}.page.active{display:block}
 .ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap}
 .pt{font-size:18px;font-weight:700;letter-spacing:-.3px}
-.ps{font-size:12px;color:var(–text2);margin-top:2px}
+.ps{font-size:12px;color:var(--text2);margin-top:2px}
 .ph-r{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 /* ══ BOTÕES ══ */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(–r2);font-family:var(–font);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;user-select:none}
-.btn-p{background:var(–blue2);color:#fff}.btn-p:hover{filter:brightness(1.12)}
-.btn-s{background:var(–green2);color:#fff}.btn-s:hover{filter:brightness(1.12)}
-.btn-d{background:var(–red2);color:#fff}.btn-d:hover{filter:brightness(1.12)}
-.btn-g{background:var(–bg3);color:var(–text);border:1px solid var(–border2)}.btn-g:hover{background:var(–bg4);border-color:var(–border2)}
-.btn-a{background:var(–amber-bg);color:var(–amber);border:1px solid rgba(240,165,37,.25)}.btn-a:hover{border-color:var(–amber)}
-.btn-xs{padding:3px 8px;font-size:11px;border-radius:var(–r3)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r2);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;user-select:none}
+.btn-p{background:var(--blue2);color:#fff}.btn-p:hover{filter:brightness(1.12)}
+.btn-s{background:var(--green2);color:#fff}.btn-s:hover{filter:brightness(1.12)}
+.btn-d{background:var(--red2);color:#fff}.btn-d:hover{filter:brightness(1.12)}
+.btn-g{background:var(--bg3);color:var(--text);border:1px solid var(--border2)}.btn-g:hover{background:var(--bg4);border-color:var(--border2)}
+.btn-a{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(240,165,37,.25)}.btn-a:hover{border-color:var(--amber)}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:var(--r3)}
 .btn-sm{padding:5px 11px;font-size:12px}
 
 /* ══ BADGE ══ */
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.b-amber{background:var(–amber-bg);color:var(–amber)}
-.b-green{background:var(–green-bg);color:var(–green)}
-.b-red{background:var(–red-bg);color:var(–red)}
-.b-blue{background:var(–blue-bg);color:var(–blue)}
-.b-purple{background:var(–purple-bg);color:var(–purple)}
+.b-amber{background:var(--amber-bg);color:var(--amber)}
+.b-green{background:var(--green-bg);color:var(--green)}
+.b-red{background:var(--red-bg);color:var(--red)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+.b-purple{background:var(--purple-bg);color:var(--purple)}
 
 /* ══ STATS ══ */
 .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 @media(max-width:860px){.sg{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:440px){.sg{grid-template-columns:1fr 1fr;gap:7px}}
-.sc{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:14px 16px}
-.sl{font-size:10px;color:var(–text2);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
-.sv{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1;font-family:var(–mono)}
-.ss{font-size:11px;color:var(–text3);margin-top:3px}
-.card{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:14px 15px}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.sl{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.sv{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1;font-family:var(--mono)}
+.ss{font-size:11px;color:var(--text3);margin-top:3px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 15px}
 .ct{font-size:13px;font-weight:700;margin-bottom:10px}
 
 /* ══ ESCALA — TABELA CORRIGIDA ══ */
 .ec{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.mc{display:flex;align-items:center;background:var(–bg2);border:1px solid var(–border2);border-radius:var(–r2);overflow:hidden}
-.mc-b{background:none;border:none;color:var(–text2);padding:8px 14px;cursor:pointer;font-size:16px;transition:all .15s;min-width:42px;display:flex;align-items:center;justify-content:center}
-.mc-b:hover{background:var(–bg3);color:var(–text)}
-.mc-l{font-size:12px;font-weight:600;padding:0 12px;min-width:130px;text-align:center;border-left:1px solid var(–border);border-right:1px solid var(–border);font-family:var(–mono)}
+.mc{display:flex;align-items:center;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);overflow:hidden}
+.mc-b{background:none;border:none;color:var(--text2);padding:8px 14px;cursor:pointer;font-size:16px;transition:all .15s;min-width:42px;display:flex;align-items:center;justify-content:center}
+.mc-b:hover{background:var(--bg3);color:var(--text)}
+.mc-l{font-size:12px;font-weight:600;padding:0 12px;min-width:130px;text-align:center;border-left:1px solid var(--border);border-right:1px solid var(--border);font-family:var(--mono)}
 .sf{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
-.sf-b{background:var(–bg3);border:1px solid var(–border2);border-radius:var(–r3);padding:4px 10px;color:var(–text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(–font)}
-.sf-b.active{background:var(–blue-bg);border-color:var(–blue);color:var(–blue)}
+.sf-b{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r3);padding:4px 10px;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--font)}
+.sf-b.active{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
 
 /* Wrapper scroll horizontal para escala */
-.sem-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(–border2);border-radius:var(–r);margin-bottom:12px;background:var(–bg1)}
-.sem-label{font-size:10px;font-weight:700;color:var(–text2);padding:8px 12px;background:var(–bg2);display:flex;align-items:center;gap:8px;font-family:var(–mono);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(–border);flex-shrink:0}
+.sem-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border2);border-radius:var(--r);margin-bottom:12px;background:var(--bg1)}
+.sem-label{font-size:10px;font-weight:700;color:var(--text2);padding:8px 12px;background:var(--bg2);display:flex;align-items:center;gap:8px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);flex-shrink:0}
 /* Tabela com larguras fixas */
 .sem-tbl{border-collapse:collapse;width:100%;min-width:820px}
 .sem-tbl th{background:#f0f2f7;color:#5a6485;font-size:9px;font-weight:700;letter-spacing:.06em;padding:6px 4px;text-align:center;border-right:1px solid #dde1ed;text-transform:uppercase;white-space:nowrap}
@@ -177,9 +176,9 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 .sem-tbl .trow td:last-child{border-right:none}
 /* nome dentro da célula — UMA linha, ellipsis */
 .cn-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:2px 3px;gap:1px}
-.cn{font-family:var(–mono);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a1f36;font-weight:700;text-align:center;width:100%;line-height:1.2}
-.cn.vz{color:var(–text3);font-weight:400}
-.cn-sub{font-family:var(–mono);font-size:6.5px;color:#5a6485;text-align:center;white-space:nowrap;line-height:1;width:100%;overflow:hidden;text-overflow:ellipsis}
+.cn{font-family:var(--mono);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a1f36;font-weight:700;text-align:center;width:100%;line-height:1.2}
+.cn.vz{color:var(--text3);font-weight:400}
+.cn-sub{font-family:var(--mono);font-size:6.5px;color:#5a6485;text-align:center;white-space:nowrap;line-height:1;width:100%;overflow:hidden;text-overflow:ellipsis}
 /* Cores de fundo por tipo de turno */
 .sv-d{background:#ffd5d5}.sv-d .col-h{color:#dc2626;font-weight:700}
 .cm-d{background:#e8f0fe}.cm-d .col-h{color:#2563eb;font-weight:700}
@@ -192,153 +191,153 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 .fds-cell{}
 
 /* ══ CHIPS ══ */
-.ch-sv{background:var(–red-bg);color:var(–red);border:1px solid rgba(240,85,85,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
-.ch-cm{background:var(–blue-bg);color:var(–blue);border:1px solid rgba(90,156,248,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
-.ch-ped{background:var(–amber-bg);color:var(–amber);border:1px solid rgba(240,165,37,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
-.ch-apo{background:var(–green-bg);color:var(–green);border:1px solid rgba(45,201,122,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
+.ch-sv{background:var(--red-bg);color:var(--red);border:1px solid rgba(240,85,85,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
+.ch-cm{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(90,156,248,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
+.ch-ped{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(240,165,37,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
+.ch-apo{background:var(--green-bg);color:var(--green);border:1px solid rgba(45,201,122,.2);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block}
 .ch-dia{background:#171305;color:#fbbf24;border:1px solid rgba(251,191,36,.2);padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;display:inline-block}
-.ch-not{background:var(–purple-bg);color:var(–purple);border:1px solid rgba(160,125,245,.2);padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;display:inline-block}
+.ch-not{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(160,125,245,.2);padding:2px 8px;border-radius:20px;font-size:9px;font-weight:700;display:inline-block}
 
 /* ══ PUBLICAÇÃO ══ */
-.pub-banner{background:linear-gradient(135deg,var(–amber-bg),#150d00);border:1px solid rgba(240,165,37,.2);border-radius:var(–r);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.pub-banner{background:linear-gradient(135deg,var(--amber-bg),#150d00);border:1px solid rgba(240,165,37,.2);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 
 /* ══ TROCAS ══ */
-.tr-i{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:12px 14px;display:flex;align-items:flex-start;gap:11px;margin-bottom:7px;transition:border-color .15s}
-.tr-i:hover{border-color:var(–border2)}
+.tr-i{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:flex-start;gap:11px;margin-bottom:7px;transition:border-color .15s}
+.tr-i:hover{border-color:var(--border2)}
 .tr-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.tr-dot.pendente{background:var(–amber)}.tr-dot.aprovado{background:var(–green)}
-.tr-dot.rejeitado{background:var(–red)}.tr-dot.revertido{background:var(–purple)}
+.tr-dot.pendente{background:var(--amber)}.tr-dot.aprovado{background:var(--green)}
+.tr-dot.rejeitado{background:var(--red)}.tr-dot.revertido{background:var(--purple)}
 .tr-b{flex:1;min-width:0}
 .tr-t{font-size:13px;font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tr-m{font-size:11px;color:var(–text2);line-height:1.6}
-.tr-tag{font-size:10px;color:var(–amber);margin-top:2px;font-weight:600}
+.tr-m{font-size:11px;color:var(--text2);line-height:1.6}
+.tr-tag{font-size:10px;color:var(--amber);margin-top:2px;font-weight:600}
 .tr-a{display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0;align-items:flex-start}
 
 /* ══ CC ══ */
 .cc-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:8px}
 @media(max-width:440px){.cc-g{grid-template-columns:1fr}}
-.cc-c{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:11px 12px;display:flex;align-items:center;gap:9px;transition:border-color .15s}
-.cc-c:hover{border-color:var(–border2)}
+.cc-c{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 12px;display:flex;align-items:center;gap:9px;transition:border-color .15s}
+.cc-c:hover{border-color:var(--border2)}
 .cc-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
 .cc-nm{font-size:11px;font-weight:600;line-height:1.3;margin-bottom:1px}
-.cc-cr{font-size:10px;color:var(–text2);font-family:var(–mono)}
+.cc-cr{font-size:10px;color:var(--text2);font-family:var(--mono)}
 .cc-ac{margin-left:auto;display:flex;gap:3px;opacity:0;transition:opacity .15s;flex-shrink:0}
 .cc-c:hover .cc-ac,.cc-ac:focus-within{opacity:1}
 @media(max-width:768px){.cc-ac{opacity:1}}
 .s-row{display:flex;gap:8px;margin-bottom:12px}
-.s-inp{flex:1;background:var(–bg2);border:1.5px solid var(–border2);border-radius:var(–r2);padding:8px 12px;color:var(–text);font-family:var(–font);font-size:13px;outline:none;transition:border-color .2s}
-.s-inp:focus{border-color:var(–blue)}
+.s-inp{flex:1;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--r2);padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .2s}
+.s-inp:focus{border-color:var(--blue)}
 
 /* ══ LOGINS ══ */
 .lt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .lt{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
-.lt th{background:var(–bg2);border:1px solid var(–border);padding:8px 11px;text-align:left;font-size:10px;font-weight:700;color:var(–text2);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
-.lt td{border:1px solid var(–border);padding:7px 11px}
-.lt tr:hover td{background:var(–bg3)}
-.rs{background:var(–bg3);border:1px solid var(–border2);border-radius:var(–r3);padding:4px 7px;color:var(–text);font-family:var(–font);font-size:12px;outline:none;cursor:pointer}
+.lt th{background:var(--bg2);border:1px solid var(--border);padding:8px 11px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.lt td{border:1px solid var(--border);padding:7px 11px}
+.lt tr:hover td{background:var(--bg3)}
+.rs{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r3);padding:4px 7px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;cursor:pointer}
 
 /* ══ MEU PLANTÃO ══ */
-.meu-banner{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:16px;margin-bottom:14px}
+.meu-banner{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
 .tipo-g{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
 @media(min-width:500px){.tipo-g{grid-template-columns:repeat(4,1fr)}}
-.tipo-c{background:var(–bg3);border:1px solid var(–border2);border-radius:var(–r2);padding:10px 12px}
-.tipo-v{font-size:20px;font-weight:700;font-family:var(–mono);margin-top:5px}
-.tipo-l{font-size:10px;color:var(–text2);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-.tipo-det{font-size:9px;color:var(–text3);margin-top:2px;line-height:1.5}
-.pc{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:11px 13px;display:flex;align-items:center;gap:10px;margin-bottom:6px;transition:border-color .15s;flex-wrap:wrap}
-.pc.hoje{border-color:var(–blue);background:var(–blue-bg)}
+.tipo-c{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px}
+.tipo-v{font-size:20px;font-weight:700;font-family:var(--mono);margin-top:5px}
+.tipo-l{font-size:10px;color:var(--text2);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.tipo-det{font-size:9px;color:var(--text3);margin-top:2px;line-height:1.5}
+.pc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;display:flex;align-items:center;gap:10px;margin-bottom:6px;transition:border-color .15s;flex-wrap:wrap}
+.pc.hoje{border-color:var(--blue);background:var(--blue-bg)}
 .pc.realizado{opacity:.45}
 .pc-d{min-width:80px;flex:1}
-.pc-dl{font-size:10px;color:var(–text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.pc-dv{font-size:13px;font-weight:700;font-family:var(–mono)}
-.pc-tl{font-size:10px;color:var(–text2);margin-top:1px}
+.pc-dl{font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.pc-dv{font-size:13px;font-weight:700;font-family:var(--mono)}
+.pc-tl{font-size:10px;color:var(--text2);margin-top:1px}
 
 /* ══ FINANCEIRO ══ */
 .fin-g{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
 @media(min-width:600px){.fin-g{grid-template-columns:repeat(4,1fr)}}
-.fin-c{border-radius:var(–r2);padding:11px 13px;border:1px solid}
-.fin-sv{background:var(–red-bg);border-color:rgba(240,85,85,.2)}
-.fin-cm{background:var(–blue-bg);border-color:rgba(90,156,248,.2)}
-.fin-ped{background:var(–amber-bg);border-color:rgba(240,165,37,.2)}
-.fin-total{background:var(–green-bg);border-color:rgba(45,201,122,.2);grid-column:1/-1}
+.fin-c{border-radius:var(--r2);padding:11px 13px;border:1px solid}
+.fin-sv{background:var(--red-bg);border-color:rgba(240,85,85,.2)}
+.fin-cm{background:var(--blue-bg);border-color:rgba(90,156,248,.2)}
+.fin-ped{background:var(--amber-bg);border-color:rgba(240,165,37,.2)}
+.fin-total{background:var(--green-bg);border-color:rgba(45,201,122,.2);grid-column:1/-1}
 .fin-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
-.fin-horas{font-size:18px;font-weight:700;font-family:var(–mono)}
+.fin-horas{font-size:18px;font-weight:700;font-family:var(--mono)}
 .fin-valor{font-size:13px;font-weight:600;margin-top:3px}
-.fin-det{font-size:10px;color:var(–text3);margin-top:2px}
+.fin-det{font-size:10px;color:var(--text3);margin-top:2px}
 
 /* ══ CALENDÁRIO ══ */
 .cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.cal-h{text-align:center;font-size:10px;font-weight:700;color:var(–text2);padding:4px 2px;text-transform:uppercase;letter-spacing:.04em}
-.cal-d{border:1px solid var(–border);border-radius:var(–r3);padding:5px 2px;text-align:center}
-.cal-dn{font-size:12px;font-weight:700;font-family:var(–mono);margin-bottom:2px}
+.cal-h{text-align:center;font-size:10px;font-weight:700;color:var(--text2);padding:4px 2px;text-transform:uppercase;letter-spacing:.04em}
+.cal-d{border:1px solid var(--border);border-radius:var(--r3);padding:5px 2px;text-align:center}
+.cal-dn{font-size:12px;font-weight:700;font-family:var(--mono);margin-bottom:2px}
 .cal-ds{font-size:8.5px;font-weight:700;padding:1px 4px;border-radius:3px}
-.cal-a{background:rgba(45,201,122,.06);border-color:rgba(45,201,122,.18)}.cal-a .cal-ds{background:rgba(45,201,122,.14);color:var(–green)}
-.cal-b{background:rgba(90,156,248,.06);border-color:rgba(90,156,248,.18)}.cal-b .cal-ds{background:rgba(90,156,248,.14);color:var(–blue)}
+.cal-a{background:rgba(45,201,122,.06);border-color:rgba(45,201,122,.18)}.cal-a .cal-ds{background:rgba(45,201,122,.14);color:var(--green)}
+.cal-b{background:rgba(90,156,248,.06);border-color:rgba(90,156,248,.18)}.cal-b .cal-ds{background:rgba(90,156,248,.14);color:var(--blue)}
 .cal-e{background:transparent;border-color:transparent}
 
 /* ══ MODAL ══ */
 .mo{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.8);align-items:flex-end;justify-content:center;padding:0}
 @media(min-width:641px){.mo{align-items:center;padding:14px}}
 .mo.open{display:flex}
-.m-box{background:var(–bg2);border:1px solid var(–border2);border-radius:14px 14px 0 0;padding:20px 18px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;animation:mInMob .2s ease}
+.m-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px 14px 0 0;padding:20px 18px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;animation:mInMob .2s ease}
 @media(min-width:641px){.m-box{border-radius:12px;animation:mIn .18s ease}}
 @keyframes mIn{from{transform:scale(.96) translateY(8px);opacity:0}}
 @keyframes mInMob{from{transform:translateY(100%)}}
 .m-t{font-size:15px;font-weight:700;margin-bottom:3px;letter-spacing:-.2px}
-.m-s{font-size:12px;color:var(–text2);margin-bottom:15px}
+.m-s{font-size:12px;color:var(--text2);margin-bottom:15px}
 .fg{margin-bottom:12px}
-.fl{font-size:11px;font-weight:700;color:var(–text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;display:block}
-.fi,.fs,.fta{width:100%;background:var(–bg3);border:1.5px solid var(–border2);border-radius:var(–r2);padding:9px 12px;color:var(–text);font-family:var(–font);font-size:13px;outline:none;transition:border-color .2s}
-.fi:focus,.fs:focus,.fta:focus{border-color:var(–blue)}
-.fs option{background:var(–bg2)}
+.fl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;display:block}
+.fi,.fs,.fta{width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--r2);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .2s}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--blue)}
+.fs option{background:var(--bg2)}
 .fta{resize:vertical;min-height:52px}
 .m-act{display:flex;gap:7px;justify-content:flex-end;margin-top:15px;flex-wrap:wrap}
 @media(max-width:380px){.m-act{flex-direction:column}.m-act .btn{width:100%;justify-content:center}}
 
 /* ══ WHATSAPP ══ */
-.wpp{background:#040c07;border:1px solid rgba(45,201,122,.18);border-radius:var(–r);padding:13px;margin-top:11px;position:relative}
-.wpp-msg{font-family:var(–mono);font-size:11px;color:#80d4a0;line-height:1.9;white-space:pre-wrap;word-break:break-word}
-.btn-cp{position:absolute;top:10px;right:10px;background:var(–green-bg);border:1px solid rgba(45,201,122,.3);border-radius:var(–r3);padding:3px 10px;color:var(–green);font-size:11px;font-weight:700;cursor:pointer;font-family:var(–font)}
+.wpp{background:#040c07;border:1px solid rgba(45,201,122,.18);border-radius:var(--r);padding:13px;margin-top:11px;position:relative}
+.wpp-msg{font-family:var(--mono);font-size:11px;color:#80d4a0;line-height:1.9;white-space:pre-wrap;word-break:break-word}
+.btn-cp{position:absolute;top:10px;right:10px;background:var(--green-bg);border:1px solid rgba(45,201,122,.3);border-radius:var(--r3);padding:3px 10px;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font)}
 .btn-cp.ok{color:#4ade80;border-color:#4ade80}
 
 /* ══ TOAST ══ */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:500;background:var(–bg3);border:1px solid var(–green);border-radius:var(–r2);padding:10px 18px;font-size:13px;font-weight:600;color:var(–green);display:none;animation:tIn .2s ease;box-shadow:var(–shadow);white-space:nowrap}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:500;background:var(--bg3);border:1px solid var(--green);border-radius:var(--r2);padding:10px 18px;font-size:13px;font-weight:600;color:var(--green);display:none;animation:tIn .2s ease;box-shadow:var(--shadow);white-space:nowrap}
 @keyframes tIn{from{transform:translateX(-50%) translateY(10px);opacity:0}}
-.toast.err{border-color:var(–red);color:var(–red)}
-.toast.warn{border-color:var(–amber);color:var(–amber)}
+.toast.err{border-color:var(--red);color:var(--red)}
+.toast.warn{border-color:var(--amber);color:var(--amber)}
 
 /* ══ FILTROS ══ */
 .filtros{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
-.f-b{background:var(–bg3);border:1px solid var(–border2);border-radius:var(–r3);padding:4px 10px;color:var(–text2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(–font);transition:all .15s;white-space:nowrap}
-.f-b.active{background:var(–blue-bg);border-color:var(–blue);color:var(–blue)}
+.f-b{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r3);padding:4px 10px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap}
+.f-b.active{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
 
 /* ══ RELATÓRIO ══ */
 .rt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .rt{width:100%;border-collapse:collapse;font-size:12px;min-width:650px}
-.rt th{background:var(–bg3);border:1px solid var(–border);padding:8px 9px;text-align:left;font-weight:700;color:var(–text2);font-size:10px;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
-.rt td{border:1px solid var(–border);padding:6px 9px;white-space:nowrap}
-.rt tr:hover td{background:var(–bg3)}
-.rt tfoot td{background:var(–bg3);font-weight:700;font-family:var(–mono);color:var(–text)}
-.al{background:var(–bg2);border-left:3px solid;border-radius:0 var(–r2) var(–r2) 0;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:9px}
-.al.warn{border-color:var(–amber)}.al.danger{border-color:var(–red)}
-.al.info{border-color:var(–blue)}.al.ok{border-color:var(–green)}
+.rt th{background:var(--bg3);border:1px solid var(--border);padding:8px 9px;text-align:left;font-weight:700;color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.rt td{border:1px solid var(--border);padding:6px 9px;white-space:nowrap}
+.rt tr:hover td{background:var(--bg3)}
+.rt tfoot td{background:var(--bg3);font-weight:700;font-family:var(--mono);color:var(--text)}
+.al{background:var(--bg2);border-left:3px solid;border-radius:0 var(--r2) var(--r2) 0;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:9px}
+.al.warn{border-color:var(--amber)}.al.danger{border-color:var(--red)}
+.al.info{border-color:var(--blue)}.al.ok{border-color:var(--green)}
 
 /* ══ HIST ══ */
 .hist-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:9px}
-.hist-c{background:var(–bg2);border:1px solid var(–border);border-radius:var(–r);padding:16px;text-align:center;cursor:pointer;transition:all .18s}
-.hist-c:hover{border-color:var(–blue);transform:translateY(-2px)}
-.hist-m{font-size:20px;font-weight:800;font-family:var(–mono)}
-.hist-a{font-size:11px;color:var(–text2);margin-top:3px}
+.hist-c{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center;cursor:pointer;transition:all .18s}
+.hist-c:hover{border-color:var(--blue);transform:translateY(-2px)}
+.hist-m{font-size:20px;font-weight:800;font-family:var(--mono)}
+.hist-a{font-size:11px;color:var(--text2);margin-top:3px}
 .stitle{font-size:13px;font-weight:700;margin-bottom:8px}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:580px){.two-col{grid-template-columns:1fr}}
 </style>
-
 </head>
 <body>
 
-<!-- ══ LOGIN ══ -->
 
+
+<!-- ══ LOGIN ══ -->
 <div id="screen-boot" style="position:fixed;inset:0;background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
   <div style="width:42px;height:42px;border:3px solid #d8e0f0;border-top-color:#1B4D6F;border-radius:50%;animation:spin .9s linear infinite"></div>
   <div style="font-size:13px;color:#5a6485;font-weight:600">Carregando Kos App...</div>
@@ -382,7 +381,6 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 </div>
 
 <!-- ══ VIEWER ══ -->
-
 <div id="screen-viewer">
   <div class="vbar">
     <div class="vbar-logo">
@@ -414,7 +412,6 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 </div>
 
 <!-- ══ APP ══ -->
-
 <div id="screen-app">
   <div class="topbar">
     <button class="tb-hamburger" id="btn-hamburger">☰</button>
@@ -480,306 +477,302 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
       </div>
     </div>
 
-```
-<div class="main">
+    <div class="main">
 
-  <!-- ══ DASHBOARD GESTOR ══ -->
-  <div class="page" id="page-dashboard">
-    <div class="ph">
-      <div><div class="pt">Dashboard</div><div class="ps" id="dash-sub"></div></div>
-      <div class="ph-r">
-        <button class="btn btn-g btn-sm" onclick="gerarRelProfModal()">📋 Relatório por Profissional</button>
-      </div>
-    </div>
-    <div class="sg">
-      <div class="sc"><div class="sl">Plantonistas Ativos</div><div class="sv" id="d-tot">—</div><div class="ss">Corpo clínico interno</div></div>
-      <div class="sc"><div class="sl">Plantões no Mês</div><div class="sv" id="d-plant">—</div><div class="ss" id="d-plant-s"></div></div>
-      <div class="sc"><div class="sl">Trocas Pendentes</div><div class="sv" id="d-pend" style="color:var(--amber)">0</div><div class="ss">Aguardando aprovação</div></div>
-      <div class="sc"><div class="sl">Status da Escala</div><div class="sv" id="d-mes" style="font-size:15px">—</div><div class="ss" id="d-pub-st"></div></div>
-    </div>
-    <!-- Stats por área -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="d-area-stats"></div>
-    <div class="two-col" style="margin-bottom:12px">
-      <div class="card"><div class="ct">⚠️ Abaixo de 48h no mês</div><div id="d-48"></div></div>
-      <div class="card"><div class="ct">📤 Mais trocas solicitadas</div><div id="d-tr-top"></div></div>
-    </div>
-    <div class="card" style="margin-bottom:12px">
-      <div class="ct">🔄 Plantonistas Externos no Mês</div>
-      <div id="d-externos"></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div class="ct" style="margin:0">Trocas Pendentes</div>
-        <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
-      </div>
-      <div id="d-tr-list"></div>
-    </div>
-  </div>
-
-  <!-- ══ ESCALA DO MÊS ══ -->
-  <div class="page" id="page-escala">
-    <div class="ph">
-      <div><div class="pt">Escala de Plantão</div><div class="ps" id="escala-sub"></div></div>
-      <div class="ph-r" id="escala-ph-r">
-        <button class="btn btn-g btn-sm" onclick="pdfEscala()">🖨 PDF</button>
-        <button class="btn btn-a btn-sm" onclick="exportXLSX()">📊 Excel</button>
-        <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
-      </div>
-    </div>
-    <div id="escala-lock"></div>
-    <div id="escala-wrap">
-      <div class="ec">
-        <div class="mc">
-          <button class="mc-b" onclick="mudarMes(-1)" title="Mês anterior">‹</button>
-          <span class="mc-l" id="mc-l"></span>
-          <button class="mc-b" onclick="mudarMes(1)" title="Próximo mês">›</button>
-          <button class="mc-b" onclick="voltarMesVigente()" title="Voltar para o mês vigente" style="margin-left:6px;font-size:11px">📅 Hoje</button>
+      <!-- ══ DASHBOARD GESTOR ══ -->
+      <div class="page" id="page-dashboard">
+        <div class="ph">
+          <div><div class="pt">Dashboard</div><div class="ps" id="dash-sub"></div></div>
+          <div class="ph-r">
+            <button class="btn btn-g btn-sm" onclick="gerarRelProfModal()">📋 Relatório por Profissional</button>
+          </div>
         </div>
-        <div class="sf" id="sf-btns" style="margin:0"></div>
-      </div>
-      <div id="sem-all"></div>
-    </div>
-  </div>
-
-  <!-- ══ HISTÓRICO ══ -->
-  <!-- ══ GESTÃO DE ESCALAS (Histórico + Publicação unificados) ══ -->
-  <div class="page" id="page-gestao-escalas">
-    <div class="ph">
-      <div>
-        <div class="pt">Gestão de Escalas</div>
-        <div class="ps">Controle de publicação e arquivo de escalas</div>
-      </div>
-      <div class="ph-r">
-        <button class="btn btn-p btn-sm" onclick="abrirMoGerarEscala()">+ Gerar Nova Escala</button>
-      </div>
-    </div>
-    <!-- Seção 1: Escalas Ativas -->
-    <div style="margin-top:14px">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-        <span style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:50%"></span>
-        Escalas Ativas
-        <span style="font-size:11px;color:var(--text3);font-weight:400">— mês vigente e meses futuros</span>
-      </div>
-      <div id="ge-ativas"></div>
-    </div>
-    <!-- Seção 2: Histórico -->
-    <div style="margin-top:22px">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-        <span style="display:inline-block;width:8px;height:8px;background:var(--text3);border-radius:50%"></span>
-        Histórico de Escalas
-        <span style="font-size:11px;color:var(--text3);font-weight:400">— bloqueado para o público, visível apenas para a Gestão</span>
-      </div>
-      <div id="ge-historico"></div>
-    </div>
-  </div>
-
-  <!-- ══ TROCAS ══ -->
-  <div class="page" id="page-trocas">
-    <div class="ph">
-      <div><div class="pt">Trocas de Plantão</div></div>
-      <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
-    </div>
-    <div class="ec" style="margin-bottom:10px">
-      <div class="mc">
-        <button class="mc-b" onclick="mudarMesTrocas(-1)">‹</button>
-        <span class="mc-l" id="mc-tr"></span>
-        <button class="mc-b" onclick="mudarMesTrocas(1)">›</button>
-      </div>
-    </div>
-    <div id="tr-lock"></div>
-    <div id="tr-wrap">
-      <div class="filtros">
-        <button class="f-b active" onclick="filtrarTr('todos',this)">Todos</button>
-        <button class="f-b" onclick="filtrarTr('pendente',this)">⏳ Pendentes</button>
-        <button class="f-b" onclick="filtrarTr('aprovado',this)">✓ Aprovados</button>
-        <button class="f-b" onclick="filtrarTr('rejeitado',this)">✕ Rejeitados</button>
-        <button class="f-b" onclick="filtrarTr('revertido',this)">↩ Revertidos</button>
-      </div>
-      <div id="tr-list"></div>
-    </div>
-  </div>
-
-  <!-- ══ CORPO CLÍNICO ══ -->
-  <div class="page" id="page-cc">
-    <div class="ph">
-      <div><div class="pt">Corpo Clínico</div><div class="ps" id="cc-cnt"></div></div>
-      <div class="ph-r" id="cc-ph-r">
-        <button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-med')">+ Adicionar</button>
-      </div>
-    </div>
-    <div class="filtros">
-      <button class="f-b active" id="btn-cc-int" onclick="mudarAbaCC('int')">Internos</button>
-      <button class="f-b" id="btn-cc-ext" onclick="mudarAbaCC('ext')">Externos</button>
-    </div>
-    <div class="s-row"><input type="text" class="s-inp" id="cc-busca" placeholder="Buscar nome ou CRM..." oninput="buscarCC(this.value)"></div>
-    <div class="cc-g" id="cc-grid"></div>
-  </div>
-
-  <!-- ══ ESCALA BASE ══ -->
-  <div class="page" id="page-eb">
-    <div class="ph">
-      <div><div class="pt">Escala Base</div><div class="ps">Semanas A e B — clique para editar</div></div>
-      <div class="ph-r">
-        <button class="btn btn-a btn-sm" onclick="exportXLSXBase()">📊 Excel</button>
-        <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
-      </div>
-    </div>
-    <div id="eb-content"></div>
-  </div>
-
-  <!-- ══ CALENDÁRIO A/B ══ -->
-  <div class="page" id="page-cal-ab">
-    <div class="ph">
-      <div><div class="pt">Calendário A/B</div></div>
-      <div class="ph-r">
-        <div class="mc">
-          <button class="mc-b" onclick="mudarCalAB(-1)">‹</button>
-          <span class="mc-l" id="mc-cal"></span>
-          <button class="mc-b" onclick="mudarCalAB(1)">›</button>
+        <div class="sg">
+          <div class="sc"><div class="sl">Plantonistas Ativos</div><div class="sv" id="d-tot">—</div><div class="ss">Corpo clínico interno</div></div>
+          <div class="sc"><div class="sl">Plantões no Mês</div><div class="sv" id="d-plant">—</div><div class="ss" id="d-plant-s"></div></div>
+          <div class="sc"><div class="sl">Trocas Pendentes</div><div class="sv" id="d-pend" style="color:var(--amber)">0</div><div class="ss">Aguardando aprovação</div></div>
+          <div class="sc"><div class="sl">Status da Escala</div><div class="sv" id="d-mes" style="font-size:15px">—</div><div class="ss" id="d-pub-st"></div></div>
+        </div>
+        <!-- Stats por área -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="d-area-stats"></div>
+        <div class="two-col" style="margin-bottom:12px">
+          <div class="card"><div class="ct">⚠️ Abaixo de 48h no mês</div><div id="d-48"></div></div>
+          <div class="card"><div class="ct">📤 Mais trocas solicitadas</div><div id="d-tr-top"></div></div>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="ct">🔄 Plantonistas Externos no Mês</div>
+          <div id="d-externos"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="ct" style="margin:0">Trocas Pendentes</div>
+            <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
+          </div>
+          <div id="d-tr-list"></div>
         </div>
       </div>
-    </div>
-    <div style="display:flex;gap:14px;margin-bottom:10px;font-size:12px;color:var(--text2);flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:rgba(45,201,122,.12);border:1px solid rgba(45,201,122,.25)"></div>Semana A</div>
-      <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:rgba(90,156,248,.12);border:1px solid rgba(90,156,248,.25)"></div>Semana B</div>
-    </div>
-    <div class="cal-g" id="cal-grid">
-      <div class="cal-h">SEG</div><div class="cal-h">TER</div><div class="cal-h">QUA</div>
-      <div class="cal-h">QUI</div><div class="cal-h">SEX</div><div class="cal-h">SAB</div><div class="cal-h">DOM</div>
-    </div>
-  </div>
 
-  <!-- ══ ACESSOS ══ -->
-  <div class="page" id="page-logins">
-    <div class="ph">
-      <div><div class="pt">Gestão de Acessos e Cadastros</div></div>
-      <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
-    </div>
-    <div class="filtros" style="margin-bottom:10px">
-      <button class="f-b active" id="btn-aba-acessos" onclick="mudarAbaLogin('acessos',this)">🔑 Acessos e Permissões</button>
-      <button class="f-b" id="btn-aba-cadastros" onclick="mudarAbaLogin('cadastros',this)">📋 Cadastros Completos</button>
-    </div>
-    <!-- ABA ACESSOS -->
-    <div id="aba-acessos">
-      <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar profissional..." oninput="buscarLogin(this.value)"></div>
-      <div class="lt-wrap"><table class="lt"><thead><tr><th>Profissional</th><th>Identificação</th><th>Permissões</th><th>Senha</th><th>Ações</th></tr></thead><tbody id="login-tbody"></tbody></table></div>
-    </div>
-    <!-- ABA CADASTROS -->
-    <div id="aba-cadastros" style="display:none">
-      <div class="al info" style="margin-bottom:12px">
-        <span>ℹ️</span>
-        <div style="font-size:12px">Visualização consolidada dos dados pessoais coletados em cada perfil. Apenas o gestor tem acesso a esta aba.</div>
-      </div>
-      <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar por nome, CRM ou CPF..." oninput="buscarCadastro(this.value)"></div>
-      <div class="lt-wrap"><table class="lt"><thead><tr>
-        <th>Nome Completo</th>
-        <th>Nome na Escala</th>
-        <th>CRM</th>
-        <th>CPF</th>
-        <th>WhatsApp</th>
-        <th>E-mail</th>
-        <th>Status</th>
-      </tr></thead><tbody id="cadastros-tbody"></tbody></table></div>
-    </div>
-  </div>
-
-  <!-- ══ RELATÓRIOS GESTOR ══ -->
-  <div class="page" id="page-relatorio">
-    <div class="ph">
-      <div><div class="pt">Relatório de Horas</div><div class="ps" id="rel-sub"></div></div>
-      <div class="ph-r">
-        <div class="mc">
-          <button class="mc-b" onclick="mudarMesRel(-1)">‹</button>
-          <span class="mc-l" id="mc-rel"></span>
-          <button class="mc-b" onclick="mudarMesRel(1)">›</button>
+      <!-- ══ ESCALA DO MÊS ══ -->
+      <div class="page" id="page-escala">
+        <div class="ph">
+          <div><div class="pt">Escala de Plantão</div><div class="ps" id="escala-sub"></div></div>
+          <div class="ph-r" id="escala-ph-r">
+            <button class="btn btn-g btn-sm" onclick="pdfEscala()">🖨 PDF</button>
+            <button class="btn btn-a btn-sm" onclick="exportXLSX()">📊 Excel</button>
+            <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
+          </div>
         </div>
-        <button class="btn btn-a btn-sm" onclick="pdfRelatorio()">📄 PDF Geral</button>
-        <button class="btn btn-g btn-sm" onclick="exportXLSXRel()">📊 Excel</button>
-      </div>
-    </div>
-    <!-- Abas: Internos / Externos -->
-    <div class="filtros" style="margin-bottom:10px">
-      <button class="f-b active" id="btn-rel-int" onclick="mudarAbaRel('int',this)">🏥 Internos</button>
-      <button class="f-b" id="btn-rel-ext" onclick="mudarAbaRel('ext',this)">🔄 Externos no Campinas</button>
-    </div>
-    <!-- Painel internos -->
-    <div id="rel-painel-int">
-      <div class="filtros">
-        <button class="f-b active" onclick="filtrarRel('todos',this)">Todos</button>
-        <button class="f-b" onclick="filtrarRel('sv',this)">SV+ENF</button>
-        <button class="f-b" onclick="filtrarRel('cm',this)">CM</button>
-        <button class="f-b" onclick="filtrarRel('ped',this)">PED</button>
-        <button class="f-b" onclick="filtrarRel('apoio',this)">APOIO</button>
-        <button class="f-b" onclick="filtrarRel('fds',this)">↑ FDS</button>
-        <button class="f-b" onclick="filtrarRel('total',this)">↑ Total</button>
-      </div>
-      <div class="sg" id="rel-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px"></div>
-      <div class="rt-wrap">
-        <table class="rt">
-          <thead><tr>
-            <th>Profissional</th><th>CRM</th><th>Áreas no Mês</th>
-            <th>H.DDS Porta</th><th>H.FDS Porta</th>
-            <th>H.DDS SV+ENF</th><th>H.FDS SV+ENF</th>
-            <th>Total Horas</th><th>Valor Est.</th><th>PDF</th>
-          </tr></thead>
-          <tbody id="rel-tbody"></tbody>
-          <tfoot id="rel-tfoot"></tfoot>
-        </table>
-      </div>
-    </div>
-    <!-- Painel externos -->
-    <div id="rel-painel-ext" style="display:none">
-      <div class="al info" style="margin-bottom:12px">
-        <span>ℹ️</span>
-        <div style="font-size:12px">Profissionais de outras unidades que cobriram plantões no CAIS Campinas neste mês, conforme registrado nas trocas aprovadas.</div>
-      </div>
-      <div id="rel-ext-content"></div>
-    </div>
-  </div>
-
-  <!-- ══ MEU PLANTÃO (PLANTONISTA) ══ -->
-  <div class="page" id="page-meu-plantao">
-    <div class="ph">
-      <div><div class="pt">Meus Plantões</div><div class="ps" id="meu-sub"></div></div>
-      <div class="ph-r">
-        <div class="mc">
-          <button class="mc-b" onclick="mudarMeuMes(-1)">‹</button>
-          <span class="mc-l" id="mc-meu"></span>
-          <button class="mc-b" onclick="mudarMeuMes(1)">›</button>
+        <div id="escala-lock"></div>
+        <div id="escala-wrap">
+          <div class="ec">
+            <div class="mc">
+              <button class="mc-b" onclick="mudarMes(-1)" title="Mês anterior">‹</button>
+              <span class="mc-l" id="mc-l"></span>
+              <button class="mc-b" onclick="mudarMes(1)" title="Próximo mês">›</button>
+              <button class="mc-b" onclick="voltarMesVigente()" title="Voltar para o mês vigente" style="margin-left:6px;font-size:11px">📅 Hoje</button>
+            </div>
+            <div class="sf" id="sf-btns" style="margin:0"></div>
+          </div>
+          <div id="sem-all"></div>
         </div>
-        <button class="btn btn-a btn-sm" onclick="pdfPlantonista(curUser.c,meuMes,meuAno)">📄 Meu PDF</button>
-        <button class="btn btn-p btn-sm" onclick="abrirMoTroca()">⇄ Trocar</button>
       </div>
-    </div>
 
-    <!-- Banner resumo -->
-    <div class="meu-banner">
-      <div style="font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.07em">Resumo — <span id="meu-mes-lbl"></span></div>
-      <div style="font-size:28px;font-weight:800;letter-spacing:-1px;margin:5px 0;font-family:var(--mono)" id="meu-total">—</div>
-      <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap" id="meu-chips"></div>
-      <div class="tipo-g" id="meu-tipo-g"></div>
-    </div>
+      <!-- ══ HISTÓRICO ══ -->
+      <!-- ══ GESTÃO DE ESCALAS (Histórico + Publicação unificados) ══ -->
+      <div class="page" id="page-gestao-escalas">
+        <div class="ph">
+          <div>
+            <div class="pt">Gestão de Escalas</div>
+            <div class="ps">Controle de publicação e arquivo de escalas</div>
+          </div>
+          <div class="ph-r">
+            <button class="btn btn-p btn-sm" onclick="abrirMoGerarEscala()">+ Gerar Nova Escala</button>
+          </div>
+        </div>
+        <!-- Seção 1: Escalas Ativas -->
+        <div style="margin-top:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--green);border-radius:50%"></span>
+            Escalas Ativas
+            <span style="font-size:11px;color:var(--text3);font-weight:400">— mês vigente e meses futuros</span>
+          </div>
+          <div id="ge-ativas"></div>
+        </div>
+        <!-- Seção 2: Histórico -->
+        <div style="margin-top:22px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:8px;height:8px;background:var(--text3);border-radius:50%"></span>
+            Histórico de Escalas
+            <span style="font-size:11px;color:var(--text3);font-weight:400">— bloqueado para o público, visível apenas para a Gestão</span>
+          </div>
+          <div id="ge-historico"></div>
+        </div>
+      </div>
 
-    <!-- Financeiro -->
-    <div style="margin-bottom:14px">
-      <div class="stitle">💰 Estimativa de Ganhos — <span id="fin-mes-lbl"></span></div>
-      <div class="fin-g" id="fin-grid"></div>
-    </div>
+      <!-- ══ TROCAS ══ -->
+      <div class="page" id="page-trocas">
+        <div class="ph">
+          <div><div class="pt">Trocas de Plantão</div></div>
+          <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
+        </div>
+        <div class="ec" style="margin-bottom:10px">
+          <div class="mc">
+            <button class="mc-b" onclick="mudarMesTrocas(-1)">‹</button>
+            <span class="mc-l" id="mc-tr"></span>
+            <button class="mc-b" onclick="mudarMesTrocas(1)">›</button>
+          </div>
+        </div>
+        <div id="tr-lock"></div>
+        <div id="tr-wrap">
+          <div class="filtros">
+            <button class="f-b active" onclick="filtrarTr('todos',this)">Todos</button>
+            <button class="f-b" onclick="filtrarTr('pendente',this)">⏳ Pendentes</button>
+            <button class="f-b" onclick="filtrarTr('aprovado',this)">✓ Aprovados</button>
+            <button class="f-b" onclick="filtrarTr('rejeitado',this)">✕ Rejeitados</button>
+            <button class="f-b" onclick="filtrarTr('revertido',this)">↩ Revertidos</button>
+          </div>
+          <div id="tr-list"></div>
+        </div>
+      </div>
 
-    <div class="two-col">
-      <div><div class="stitle">✅ Realizados</div><div id="meu-real"></div></div>
-      <div><div class="stitle">🔜 Próximos</div><div id="meu-prox"></div></div>
-    </div>
-  </div>
+      <!-- ══ CORPO CLÍNICO ══ -->
+      <div class="page" id="page-cc">
+        <div class="ph">
+          <div><div class="pt">Corpo Clínico</div><div class="ps" id="cc-cnt"></div></div>
+          <div class="ph-r" id="cc-ph-r">
+            <button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-med')">+ Adicionar</button>
+          </div>
+        </div>
+        <div class="filtros">
+          <button class="f-b active" id="btn-cc-int" onclick="mudarAbaCC('int')">Internos</button>
+          <button class="f-b" id="btn-cc-ext" onclick="mudarAbaCC('ext')">Externos</button>
+        </div>
+        <div class="s-row"><input type="text" class="s-inp" id="cc-busca" placeholder="Buscar nome ou CRM..." oninput="buscarCC(this.value)"></div>
+        <div class="cc-g" id="cc-grid"></div>
+      </div>
 
-</div><!-- /main -->
-```
+      <!-- ══ ESCALA BASE ══ -->
+      <div class="page" id="page-eb">
+        <div class="ph">
+          <div><div class="pt">Escala Base</div><div class="ps">Semanas A e B — clique para editar</div></div>
+          <div class="ph-r">
+            <button class="btn btn-a btn-sm" onclick="exportXLSXBase()">📊 Excel</button>
+            <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
+          </div>
+        </div>
+        <div id="eb-content"></div>
+      </div>
 
+      <!-- ══ CALENDÁRIO A/B ══ -->
+      <div class="page" id="page-cal-ab">
+        <div class="ph">
+          <div><div class="pt">Calendário A/B</div></div>
+          <div class="ph-r">
+            <div class="mc">
+              <button class="mc-b" onclick="mudarCalAB(-1)">‹</button>
+              <span class="mc-l" id="mc-cal"></span>
+              <button class="mc-b" onclick="mudarCalAB(1)">›</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:10px;font-size:12px;color:var(--text2);flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:rgba(45,201,122,.12);border:1px solid rgba(45,201,122,.25)"></div>Semana A</div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:2px;background:rgba(90,156,248,.12);border:1px solid rgba(90,156,248,.25)"></div>Semana B</div>
+        </div>
+        <div class="cal-g" id="cal-grid">
+          <div class="cal-h">SEG</div><div class="cal-h">TER</div><div class="cal-h">QUA</div>
+          <div class="cal-h">QUI</div><div class="cal-h">SEX</div><div class="cal-h">SAB</div><div class="cal-h">DOM</div>
+        </div>
+      </div>
+
+      <!-- ══ ACESSOS ══ -->
+      <div class="page" id="page-logins">
+        <div class="ph">
+          <div><div class="pt">Gestão de Acessos e Cadastros</div></div>
+          <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
+        </div>
+        <div class="filtros" style="margin-bottom:10px">
+          <button class="f-b active" id="btn-aba-acessos" onclick="mudarAbaLogin('acessos',this)">🔑 Acessos e Permissões</button>
+          <button class="f-b" id="btn-aba-cadastros" onclick="mudarAbaLogin('cadastros',this)">📋 Cadastros Completos</button>
+        </div>
+        <!-- ABA ACESSOS -->
+        <div id="aba-acessos">
+          <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar profissional..." oninput="buscarLogin(this.value)"></div>
+          <div class="lt-wrap"><table class="lt"><thead><tr><th>Profissional</th><th>Identificação</th><th>Permissões</th><th>Senha</th><th>Ações</th></tr></thead><tbody id="login-tbody"></tbody></table></div>
+        </div>
+        <!-- ABA CADASTROS -->
+        <div id="aba-cadastros" style="display:none">
+          <div class="al info" style="margin-bottom:12px">
+            <span>ℹ️</span>
+            <div style="font-size:12px">Visualização consolidada dos dados pessoais coletados em cada perfil. Apenas o gestor tem acesso a esta aba.</div>
+          </div>
+          <div class="s-row"><input type="text" class="s-inp" placeholder="Buscar por nome, CRM ou CPF..." oninput="buscarCadastro(this.value)"></div>
+          <div class="lt-wrap"><table class="lt"><thead><tr>
+            <th>Nome Completo</th>
+            <th>Nome na Escala</th>
+            <th>CRM</th>
+            <th>CPF</th>
+            <th>WhatsApp</th>
+            <th>E-mail</th>
+            <th>Status</th>
+          </tr></thead><tbody id="cadastros-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══ RELATÓRIOS GESTOR ══ -->
+      <div class="page" id="page-relatorio">
+        <div class="ph">
+          <div><div class="pt">Relatório de Horas</div><div class="ps" id="rel-sub"></div></div>
+          <div class="ph-r">
+            <div class="mc">
+              <button class="mc-b" onclick="mudarMesRel(-1)">‹</button>
+              <span class="mc-l" id="mc-rel"></span>
+              <button class="mc-b" onclick="mudarMesRel(1)">›</button>
+            </div>
+            <button class="btn btn-a btn-sm" onclick="pdfRelatorio()">📄 PDF Geral</button>
+            <button class="btn btn-g btn-sm" onclick="exportXLSXRel()">📊 Excel</button>
+          </div>
+        </div>
+        <!-- Abas: Internos / Externos -->
+        <div class="filtros" style="margin-bottom:10px">
+          <button class="f-b active" id="btn-rel-int" onclick="mudarAbaRel('int',this)">🏥 Internos</button>
+          <button class="f-b" id="btn-rel-ext" onclick="mudarAbaRel('ext',this)">🔄 Externos no Campinas</button>
+        </div>
+        <!-- Painel internos -->
+        <div id="rel-painel-int">
+          <div class="filtros">
+            <button class="f-b active" onclick="filtrarRel('todos',this)">Todos</button>
+            <button class="f-b" onclick="filtrarRel('sv',this)">SV+ENF</button>
+            <button class="f-b" onclick="filtrarRel('cm',this)">CM</button>
+            <button class="f-b" onclick="filtrarRel('ped',this)">PED</button>
+            <button class="f-b" onclick="filtrarRel('apoio',this)">APOIO</button>
+            <button class="f-b" onclick="filtrarRel('fds',this)">↑ FDS</button>
+            <button class="f-b" onclick="filtrarRel('total',this)">↑ Total</button>
+          </div>
+          <div class="sg" id="rel-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px"></div>
+          <div class="rt-wrap">
+            <table class="rt">
+              <thead><tr>
+                <th>Profissional</th><th>CRM</th><th>Áreas no Mês</th>
+                <th>H.DDS Porta</th><th>H.FDS Porta</th>
+                <th>H.DDS SV+ENF</th><th>H.FDS SV+ENF</th>
+                <th>Total Horas</th><th>Valor Est.</th><th>PDF</th>
+              </tr></thead>
+              <tbody id="rel-tbody"></tbody>
+              <tfoot id="rel-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+        <!-- Painel externos -->
+        <div id="rel-painel-ext" style="display:none">
+          <div class="al info" style="margin-bottom:12px">
+            <span>ℹ️</span>
+            <div style="font-size:12px">Profissionais de outras unidades que cobriram plantões no CAIS Campinas neste mês, conforme registrado nas trocas aprovadas.</div>
+          </div>
+          <div id="rel-ext-content"></div>
+        </div>
+      </div>
+
+      <!-- ══ MEU PLANTÃO (PLANTONISTA) ══ -->
+      <div class="page" id="page-meu-plantao">
+        <div class="ph">
+          <div><div class="pt">Meus Plantões</div><div class="ps" id="meu-sub"></div></div>
+          <div class="ph-r">
+            <div class="mc">
+              <button class="mc-b" onclick="mudarMeuMes(-1)">‹</button>
+              <span class="mc-l" id="mc-meu"></span>
+              <button class="mc-b" onclick="mudarMeuMes(1)">›</button>
+            </div>
+            <button class="btn btn-a btn-sm" onclick="pdfPlantonista(curUser.c,meuMes,meuAno)">📄 Meu PDF</button>
+            <button class="btn btn-p btn-sm" onclick="abrirMoTroca()">⇄ Trocar</button>
+          </div>
+        </div>
+
+        <!-- Banner resumo -->
+        <div class="meu-banner">
+          <div style="font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.07em">Resumo — <span id="meu-mes-lbl"></span></div>
+          <div style="font-size:28px;font-weight:800;letter-spacing:-1px;margin:5px 0;font-family:var(--mono)" id="meu-total">—</div>
+          <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap" id="meu-chips"></div>
+          <div class="tipo-g" id="meu-tipo-g"></div>
+        </div>
+
+        <!-- Financeiro -->
+        <div style="margin-bottom:14px">
+          <div class="stitle">💰 Estimativa de Ganhos — <span id="fin-mes-lbl"></span></div>
+          <div class="fin-g" id="fin-grid"></div>
+        </div>
+
+        <div class="two-col">
+          <div><div class="stitle">✅ Realizados</div><div id="meu-real"></div></div>
+          <div><div class="stitle">🔜 Próximos</div><div id="meu-prox"></div></div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
   </div>
 </div>
 
 <!-- ══ MODAIS ══ -->
-
 <div class="mo" id="mo-editar">
   <div class="m-box">
     <div class="m-t">Editar Plantonista na Escala</div>
@@ -972,7 +965,6 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 </div>
 
 <!-- Modal: Relatório por profissional (gestor) -->
-
 <div class="mo" id="mo-rel-prof">
   <div class="m-box">
     <div class="m-t">📋 Relatório por Profissional</div>
@@ -1063,7 +1055,6 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 </div>
 
 <!-- ══ MODAL EDITAR USUÁRIO COMPLETO (Gestor) ══ -->
-
 <div class="mo" id="mo-edit-user">
   <div class="m-box" style="max-width:520px">
     <div class="m-t">⚙️ Editar Cadastro</div>
@@ -1099,7 +1090,6 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 </div>
 
 <!-- ══ MODAL PERFIL ══ -->
-
 <div class="mo" id="mo-perfil">
   <div class="m-box">
     <div class="m-t">👤 Meu Perfil</div>
@@ -1124,7 +1114,6 @@ box-shadow:4px 0 18px rgba(0,0,0,.15);
 </div>
 
 <!-- ══ MODAL PRIMEIRO ACESSO ══ -->
-
 <div class="mo" id="mo-primeiro-acesso">
   <div class="m-box">
     <div class="m-t">👋 Bem-vindo ao Kos App!</div>
@@ -1420,15 +1409,13 @@ async function carregarSupabase(){
           dt=new Date(parseInt(partes[0]),parseInt(partes[1])-1,parseInt(partes[2]),12,0,0);
         }
       }
-      // Sanitizar metade — só aceita '1' ou '2', resto vira null
-      const metadeSan=(t.metade==='1'||t.metade==='2')?t.metade:null;
       TROCAS.push({
         id:t.codigo,sol:t.solicitante_nome,sCRM:t.solicitante_crm,
         sub:t.substituto_nome,bCRM:t.substituto_crm,
         data:dt.toLocaleDateString('pt-BR'),
         dt:dt,
         turno:t.turno,area:t.area,motivo:t.motivo||'',
-        metade:metadeSan,
+        metade:t.metade||null,
         status:t.status,mes:t.mes,ano:t.ano,vis:t.visivel_para||[]
       });
     });
@@ -1922,13 +1909,12 @@ function gerarHtmlSems(sems,canEdit){
               const hCurto=t.not
                 ?(metade==='1'?'19–01':'01–07')
                 :(metade==='1'?'07–13':'13–19');
-              const subLine=crm+(vinc?' · '+vinc:'')+' · '+hCurto+'h';
-              return `<div${idx===0?' style="border-bottom:1px dashed var(--border2);padding-bottom:2px;margin-bottom:2px"':''}>
-                <span class="cn">${nome}</span>
-                <span class="cn-sub">${subLine}</span>
+              return `<div style="line-height:1.1;${idx===0?'border-bottom:1px dashed var(--border2);padding-bottom:1px;margin-bottom:1px':''}">
+                <div style="font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
+                <div style="font-size:8.5px;color:var(--text2);line-height:1">${crm} · ${vinc} · <strong style="color:var(--purple)">${hCurto}h</strong></div>
               </div>`;
             }).join('');
-            cellHTML=`<div class="cn-wrap">${linhas}</div>`;
+            cellHTML=`<div class="cn-wrap" style="padding:1px 0">${linhas}</div>`;
           } else {
             // ═══ PLANTÃO INTEIRO ═══
             let nomeCell='—',crmCell='',vincCell='';
@@ -1946,7 +1932,7 @@ function gerarHtmlSems(sems,canEdit){
         } else {
           cellHTML='<div class="cn-wrap"><span class="cn vz">—</span></div>';
         }
-        html+=`<td class="cell" ${click} title="${(val||'').replace(/"/g,'&quot;')}">${cellHTML}</td>`;
+        html+=`<td class="cell" ${click} title="${val.replace(/"/g,'&quot;')}">${cellHTML}</td>`;
       });
       html+=`</tr>`;
     });
@@ -2731,9 +2717,7 @@ async function aplicarTrocaEscala(troca){
   const ciclo=getCiclo(dt);
   const diaMes=dt.getDate();
   const buscaCRM=`(${troca.sCRM})`;
-  // Sanitizar metade — só aceita '1' ou '2', resto vira null (corrige bug 'null' string vindo do banco)
-  const metadeReal=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
-  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'em',{mes:troca.mes,ano:troca.ano,ciclo,ab,diaMes,metade:metadeReal});
+  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'em',{mes:troca.mes,ano:troca.ano,ciclo,ab,diaMes});
 
   // Iterar TODOS os 16 slots, lendo do estado REAL (não da EB direto)
   for(let i=0;i<16;i++){
@@ -2744,11 +2728,13 @@ async function aplicarTrocaEscala(troca){
       const partes=valAtual.split('|').map(p=>p.trim());
       const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
       if(idxParte<0)continue;
+      // Substituir somente a parte do solicitante
       const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
       const novoNome=mSub
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
-      partes[idxParte]=novoNome+(metadeReal?' #'+metadeReal:'');
+      // Aplicar metade ou inteiro conforme tag
+      partes[idxParte]=novoNome+(troca.metade?' #'+troca.metade:'');
       const novoVal=partes.join(' | ');
       console.log('[aplicarTrocaEscala] Substituindo parte',idxParte,'em meio plantão');
       await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
@@ -2762,20 +2748,24 @@ async function aplicarTrocaEscala(troca){
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
       let novoVal;
-      if(metadeReal){
+      if(troca.metade){
         // MEIO PLANTÃO: cria string com pipe
-        const metadeTrocada=metadeReal;
+        // Solicitante fica com a metade que NÃO está sendo trocada
+        const metadeTrocada=troca.metade;// '1' ou '2'
+        const metadeSolicitante=metadeTrocada==='1'?'2':'1';
+        // Encontrar nome do solicitante (já está no valAtual)
         const nomeOriginal=valAtual.replace(/\s*#[12]$/,'').trim();
         if(metadeTrocada==='1'){
+          // Substituto pega 1ª metade, solicitante fica com 2ª
           novoVal=`${novoSub} #1 | ${nomeOriginal} #2`;
         } else {
+          // Solicitante fica com 1ª, substituto pega 2ª
           novoVal=`${nomeOriginal} #1 | ${novoSub} #2`;
         }
       } else {
-        // TROCA INTEIRA — substitui completamente
         novoVal=novoSub;
       }
-      console.log('[aplicarTrocaEscala] Aplicando troca no slot',i,'metade?',metadeReal);
+      console.log('[aplicarTrocaEscala] Aplicando troca no slot',i,'metade?',troca.metade);
       await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
       SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
       return true;
@@ -4159,7 +4149,6 @@ function pdfPlantonista(crm,mes,ano){
     .sign-sub{font-size:6.5px;color:#888;margin-top:1px}
     .footer{display:flex;justify-content:space-between;margin-top:8px;font-size:7px;color:#bbb;padding-top:6px;border-top:1px solid #eee}
   </style></head><body>
-
   <div class="header">
     <div><div class="h-title">🏥 Ficha de Plantão — CAIS Campinas</div>
       <div class="h-sub">${MP[mes]} ${ano} · Relatório Individual</div></div>
@@ -4234,49 +4223,60 @@ function pdfPlantonista(crm,mes,ano){
   w.document.close();setTimeout(()=>w.print(),500);
 }
 
+
 // ══ PDF ESCALA DO MÊS — A4 PAISAGEM ══
 function pdfEscala(){
-const sems=gerarSemanas(mesMes,mesAno);
-// Nome do gestor logado
-const nomeGestor=curUser.n||‘Gestor de Escala’;
-const crmGestor=curUser.c||’’;
-let tabelasHtml=’’;
-sems.forEach((sem,si)=>{
-const cor=sem.letra===‘A’?’#166534’:’#1d4ed8’;
-const mn=Math.min(…Object.values(sem.dias)),mx=Math.max(…Object.values(sem.dias));
-tabelasHtml+=`<div style="margin-bottom:8px"> <div style="font-size:8.5px;font-weight:700;color:${cor};margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em"> ● Semana ${si+1} — Ciclo ${sem.letra} · Dias ${mn} a ${mx} de ${MP[mesMes].charAt(0)+MP[mesMes].slice(1).toLowerCase()} </div> <table style="width:100%;border-collapse:collapse;font-size:7px"> <thead><tr style="background:#1a3a5c"> <th style="color:#fff;padding:4px 5px;text-align:left;width:110px;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">HORÁRIO / FUNÇÃO</th>`;
-DA.forEach((ab,i)=>{
-const n=sem.dias[ab];
-tabelasHtml+=`<th style="color:#fff;padding:4px 3px;text-align:center;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">${DN[i]}<br><span style="font-size:7px;opacity:.7">${n!==undefined?n:''}</span></th>`;
-});
-tabelasHtml+=`</tr></thead><tbody>`;
-TURNOS.forEach((t,ti)=>{
-const bgRow={‘sv-d’:’#ffd5d5’,‘sv-n’:’#ffc9cc’,‘cm-d’:’#e8f0fe’,‘cm-n’:’#dbeafe’,‘ped-d’:’#fef3c7’,‘ped-n’:’#fed7aa’,‘apo-d’:’#d1fae5’,‘apo-n’:’#bbf7d0’}[t.cls]||’#fff’;
-const clrT={‘sv-d’:’#dc2626’,‘sv-n’:’#b91c1c’,‘cm-d’:’#2563eb’,‘cm-n’:’#1d4ed8’,‘ped-d’:’#d97706’,‘ped-n’:’#c2410c’,‘apo-d’:’#059669’,‘apo-n’:’#047857’}[t.cls]||’#374151’;
-tabelasHtml+=`<tr style="background:${bgRow};border-bottom:1px solid #ddd"> <td style="padding:3px 5px;font-size:7px;font-weight:700;color:${clrT};border-right:1px solid #ddd;white-space:nowrap">${t.l}</td>`;
-DA.forEach(ab=>{
-if(sem.dias[ab]===undefined){tabelasHtml+=`<td style="background:#f0f0f0;border-right:1px solid #ddd"></td>`;return}
-const arr=EB[sem.letra][ab]||[];const val=ti<arr.length?arr[ti]:’’;
-let nome=’’,crm=’’,vinc=’’;
-if(val){
-const mV=val.match(/(CR|EF)$/);if(mV)vinc=mV[1];
-const mC=val.match(/((\d+))/);
-if(mC){crm=mC[1];nome=val.replace(/\s*(\d+)\s*(CR|EF)?$/,’’).replace(/\s*(\d+)/,’’).trim();}
-else{nome=val.replace(/\s*(CR|EF)$/,’’).trim();}
-}
-const sub=val?(crm+(vinc?’ ‘+vinc:’’)):’’;
-tabelasHtml+=`<td style="padding:2px 3px;text-align:center;border-right:1px solid #ddd;vertical-align:middle"> ${val ?`<div style="font-size:7px;font-weight:700;color:#1a1f36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin:0 auto">${nome}</div>
-<div style="font-size:6px;color:#5a6485;white-space:nowrap">${sub}</div>` :`<div style="font-size:7px;color:#ccc">—</div>`} </td>`;
-});
-tabelasHtml+=`</tr>`;
-});
-tabelasHtml+=`</tbody></table></div>`;
-});
+  const sems=gerarSemanas(mesMes,mesAno);
+  // Nome do gestor logado
+  const nomeGestor=curUser.n||'Gestor de Escala';
+  const crmGestor=curUser.c||'';
+  let tabelasHtml='';
+  sems.forEach((sem,si)=>{
+    const cor=sem.letra==='A'?'#166534':'#1d4ed8';
+    const mn=Math.min(...Object.values(sem.dias)),mx=Math.max(...Object.values(sem.dias));
+    tabelasHtml+=`<div style="margin-bottom:8px">
+      <div style="font-size:8.5px;font-weight:700;color:${cor};margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em">
+        ● Semana ${si+1} — Ciclo ${sem.letra} · Dias ${mn} a ${mx} de ${MP[mesMes].charAt(0)+MP[mesMes].slice(1).toLowerCase()}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:7px">
+        <thead><tr style="background:#1a3a5c">
+          <th style="color:#fff;padding:4px 5px;text-align:left;width:110px;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">HORÁRIO / FUNÇÃO</th>`;
+    DA.forEach((ab,i)=>{
+      const n=sem.dias[ab];
+      tabelasHtml+=`<th style="color:#fff;padding:4px 3px;text-align:center;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">${DN[i]}<br><span style="font-size:7px;opacity:.7">${n!==undefined?n:''}</span></th>`;
+    });
+    tabelasHtml+=`</tr></thead><tbody>`;
+    TURNOS.forEach((t,ti)=>{
+      const bgRow={'sv-d':'#ffd5d5','sv-n':'#ffc9cc','cm-d':'#e8f0fe','cm-n':'#dbeafe','ped-d':'#fef3c7','ped-n':'#fed7aa','apo-d':'#d1fae5','apo-n':'#bbf7d0'}[t.cls]||'#fff';
+      const clrT={'sv-d':'#dc2626','sv-n':'#b91c1c','cm-d':'#2563eb','cm-n':'#1d4ed8','ped-d':'#d97706','ped-n':'#c2410c','apo-d':'#059669','apo-n':'#047857'}[t.cls]||'#374151';
+      tabelasHtml+=`<tr style="background:${bgRow};border-bottom:1px solid #ddd">
+        <td style="padding:3px 5px;font-size:7px;font-weight:700;color:${clrT};border-right:1px solid #ddd;white-space:nowrap">${t.l}</td>`;
+      DA.forEach(ab=>{
+        if(sem.dias[ab]===undefined){tabelasHtml+=`<td style="background:#f0f0f0;border-right:1px solid #ddd"></td>`;return}
+        const arr=EB[sem.letra][ab]||[];const val=ti<arr.length?arr[ti]:'';
+        let nome='',crm='',vinc='';
+        if(val){
+          const mV=val.match(/(CR|EF)$/);if(mV)vinc=mV[1];
+          const mC=val.match(/\((\d+)\)/);
+          if(mC){crm=mC[1];nome=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();}
+          else{nome=val.replace(/\s*(CR|EF)$/,'').trim();}
+        }
+        const sub=val?(crm+(vinc?' '+vinc:'')):'';
+        tabelasHtml+=`<td style="padding:2px 3px;text-align:center;border-right:1px solid #ddd;vertical-align:middle">
+          ${val
+            ?`<div style="font-size:7px;font-weight:700;color:#1a1f36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin:0 auto">${nome}</div>
+              <div style="font-size:6px;color:#5a6485;white-space:nowrap">${sub}</div>`
+            :`<div style="font-size:7px;color:#ccc">—</div>`}
+        </td>`;
+      });
+      tabelasHtml+=`</tr>`;
+    });
+    tabelasHtml+=`</tbody></table></div>`;
+  });
 
-const w=window.open(’’,’_blank’);
-if(!w){showToast(‘Permita pop-ups’,true);return}
-w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-
+  const w=window.open('','_blank');
+  if(!w){showToast('Permita pop-ups',true);return}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Escala CAIS Campinas — ${MP[mesMes]} ${mesAno}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -4341,19 +4341,29 @@ w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
 
 // ══ PDF RELATÓRIO GERAL — A4 PAISAGEM OTIMIZADO (Fix 10/11) ══
 function pdfRelatorio(){
-const dados=calcRel(relMes,relAno);
-const totH=dados.reduce((s,d)=>s+d.hTotal,0);
-const totFin=dados.reduce((s,d)=>s+d.totalFin,0);
-const totDuP=dados.reduce((s,d)=>s+d.hDuPorta,0);
-const totFdsP=dados.reduce((s,d)=>s+d.hFdsPorta,0);
-const totDuSV=dados.reduce((s,d)=>s+d.hDuSV,0);
-const totFdsSV=dados.reduce((s,d)=>s+d.hFdsSV,0);
-const areaClr={“SV+ENF”:”#dc2626”,“CM”:”#1d4ed8”,“PED”:”#b45309”,“APOIO”:”#166534”};
-const rows=dados.map((d,i)=>` <tr style="${i%2===0?"":"background:#f5f7fc"}"> <td style="font-size:7.5px;font-weight:600">${d.n}</td> <td style="font-family:monospace;font-size:7.5px">${d.c}</td> <td style="font-size:7.5px">${d.areasReais.map(a=>`<span style=“color:${areaClr[a]||”#1d4ed8”};font-weight:700”>${a}</span>`).join(", ")||"—"}</td> <td style="text-align:center">${d.hDuPorta?d.hDuPorta+"h":"—"}</td> <td style="text-align:center">${d.hFdsPorta?d.hFdsPorta+"h":"—"}</td> <td style="text-align:center">${d.hDuSV?d.hDuSV+"h":"—"}</td> <td style="text-align:center">${d.hFdsSV?d.hFdsSV+"h":"—"}</td> <td style="text-align:center;font-weight:800;font-family:monospace">${d.hTotal?d.hTotal+"h":"—"}</td> <td style="text-align:right;font-weight:700;color:#166534">${d.totalFin>0?fmtMoeda(d.totalFin):"—"}</td> </tr>`).join(””);
-const w=window.open(””,”_blank”);
-if(!w){showToast(“Permita pop-ups”,true);return}
-w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-
+  const dados=calcRel(relMes,relAno);
+  const totH=dados.reduce((s,d)=>s+d.hTotal,0);
+  const totFin=dados.reduce((s,d)=>s+d.totalFin,0);
+  const totDuP=dados.reduce((s,d)=>s+d.hDuPorta,0);
+  const totFdsP=dados.reduce((s,d)=>s+d.hFdsPorta,0);
+  const totDuSV=dados.reduce((s,d)=>s+d.hDuSV,0);
+  const totFdsSV=dados.reduce((s,d)=>s+d.hFdsSV,0);
+  const areaClr={"SV+ENF":"#dc2626","CM":"#1d4ed8","PED":"#b45309","APOIO":"#166534"};
+  const rows=dados.map((d,i)=>`
+    <tr style="${i%2===0?"":"background:#f5f7fc"}">
+      <td style="font-size:7.5px;font-weight:600">${d.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${d.c}</td>
+      <td style="font-size:7.5px">${d.areasReais.map(a=>`<span style="color:${areaClr[a]||"#1d4ed8"};font-weight:700">${a}</span>`).join(", ")||"—"}</td>
+      <td style="text-align:center">${d.hDuPorta?d.hDuPorta+"h":"—"}</td>
+      <td style="text-align:center">${d.hFdsPorta?d.hFdsPorta+"h":"—"}</td>
+      <td style="text-align:center">${d.hDuSV?d.hDuSV+"h":"—"}</td>
+      <td style="text-align:center">${d.hFdsSV?d.hFdsSV+"h":"—"}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${d.hTotal?d.hTotal+"h":"—"}</td>
+      <td style="text-align:right;font-weight:700;color:#166534">${d.totalFin>0?fmtMoeda(d.totalFin):"—"}</td>
+    </tr>`).join("");
+  const w=window.open("","_blank");
+  if(!w){showToast("Permita pop-ups",true);return}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Relatório CAIS — ${MP[relMes]} ${relAno}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -4435,375 +4445,350 @@ w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
 
 // ══ XLSX ══
 function exportXLSX(){
-const sems=gerarSemanas(mesMes,mesAno);
-const wb=XLSX.utils.book_new();
-const ws={};
-// Cores por tipo de turno (fundo da linha)
-const bgTurno={
-‘sv-d’:‘FFFFD5D5’,‘cm-d’:‘FFE8F0FE’,‘ped-d’:‘FFFFF3C7’,‘apo-d’:‘FFD1FAE5’,
-‘sv-n’:‘FFFFC9CC’,‘cm-n’:‘FFDBEAFE’,‘ped-n’:‘FFFED7AA’,‘apo-n’:‘FFBBF7D0’
-};
-const corTurno={
-‘sv-d’:‘FFDC2626’,‘cm-d’:‘FF2563EB’,‘ped-d’:‘FFD97706’,‘apo-d’:‘FF059669’,
-‘sv-n’:‘FFB91C1C’,‘cm-n’:‘FF1D4ED8’,‘ped-n’:‘FFC2410C’,‘apo-n’:‘FF047857’
-};
-// Estilos comuns
-const borda={style:‘thin’,color:{rgb:‘FFDDDE1ED’}};
-const bordas={top:borda,bottom:borda,left:borda,right:borda};
-const fntTitulo={name:‘DM Mono’,sz:11,bold:true,color:{rgb:‘FF1A1F36’}};
-const fntSub={name:‘DM Mono’,sz:9,color:{rgb:‘FF5A6485’}};
-const fntHdr={name:‘DM Mono’,sz:8,bold:true,color:{rgb:‘FF5A6485’}};
-const fntCel={name:‘DM Mono’,sz:8,bold:true,color:{rgb:‘FF1A1F36’}};
-const fntCrm={name:‘DM Mono’,sz:7,color:{rgb:‘FF5A6485’}};
+  const sems=gerarSemanas(mesMes,mesAno);
+  const wb=XLSX.utils.book_new();
+  const ws={};
+  // Cores por tipo de turno (fundo da linha)
+  const bgTurno={
+    'sv-d':'FFFFD5D5','cm-d':'FFE8F0FE','ped-d':'FFFFF3C7','apo-d':'FFD1FAE5',
+    'sv-n':'FFFFC9CC','cm-n':'FFDBEAFE','ped-n':'FFFED7AA','apo-n':'FFBBF7D0'
+  };
+  const corTurno={
+    'sv-d':'FFDC2626','cm-d':'FF2563EB','ped-d':'FFD97706','apo-d':'FF059669',
+    'sv-n':'FFB91C1C','cm-n':'FF1D4ED8','ped-n':'FFC2410C','apo-n':'FF047857'
+  };
+  // Estilos comuns
+  const borda={style:'thin',color:{rgb:'FFDDDE1ED'}};
+  const bordas={top:borda,bottom:borda,left:borda,right:borda};
+  const fntTitulo={name:'DM Mono',sz:11,bold:true,color:{rgb:'FF1A1F36'}};
+  const fntSub={name:'DM Mono',sz:9,color:{rgb:'FF5A6485'}};
+  const fntHdr={name:'DM Mono',sz:8,bold:true,color:{rgb:'FF5A6485'}};
+  const fntCel={name:'DM Mono',sz:8,bold:true,color:{rgb:'FF1A1F36'}};
+  const fntCrm={name:'DM Mono',sz:7,color:{rgb:'FF5A6485'}};
 
-let R=0;// linha atual
-// Título
-ws[XLSX.utils.encode_cell({r:R,c:0})]={v:’CAIS Campinas — Escala de Plantão — ‘+MP[mesMes]+’ ’+mesAno,
-s:{font:{name:‘Arial’,sz:13,bold:true,color:{rgb:‘FF1A1F36’}},fill:{fgColor:{rgb:‘FFF0F2F7’}}}};
-R+=2;
+  let R=0;// linha atual
+  // Título
+  ws[XLSX.utils.encode_cell({r:R,c:0})]={v:'CAIS Campinas — Escala de Plantão — '+MP[mesMes]+' '+mesAno,
+    s:{font:{name:'Arial',sz:13,bold:true,color:{rgb:'FF1A1F36'}},fill:{fgColor:{rgb:'FFF0F2F7'}}}};
+  R+=2;
 
-sems.forEach(sem=>{
-const corSem=sem.letra===‘A’?‘FF059669’:‘FF2563EB’;
-// Cabeçalho semana
-ws[XLSX.utils.encode_cell({r:R,c:0})]={v:‘SEMANA ‘+sem.letra,
-s:{font:{name:‘Arial’,sz:9,bold:true,color:{rgb:corSem}},
-fill:{fgColor:{rgb:‘FFF7F8FC’}},alignment:{horizontal:‘left’},border:bordas}};
-DA.forEach((ab,i)=>{
-const dia=sem.dias[ab];const fds=dia!==undefined&&isFDS(sem.dts[ab]);
-ws[XLSX.utils.encode_cell({r:R,c:i+1})]={v:dia!==undefined?(DN[i]+’ ‘+dia):’’,
-s:{font:fntHdr,fill:{fgColor:{rgb:‘FFF0F2F7’}},
-alignment:{horizontal:‘center’},border:bordas}};
-});
-R++;
-// Linhas de turno
-TURNOS.forEach((t,ti)=>{
-const bg=bgTurno[t.cls]||‘FFFFFFFF’;
-const clr=corTurno[t.cls]||‘FF1A1F36’;
-// Coluna horário
-ws[XLSX.utils.encode_cell({r:R,c:0})]={v:t.l,
-s:{font:{name:‘Arial’,sz:8,bold:true,color:{rgb:clr}},
-fill:{fgColor:{rgb:bg}},alignment:{horizontal:‘left’,vertical:‘center’,wrapText:false},border:bordas}};
-// Colunas de cada dia
-DA.forEach((ab,i)=>{
-const arr=EB[sem.letra][ab]||[];
-const val=ti<arr.length?arr[ti]:’’;
-let nome=’’,crm=’’,vinc=’’;
-if(val){
-const mV=val.match(/(CR|EF)$/);if(mV)vinc=mV[1];
-const mC=val.match(/((\d+))/);
-if(mC){crm=mC[1];nome=val.replace(/\s*(\d+)\s*(CR|EF)?$/,’’).replace(/\s*(\d+)/,’’).trim();}
-else{nome=val.replace(/\s*(CR|EF)$/,’’).trim();}
-}
-const crm2=crm?(’ (’+crm+’)’):’’;
-const vinc2=vinc?(’ ‘+vinc):’’;
-const texto=val?(nome+crm2+vinc2):’’;
-ws[XLSX.utils.encode_cell({r:R,c:i+1})]={v:texto,
-s:{font:fntCel,fill:{fgColor:{rgb:bg}},
-alignment:{horizontal:‘center’,vertical:‘center’,wrapText:false},border:bordas}};
-});
-R++;
-});
-R++;// linha em branco entre semanas
-});
+  sems.forEach(sem=>{
+    const corSem=sem.letra==='A'?'FF059669':'FF2563EB';
+    // Cabeçalho semana
+    ws[XLSX.utils.encode_cell({r:R,c:0})]={v:'SEMANA '+sem.letra,
+      s:{font:{name:'Arial',sz:9,bold:true,color:{rgb:corSem}},
+         fill:{fgColor:{rgb:'FFF7F8FC'}},alignment:{horizontal:'left'},border:bordas}};
+    DA.forEach((ab,i)=>{
+      const dia=sem.dias[ab];const fds=dia!==undefined&&isFDS(sem.dts[ab]);
+      ws[XLSX.utils.encode_cell({r:R,c:i+1})]={v:dia!==undefined?(DN[i]+' '+dia):'',
+        s:{font:fntHdr,fill:{fgColor:{rgb:'FFF0F2F7'}},
+           alignment:{horizontal:'center'},border:bordas}};
+    });
+    R++;
+    // Linhas de turno
+    TURNOS.forEach((t,ti)=>{
+      const bg=bgTurno[t.cls]||'FFFFFFFF';
+      const clr=corTurno[t.cls]||'FF1A1F36';
+      // Coluna horário
+      ws[XLSX.utils.encode_cell({r:R,c:0})]={v:t.l,
+        s:{font:{name:'Arial',sz:8,bold:true,color:{rgb:clr}},
+           fill:{fgColor:{rgb:bg}},alignment:{horizontal:'left',vertical:'center',wrapText:false},border:bordas}};
+      // Colunas de cada dia
+      DA.forEach((ab,i)=>{
+        const arr=EB[sem.letra][ab]||[];
+        const val=ti<arr.length?arr[ti]:'';
+        let nome='',crm='',vinc='';
+        if(val){
+          const mV=val.match(/(CR|EF)$/);if(mV)vinc=mV[1];
+          const mC=val.match(/\((\d+)\)/);
+          if(mC){crm=mC[1];nome=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();}
+          else{nome=val.replace(/\s*(CR|EF)$/,'').trim();}
+        }
+        const crm2=crm?(' ('+crm+')'):'';
+        const vinc2=vinc?(' '+vinc):'';
+        const texto=val?(nome+crm2+vinc2):'';
+        ws[XLSX.utils.encode_cell({r:R,c:i+1})]={v:texto,
+          s:{font:fntCel,fill:{fgColor:{rgb:bg}},
+             alignment:{horizontal:'center',vertical:'center',wrapText:false},border:bordas}};
+      });
+      R++;
+    });
+    R++;// linha em branco entre semanas
+  });
 
-// Definir range
-ws[’!ref’]=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R,c:7}});
-// Larguras de coluna
-ws[’!cols’]=[{wch:24},…Array(7).fill({wch:20})];
-// Alturas de linha — compactas
-ws[’!rows’]=[];for(let i=0;i<R;i++)ws[’!rows’].push({hpt:16});
-ws[’!rows’][0]={hpt:22};// título maior
+  // Definir range
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:R,c:7}});
+  // Larguras de coluna
+  ws['!cols']=[{wch:24},...Array(7).fill({wch:20})];
+  // Alturas de linha — compactas
+  ws['!rows']=[];for(let i=0;i<R;i++)ws['!rows'].push({hpt:16});
+  ws['!rows'][0]={hpt:22};// título maior
 
-XLSX.utils.book_append_sheet(wb,ws,MA[mesMes]+mesAno);
-XLSX.writeFile(wb,‘CAIS_Escala_’+MA[mesMes]+mesAno+’.xlsx’);
-showToast(‘Excel exportado!’);
+  XLSX.utils.book_append_sheet(wb,ws,MA[mesMes]+mesAno);
+  XLSX.writeFile(wb,'CAIS_Escala_'+MA[mesMes]+mesAno+'.xlsx');
+  showToast('Excel exportado!');
 }
 function exportXLSXBase(){
-const wb=XLSX.utils.book_new();
-[‘A’,‘B’].forEach(sem=>{
-const rows=[[‘Horário’,…DA.map((ab,i)=>DN[i])]];
-TURNOS.forEach((t,ti)=>{const row=[t.l];DA.forEach(ab=>{const arr=EB[sem][ab]||[];row.push(ti<arr.length?arr[ti]:’’)});rows.push(row)});
-const ws=XLSX.utils.aoa_to_sheet(rows);ws[’!cols’]=[{wch:26},…Array(7).fill({wch:22})];
-XLSX.utils.book_append_sheet(wb,ws,‘Semana’+sem);
-});
-XLSX.writeFile(wb,‘CAIS_EscalaBase.xlsx’);showToast(‘Excel exportado!’);
+  const wb=XLSX.utils.book_new();
+  ['A','B'].forEach(sem=>{
+    const rows=[['Horário',...DA.map((ab,i)=>DN[i])]];
+    TURNOS.forEach((t,ti)=>{const row=[t.l];DA.forEach(ab=>{const arr=EB[sem][ab]||[];row.push(ti<arr.length?arr[ti]:'')});rows.push(row)});
+    const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:26},...Array(7).fill({wch:22})];
+    XLSX.utils.book_append_sheet(wb,ws,'Semana'+sem);
+  });
+  XLSX.writeFile(wb,'CAIS_EscalaBase.xlsx');showToast('Excel exportado!');
 }
 function exportXLSXRel(){
-const dados=calcRel(relMes,relAno);
-const rows=[[‘CAIS Campinas — Relatório de Horas — ‘+MP[relMes]+’ ‘+relAno],[’’],
-[‘Profissional’,‘CRM’,‘Vínculo’,‘Área’,‘Plant.DU’,‘Plant.FDS’,‘Total Plant.’,‘H.Diurnas’,‘H.Noturnas’,‘H.FDS’,‘H.Úteis’,‘Total Horas’,‘Valor Estimado (R$)’]];
-dados.forEach(d=>rows.push([d.n,d.c,getVinc(d.n),d.a,d.du,d.fds,d.total,d.hD?d.hD+‘h’:’’,d.hN?d.hN+‘h’:’’,d.hF?d.hF+‘h’:’’,d.hU?d.hU+‘h’:’’,d.hTotal?d.hTotal+‘h’:’’,d.totalFin>0?d.totalFin.toFixed(2):’’]));
-rows.push([‘TOTAL’,’’,’’,’’,dados.reduce((s,d)=>s+d.du,0),dados.reduce((s,d)=>s+d.fds,0),dados.reduce((s,d)=>s+d.total,0),’’,’’,’’,’’,dados.reduce((s,d)=>s+d.hTotal,0)+‘h’,dados.reduce((s,d)=>s+d.totalFin,0).toFixed(2)]);
-const wb=XLSX.utils.book_new();
-const ws=XLSX.utils.aoa_to_sheet(rows);ws[’!cols’]=[{wch:38},…Array(12).fill({wch:12})];
-XLSX.utils.book_append_sheet(wb,ws,‘Relatório ‘+MA[relMes]+relAno);
-XLSX.writeFile(wb,‘CAIS_Relatorio_’+MA[relMes]+relAno+’.xlsx’);showToast(‘Excel exportado!’);
+  const dados=calcRel(relMes,relAno);
+  const rows=[['CAIS Campinas — Relatório de Horas — '+MP[relMes]+' '+relAno],[''],
+    ['Profissional','CRM','Vínculo','Área','Plant.DU','Plant.FDS','Total Plant.','H.Diurnas','H.Noturnas','H.FDS','H.Úteis','Total Horas','Valor Estimado (R$)']];
+  dados.forEach(d=>rows.push([d.n,d.c,getVinc(d.n),d.a,d.du,d.fds,d.total,d.hD?d.hD+'h':'',d.hN?d.hN+'h':'',d.hF?d.hF+'h':'',d.hU?d.hU+'h':'',d.hTotal?d.hTotal+'h':'',d.totalFin>0?d.totalFin.toFixed(2):'']));
+  rows.push(['TOTAL','','','',dados.reduce((s,d)=>s+d.du,0),dados.reduce((s,d)=>s+d.fds,0),dados.reduce((s,d)=>s+d.total,0),'','','','',dados.reduce((s,d)=>s+d.hTotal,0)+'h',dados.reduce((s,d)=>s+d.totalFin,0).toFixed(2)]);
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:38},...Array(12).fill({wch:12})];
+  XLSX.utils.book_append_sheet(wb,ws,'Relatório '+MA[relMes]+relAno);
+  XLSX.writeFile(wb,'CAIS_Relatorio_'+MA[relMes]+relAno+'.xlsx');showToast('Excel exportado!');
 }
 
 // ══ MODAIS ══
-function abrirMo(id){document.getElementById(id).classList.add(‘open’)}
-function fecharMo(id){document.getElementById(id).classList.remove(‘open’)}
-document.addEventListener(‘click’,e=>{if(e.target.classList.contains(‘mo’))e.target.classList.remove(‘open’)});
+function abrirMo(id){document.getElementById(id).classList.add('open')}
+function fecharMo(id){document.getElementById(id).classList.remove('open')}
+document.addEventListener('click',e=>{if(e.target.classList.contains('mo'))e.target.classList.remove('open')});
 
 function showToast(msg,err=false,warn=false){
-const el=document.getElementById(‘toast’);el.textContent=msg;
-el.className=‘toast’+(err?’ err’:warn?’ warn’:’’);
-el.style.display=‘block’;clearTimeout(el._t);el._t=setTimeout(()=>el.style.display=‘none’,3200);
+  const el=document.getElementById('toast');el.textContent=msg;
+  el.className='toast'+(err?' err':warn?' warn':'');
+  el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',3200);
 }
 
 // ══════════════════════════════════
 // SISTEMA DE PERFIL
 // ══════════════════════════════════
-const PERFIS_KEY=‘cais_perfis’; // chave fixa — não muda entre versões
-function carregarPerfis(){try{return JSON.parse(localStorage.getItem(PERFIS_KEY)||’{}’)}catch(e){return {}}}
+const PERFIS_KEY='cais_perfis'; // chave fixa — não muda entre versões
+function carregarPerfis(){try{return JSON.parse(localStorage.getItem(PERFIS_KEY)||'{}')}catch(e){return {}}}
 function salvarPerfis(obj){try{localStorage.setItem(PERFIS_KEY,JSON.stringify(obj))}catch(e){}}
 function getPerfil(crm){return carregarPerfis()[String(crm)]||null}
 function setPerfil(crm,dados){var p=carregarPerfis();p[String(crm)]=dados;salvarPerfis(p)}
 
 function abrirPerfil(){
-var pf=getPerfil(curUser.c)||{};
-document.getElementById(‘pf-nome-completo’).value=curUser.nU||’’;
-document.getElementById(‘pf-nome-escala’).value=pf.nomeEscala||’’;
-document.getElementById(‘pf-crm’).value=curUser.c||’’;
-document.getElementById(‘pf-whatsapp’).value=pf.whatsapp||’’;
-document.getElementById(‘pf-email’).value=pf.email||’’;
-document.getElementById(‘pf-cpf’).value=pf.cpf||’’;
-document.getElementById(‘pf-pw-atual’).value=’’;
-document.getElementById(‘pf-pw-nova’).value=’’;
-document.getElementById(‘pf-pw-conf’).value=’’;
-abrirMo(‘mo-perfil’);
+  var pf=getPerfil(curUser.c)||{};
+  document.getElementById('pf-nome-completo').value=curUser.nU||'';
+  document.getElementById('pf-nome-escala').value=pf.nomeEscala||'';
+  document.getElementById('pf-crm').value=curUser.c||'';
+  document.getElementById('pf-whatsapp').value=pf.whatsapp||'';
+  document.getElementById('pf-email').value=pf.email||'';
+  document.getElementById('pf-cpf').value=pf.cpf||'';
+  document.getElementById('pf-pw-atual').value='';
+  document.getElementById('pf-pw-nova').value='';
+  document.getElementById('pf-pw-conf').value='';
+  abrirMo('mo-perfil');
 }
 async function salvarPerfil(){
-const pf=getPerfil(curUser.c)||{};
-const nomeEscalaInput=document.getElementById(‘pf-nome-escala’).value.trim();
-const whatsapp=document.getElementById(‘pf-whatsapp’).value.trim();
-const email=document.getElementById(‘pf-email’).value.trim();
-const cpf=document.getElementById(‘pf-cpf’).value.trim();
-// Validação: 2 nomes obrigatórios
-if(nomeEscalaInput){
-const v=validarNomeEscala(nomeEscalaInput);
-if(!v.ok){showToast(v.msg,true);return}
-}
-const nomeEscala=nomeEscalaInput?titleCase2Nomes(nomeEscalaInput):’’;
-const pwAtual=document.getElementById(‘pf-pw-atual’).value;
-const pwNova=document.getElementById(‘pf-pw-nova’).value;
-const pwConf=document.getElementById(‘pf-pw-conf’).value;
-// 1. Validações
-if(pwNova){
-if(pwNova!==pwConf){showToast(‘Nova senha não confere’,true);return}
-if(pwNova.length<4){showToast(‘Senha muito curta’,true);return}
-// Validar senha atual contra o banco
-try{
-const {data,error}=await sb.from(‘logins’).select(‘senha’).eq(‘crm’,curUser.c).single();
-if(error)throw error;
-if(!data||data.senha!==pwAtual){showToast(‘Senha atual incorreta’,true);return}
-}catch(e){
-const login=LOGINS.find(l=>l.c==curUser.c);
-if(!login||pwAtual!==login.pw){showToast(‘Senha atual incorreta’,true);return}
-}
-}
-// 2. Persistir senha no banco PRIMEIRO
-if(pwNova){
-try{
-const {data,error}=await sb.from(‘logins’).update({senha:pwNova}).eq(‘crm’,curUser.c).select();
-if(error)throw error;
-if(!data||!data.length)throw new Error(‘Senha não atualizada’);
-const login=LOGINS.find(l=>l.c==curUser.c);
-if(login)login.pw=pwNova;
-}catch(e){
-console.error(‘Erro ao salvar senha:’,e);
-showToast(‘Erro ao salvar senha — tente novamente’,true);return;
-}
-}
-// 3. Persistir perfil no banco
-try{
-const {error}=await sb.from(‘perfis’).upsert({
-crm:curUser.c,nome_escala:nomeEscala,whatsapp:whatsapp,
-email:email,cpf:cpf,primeiro_acesso:false,
-
-```
-},{onConflict:'crm'});
-if(error)throw error;
-```
-
-}catch(e){
-console.error(‘Erro ao salvar perfil:’,e);
-showToast(‘Erro ao salvar perfil’,true);return;
-}
-// 4. Atualizar local
-setPerfil(curUser.c,Object.assign({},pf,{nomeEscala,whatsapp,email,cpf,primeiroAcesso:false}));
-aplicarPerfil(curUser.c);
-fecharMo(‘mo-perfil’);
-showToast(pwNova?‘Perfil e senha salvos!’:‘Perfil salvo!’);
+  const pf=getPerfil(curUser.c)||{};
+  const nomeEscalaInput=document.getElementById('pf-nome-escala').value.trim();
+  const whatsapp=document.getElementById('pf-whatsapp').value.trim();
+  const email=document.getElementById('pf-email').value.trim();
+  const cpf=document.getElementById('pf-cpf').value.trim();
+  // Validação: 2 nomes obrigatórios
+  if(nomeEscalaInput){
+    const v=validarNomeEscala(nomeEscalaInput);
+    if(!v.ok){showToast(v.msg,true);return}
+  }
+  const nomeEscala=nomeEscalaInput?titleCase2Nomes(nomeEscalaInput):'';
+  const pwAtual=document.getElementById('pf-pw-atual').value;
+  const pwNova=document.getElementById('pf-pw-nova').value;
+  const pwConf=document.getElementById('pf-pw-conf').value;
+  // 1. Validações
+  if(pwNova){
+    if(pwNova!==pwConf){showToast('Nova senha não confere',true);return}
+    if(pwNova.length<4){showToast('Senha muito curta',true);return}
+    // Validar senha atual contra o banco
+    try{
+      const {data,error}=await sb.from('logins').select('senha').eq('crm',curUser.c).single();
+      if(error)throw error;
+      if(!data||data.senha!==pwAtual){showToast('Senha atual incorreta',true);return}
+    }catch(e){
+      const login=LOGINS.find(l=>l.c==curUser.c);
+      if(!login||pwAtual!==login.pw){showToast('Senha atual incorreta',true);return}
+    }
+  }
+  // 2. Persistir senha no banco PRIMEIRO
+  if(pwNova){
+    try{
+      const {data,error}=await sb.from('logins').update({senha:pwNova}).eq('crm',curUser.c).select();
+      if(error)throw error;
+      if(!data||!data.length)throw new Error('Senha não atualizada');
+      const login=LOGINS.find(l=>l.c==curUser.c);
+      if(login)login.pw=pwNova;
+    }catch(e){
+      console.error('Erro ao salvar senha:',e);
+      showToast('Erro ao salvar senha — tente novamente',true);return;
+    }
+  }
+  // 3. Persistir perfil no banco
+  try{
+    const {error}=await sb.from('perfis').upsert({
+      crm:curUser.c,nome_escala:nomeEscala,whatsapp:whatsapp,
+      email:email,cpf:cpf,primeiro_acesso:false,
+      
+    },{onConflict:'crm'});
+    if(error)throw error;
+  }catch(e){
+    console.error('Erro ao salvar perfil:',e);
+    showToast('Erro ao salvar perfil',true);return;
+  }
+  // 4. Atualizar local
+  setPerfil(curUser.c,Object.assign({},pf,{nomeEscala,whatsapp,email,cpf,primeiroAcesso:false}));
+  aplicarPerfil(curUser.c);
+  fecharMo('mo-perfil');
+  showToast(pwNova?'Perfil e senha salvos!':'Perfil salvo!');
 }
 function aplicarPerfil(crm){
-var pf=getPerfil(crm)||{};
-var ne=pf.nomeEscala||’’;
-if(ne){
-document.getElementById(‘u-nome’).textContent=ne.split(’ ‘).slice(0,2).join(’ ‘);
-var init=ne.split(’ ‘).filter(function(p){return p.length>2}).slice(0,2).map(function(p){return p[0]}).join(’’).toUpperCase();
-document.getElementById(‘u-ava’).textContent=init||ini2(curUser.nU);
-}
+  var pf=getPerfil(crm)||{};
+  var ne=pf.nomeEscala||'';
+  if(ne){
+    document.getElementById('u-nome').textContent=ne.split(' ').slice(0,2).join(' ');
+    var init=ne.split(' ').filter(function(p){return p.length>2}).slice(0,2).map(function(p){return p[0]}).join('').toUpperCase();
+    document.getElementById('u-ava').textContent=init||ini2(curUser.nU);
+  }
 }
 async function verificarPrimeiroAcesso(){
-// Ler primeiro do banco (fonte da verdade)
-let pf=null;
-try{
-const {data,error}=await sb.from(‘perfis’).select(’*’).eq(‘crm’,curUser.c).maybeSingle();
-if(!error&&data){
-pf={
-nomeEscala:data.nome_escala||’’,
-whatsapp:data.whatsapp||’’,
-email:data.email||’’,
-cpf:data.cpf||’’,
-primeiroAcesso:data.primeiro_acesso!==false
-};
-// Atualizar cache local
-const obj=carregarPerfis();
-obj[String(curUser.c)]=pf;salvarPerfis(obj);
-}
-}catch(e){console.error(‘Verificar perfil:’,e)}
-// Fallback local se banco offline
-if(!pf)pf=getPerfil(curUser.c);
-if(!pf||pf.primeiroAcesso!==false){
-document.getElementById(‘pa-nome-escala’).value=’’;
-document.getElementById(‘pa-whatsapp’).value=’’;
-document.getElementById(‘pa-email’).value=’’;
-setTimeout(function(){abrirMo(‘mo-primeiro-acesso’)},500);
-} else {
-aplicarPerfil(curUser.c);
-}
+  // Ler primeiro do banco (fonte da verdade)
+  let pf=null;
+  try{
+    const {data,error}=await sb.from('perfis').select('*').eq('crm',curUser.c).maybeSingle();
+    if(!error&&data){
+      pf={
+        nomeEscala:data.nome_escala||'',
+        whatsapp:data.whatsapp||'',
+        email:data.email||'',
+        cpf:data.cpf||'',
+        primeiroAcesso:data.primeiro_acesso!==false
+      };
+      // Atualizar cache local
+      const obj=carregarPerfis();
+      obj[String(curUser.c)]=pf;salvarPerfis(obj);
+    }
+  }catch(e){console.error('Verificar perfil:',e)}
+  // Fallback local se banco offline
+  if(!pf)pf=getPerfil(curUser.c);
+  if(!pf||pf.primeiroAcesso!==false){
+    document.getElementById('pa-nome-escala').value='';
+    document.getElementById('pa-whatsapp').value='';
+    document.getElementById('pa-email').value='';
+    setTimeout(function(){abrirMo('mo-primeiro-acesso')},500);
+  } else {
+    aplicarPerfil(curUser.c);
+  }
 }
 async function salvarPrimeiroAcesso(){
-const ne=document.getElementById(‘pa-nome-escala’).value.trim();
-const wpp=document.getElementById(‘pa-whatsapp’).value.trim();
-const em=document.getElementById(‘pa-email’).value.trim();
-const validNome=validarNomeEscala(ne);
-if(!validNome.ok){showToast(validNome.msg,true);return}
-const neFormatado=validNome.formatted;
-if(!wpp){showToast(‘WhatsApp é obrigatório’,true);return}
-if(!em||!em.includes(’@’)){showToast(‘E-mail válido é obrigatório’,true);return}
-// Persistir no banco
-try{
-const {error}=await sb.from(‘perfis’).upsert({
-crm:curUser.c,nome_escala:neFormatado,whatsapp:wpp,email:em,cpf:’’,
-primeiro_acesso:false
-},{onConflict:‘crm’});
-if(error)throw error;
-}catch(e){
-console.error(‘salvarPrimeiroAcesso:’,e);
-showToast(‘Erro ao salvar — tente novamente’,true);return;
-}
-setPerfil(curUser.c,{nomeEscala:neFormatado,whatsapp:wpp,email:em,cpf:’’,primeiroAcesso:false});
-aplicarPerfil(curUser.c);
-fecharMo(‘mo-primeiro-acesso’);
-showToast(‘Bem-vindo, ‘+neFormatado+’!’);
+  const ne=document.getElementById('pa-nome-escala').value.trim();
+  const wpp=document.getElementById('pa-whatsapp').value.trim();
+  const em=document.getElementById('pa-email').value.trim();
+  const validNome=validarNomeEscala(ne);
+  if(!validNome.ok){showToast(validNome.msg,true);return}
+  const neFormatado=validNome.formatted;
+  if(!wpp){showToast('WhatsApp é obrigatório',true);return}
+  if(!em||!em.includes('@')){showToast('E-mail válido é obrigatório',true);return}
+  // Persistir no banco
+  try{
+    const {error}=await sb.from('perfis').upsert({
+      crm:curUser.c,nome_escala:neFormatado,whatsapp:wpp,email:em,cpf:'',
+      primeiro_acesso:false
+    },{onConflict:'crm'});
+    if(error)throw error;
+  }catch(e){
+    console.error('salvarPrimeiroAcesso:',e);
+    showToast('Erro ao salvar — tente novamente',true);return;
+  }
+  setPerfil(curUser.c,{nomeEscala:neFormatado,whatsapp:wpp,email:em,cpf:'',primeiroAcesso:false});
+  aplicarPerfil(curUser.c);
+  fecharMo('mo-primeiro-acesso');
+  showToast('Bem-vindo, '+neFormatado+'!');
 }
 // Máscara CPF
-document.addEventListener(‘input’,function(e){
-if(e.target.id===‘pf-cpf’){
-var v=e.target.value.replace(/\D/g,’’);
-if(v.length>3)v=v.slice(0,3)+’.’+v.slice(3);
-if(v.length>7)v=v.slice(0,7)+’.’+v.slice(7);
-if(v.length>11)v=v.slice(0,11)+’-’+v.slice(11);
-e.target.value=v.slice(0,14);
-}
+document.addEventListener('input',function(e){
+  if(e.target.id==='pf-cpf'){
+    var v=e.target.value.replace(/\D/g,'');
+    if(v.length>3)v=v.slice(0,3)+'.'+v.slice(3);
+    if(v.length>7)v=v.slice(0,7)+'.'+v.slice(7);
+    if(v.length>11)v=v.slice(0,11)+'-'+v.slice(11);
+    e.target.value=v.slice(0,14);
+  }
 });
 
 // ══ SESSÃO PERSISTENTE — F5 não desloga ══
-const SESSION_KEY=‘cais_session_v1’;
+const SESSION_KEY='cais_session_v1';
 function salvarSessao(){
-if(!curUser.loginId&&!curUser.c)return;
-try{localStorage.setItem(SESSION_KEY,JSON.stringify({
-loginId:curUser.loginId,crm:curUser.c,cpf:curUser.cpf,
-nU:curUser.nU,n:curUser.n,
-isGestor:curUser.isGestor,isPlantonista:curUser.isPlantonista,
-isClinico:curUser.isClinico,role:curRole,
-ts:Date.now()
-}));}catch(e){}
+  if(!curUser.loginId&&!curUser.c)return;
+  try{localStorage.setItem(SESSION_KEY,JSON.stringify({
+    loginId:curUser.loginId,crm:curUser.c,cpf:curUser.cpf,
+    nU:curUser.nU,n:curUser.n,
+    isGestor:curUser.isGestor,isPlantonista:curUser.isPlantonista,
+    isClinico:curUser.isClinico,role:curRole,
+    ts:Date.now()
+  }));}catch(e){}
 }
 function limparSessao(){try{localStorage.removeItem(SESSION_KEY);}catch(e){}}
 async function restaurarSessao(){
-try{
-const raw=localStorage.getItem(SESSION_KEY);
-if(!raw)return false;
-const s=JSON.parse(raw);
-if(!s||(!s.loginId&&!s.crm&&!s.cpf))return false;
-// Validar contra banco
-let q=sb.from(‘logins’).select(’*’);
-if(s.loginId)q=q.eq(‘id’,s.loginId);
-else if(s.crm)q=q.eq(‘crm’,s.crm);
-else if(s.cpf)q=q.eq(‘cpf’,s.cpf);
-const {data,error}=await q.single();
-if(error||!data)return false;
-// Restaurar com flags atualizadas do banco
-curRole=data.is_gestor?‘gestor’:‘plantonista’;
-curUser={
-n:s.n,nU:data.nome,c:data.crm||null,cpf:data.cpf||null,
-loginId:data.id,
-ava:ini2(data.nome),
-isGestor:data.is_gestor===true,
-isPlantonista:data.is_plantonista!==false,
-isClinico:data.is_clinico!==false,
-cargo:data.is_gestor&&data.is_plantonista?‘Gestor + Plantonista’:(data.is_gestor?‘Gestor’:‘Plantonista’)
-};
-document.getElementById(‘screen-login’).style.display=‘none’;
-document.getElementById(‘screen-app’).style.display=‘flex’;
-document.getElementById(‘u-ava’).textContent=curUser.ava;
-document.getElementById(‘u-nome’).textContent=s.n.split(’ ‘).slice(0,2).join(’ ’);
-document.getElementById(‘u-cargo’).textContent=curUser.cargo;
-document.getElementById(‘nav-g’).style.display=curUser.isGestor?‘block’:‘none’;
-document.getElementById(‘nav-m’).style.display=curUser.isPlantonista?‘block’:‘none’;
-document.getElementById(‘escala-ph-r’).style.display=curUser.isGestor?‘flex’:‘none’;
-document.getElementById(‘cc-ph-r’).style.display=curUser.isGestor?‘flex’:‘none’;
-initSidebar();
-if(curRole===‘gestor’)navTo(‘dashboard’);else navTo(‘meu-plantao’);
-return true;
-}catch(e){console.error(‘Restaurar sessão:’,e);return false}
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    if(!s||(!s.loginId&&!s.crm&&!s.cpf))return false;
+    // Validar contra banco
+    let q=sb.from('logins').select('*');
+    if(s.loginId)q=q.eq('id',s.loginId);
+    else if(s.crm)q=q.eq('crm',s.crm);
+    else if(s.cpf)q=q.eq('cpf',s.cpf);
+    const {data,error}=await q.single();
+    if(error||!data)return false;
+    // Restaurar com flags atualizadas do banco
+    curRole=data.is_gestor?'gestor':'plantonista';
+    curUser={
+      n:s.n,nU:data.nome,c:data.crm||null,cpf:data.cpf||null,
+      loginId:data.id,
+      ava:ini2(data.nome),
+      isGestor:data.is_gestor===true,
+      isPlantonista:data.is_plantonista!==false,
+      isClinico:data.is_clinico!==false,
+      cargo:data.is_gestor&&data.is_plantonista?'Gestor + Plantonista':(data.is_gestor?'Gestor':'Plantonista')
+    };
+    document.getElementById('screen-login').style.display='none';
+    document.getElementById('screen-app').style.display='flex';
+    document.getElementById('u-ava').textContent=curUser.ava;
+    document.getElementById('u-nome').textContent=s.n.split(' ').slice(0,2).join(' ');
+    document.getElementById('u-cargo').textContent=curUser.cargo;
+    document.getElementById('nav-g').style.display=curUser.isGestor?'block':'none';
+    document.getElementById('nav-m').style.display=curUser.isPlantonista?'block':'none';
+    document.getElementById('escala-ph-r').style.display=curUser.isGestor?'flex':'none';
+    document.getElementById('cc-ph-r').style.display=curUser.isGestor?'flex':'none';
+    initSidebar();
+    if(curRole==='gestor')navTo('dashboard');else navTo('meu-plantao');
+    return true;
+  }catch(e){console.error('Restaurar sessão:',e);return false}
 }
 
 // ══ INICIALIZAÇÃO ══
 initLogins();
 populaLogin();
 async function bootApp(){
-// Garantir que o spinner SEMPRE seja escondido, mesmo em caso de erro
-const esconderSpinner=()=>{
-const boot=document.getElementById(‘screen-boot’);
-if(boot)boot.style.display=‘none’;
-};
-// Timeout de segurança — se boot demorar mais que 15s, mostra login
-const timeoutId=setTimeout(()=>{
-console.warn(‘Boot timeout — forçando exibição do login’);
-esconderSpinner();
-const sl=document.getElementById(‘screen-login’);
-if(sl)sl.style.display=‘flex’;
-},15000);
-
-try{
-initSidebar();
-await carregarSupabase();
-const restaurou=await restaurarSessao();
-clearTimeout(timeoutId);
-esconderSpinner();
-if(restaurou){
-try{renderAll();}catch(e){console.error(‘renderAll erro:’,e);}
-try{aplicarPerfil(curUser.c);}catch(e){console.error(‘aplicarPerfil erro:’,e);}
-} else {
-const sl=document.getElementById(‘screen-login’);
-if(sl)sl.style.display=‘flex’;
+  initSidebar();
+  await carregarSupabase();
+  const restaurou=await restaurarSessao();
+  // Esconder spinner após carregar tudo
+  const boot=document.getElementById('screen-boot');
+  if(boot)boot.style.display='none';
+  if(restaurou){
+    renderAll();
+    aplicarPerfil(curUser.c);
+  } else {
+    // Não havia sessão — mostrar login
+    document.getElementById('screen-login').style.display='flex';
+  }
 }
-}catch(err){
-console.error(‘Boot erro:’,err);
-clearTimeout(timeoutId);
-esconderSpinner();
-const sl=document.getElementById(‘screen-login’);
-if(sl)sl.style.display=‘flex’;
-alert(‘Erro ao carregar o sistema: ‘+(err.message||err)+’\n\nTente atualizar a página (F5).’);
-}
-}
-document.addEventListener(‘DOMContentLoaded’,bootApp);
-if(document.readyState!==‘loading’){bootApp();}
+document.addEventListener('DOMContentLoaded',bootApp);
+if(document.readyState!=='loading'){bootApp();}
 </script>
-
 </body>
 </html>
