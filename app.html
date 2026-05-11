@@ -783,8 +783,8 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <input type="hidden" id="ed-med" value="">
       <div id="ed-med-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
     </div>
-    <div class="fg"><label class="fl">Vínculo</label>
-      <select class="fs" id="ed-vinc"><option value="CR">CR — Credenciado</option><option value="EF">EF — Efetivo</option></select>
+    <div id="ed-vinc-info" style="background:var(--blue-bg);border:1px solid rgba(27,77,111,.2);border-radius:var(--r2);padding:9px 12px;font-size:11px;color:var(--blue);margin-bottom:8px;display:none">
+      ℹ️ Vínculo: <strong id="ed-vinc-label">—</strong> · definido pelo cadastro do profissional
     </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-editar')">Cancelar</button>
@@ -1409,13 +1409,15 @@ async function carregarSupabase(){
           dt=new Date(parseInt(partes[0]),parseInt(partes[1])-1,parseInt(partes[2]),12,0,0);
         }
       }
+      // Sanitizar metade — só aceita '1' ou '2' real
+      const metadeSan=(t.metade==='1'||t.metade==='2')?t.metade:null;
       TROCAS.push({
         id:t.codigo,sol:t.solicitante_nome,sCRM:t.solicitante_crm,
         sub:t.substituto_nome,bCRM:t.substituto_crm,
         data:dt.toLocaleDateString('pt-BR'),
         dt:dt,
         turno:t.turno,area:t.area,motivo:t.motivo||'',
-        metade:t.metade||null,
+        metade:metadeSan,
         status:t.status,mes:t.mes,ano:t.ano,vis:t.visivel_para||[]
       });
     });
@@ -1890,7 +1892,7 @@ function gerarHtmlSems(sems,canEdit){
         const val=getSlotValDia(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti,diaMes);
         let cellHTML='<span class="cn vz">—</span>';
         if(val){
-          // ═══ MEIO PLANTÃO: separador "|" ═══
+          // ═══ MEIO PLANTÃO: separador "|" — usa MESMAS classes (cn, cn-sub) das outras células
           if(val.includes('|')&&t.h===12){
             const partes=val.split('|').map(p=>p.trim());
             const linhas=partes.map((parte,idx)=>{
@@ -1907,14 +1909,13 @@ function gerarHtmlSems(sems,canEdit){
               const tag=parte.match(/#([12])/);
               const metade=tag?tag[1]:String(idx+1);
               const hCurto=t.not
-                ?(metade==='1'?'19–01':'01–07')
-                :(metade==='1'?'07–13':'13–19');
-              return `<div style="line-height:1.1;${idx===0?'border-bottom:1px dashed var(--border2);padding-bottom:1px;margin-bottom:1px':''}">
-                <div style="font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
-                <div style="font-size:8.5px;color:var(--text2);line-height:1">${crm} · ${vinc} · <strong style="color:var(--purple)">${hCurto}h</strong></div>
-              </div>`;
+                ?(metade==='1'?'19-01':'01-07')
+                :(metade==='1'?'07-13':'13-19');
+              const subLine=crm+(vinc?' · '+vinc:'')+' · '+hCurto+'h';
+              const sepStyle=idx===0?'border-bottom:1px dashed var(--border2);padding-bottom:1px;margin-bottom:1px':'';
+              return `<div style="${sepStyle}"><span class="cn">${nome}</span><span class="cn-sub">${subLine}</span></div>`;
             }).join('');
-            cellHTML=`<div class="cn-wrap" style="padding:1px 0">${linhas}</div>`;
+            cellHTML=`<div class="cn-wrap">${linhas}</div>`;
           } else {
             // ═══ PLANTÃO INTEIRO ═══
             let nomeCell='—',crmCell='',vincCell='';
@@ -2127,12 +2128,36 @@ function getSlotValDia(mes,ano,semLetra,ab,ti,diaMes){
 
 function preencherEdMedModal(cur){
   const vm=cur.replace(/ (CR|EF)$/,'');
-  const vv=(cur.match(/(CR|EF)$/)||['','CR'])[1];
   document.getElementById('ed-med').value=vm;
   const mAtual=MEDICOS.find(m=>{const p=m.n.split(' ');return `${p[0]} ${p[p.length-1]} (${m.c})`===vm});
   document.getElementById('ed-med-busca').value=mAtual?formatarNome(mAtual.n):(vm||'');
-  document.getElementById('ed-vinc').value=vv;
+  // Mostrar vínculo apenas informativo (do cadastro do profissional)
+  const info=document.getElementById('ed-vinc-info');
+  const lbl=document.getElementById('ed-vinc-label');
+  if(mAtual){
+    const v=getVinc(mAtual.n);
+    lbl.textContent=v+' — '+(v==='EF'?'Efetivo':'Credenciado');
+    info.style.display='block';
+  } else {
+    info.style.display='none';
+  }
   abrirMo('mo-editar');
+}
+
+// Atualizar label de vínculo quando o profissional for selecionado
+function atualizarVincInfo(){
+  const med=document.getElementById('ed-med').value;
+  const info=document.getElementById('ed-vinc-info');
+  const lbl=document.getElementById('ed-vinc-label');
+  if(!med){info.style.display='none';return}
+  const mCRM=med.match(/\((\d+)\)/);
+  if(!mCRM){info.style.display='none';return}
+  const m=MEDICOS.find(x=>x.c===parseInt(mCRM[1]));
+  if(m){
+    const v=getVinc(m.n);
+    lbl.textContent=v+' — '+(v==='EF'?'Efetivo':'Credenciado');
+    info.style.display='block';
+  }
 }
 
 // Autocomplete editar slot da escala base
@@ -2164,6 +2189,8 @@ function selecionarEdMed(abrev,fmt){
   document.getElementById('ed-med').value=abrev;
   document.getElementById('ed-med-busca').value=fmt;
   document.getElementById('ed-med-sug').style.display='none';
+  // Atualizar info do vínculo (do cadastro do profissional)
+  atualizarVincInfo();
 }
 document.addEventListener('click',function(e){
   if(!e.target.closest('#ed-med-busca')&&!e.target.closest('#ed-med-sug')){
@@ -2174,7 +2201,15 @@ async function salvarEdicao(){
   if(!editCtx)return;
   const{letra,ab,ti,el,contexto,mes,ano}=editCtx;
   const med=document.getElementById('ed-med').value;
-  const vinc=document.getElementById('ed-vinc').value;
+  // ═══ VÍNCULO VEM DO CADASTRO DO PROFISSIONAL — NÃO É EDITÁVEL ═══
+  let vinc='CR';// padrão se não achar
+  if(med){
+    const mCRM=med.match(/\((\d+)\)/);
+    if(mCRM){
+      const m=MEDICOS.find(x=>x.c===parseInt(mCRM[1]));
+      if(m)vinc=getVinc(m.n);
+    }
+  }
   const val=med?`${med} ${vinc}`:'';
   // ROTEAMENTO: Escala Base (template) vs Escala Mensal (snapshot)
   if(contexto==='escala_base'){
@@ -2717,7 +2752,9 @@ async function aplicarTrocaEscala(troca){
   const ciclo=getCiclo(dt);
   const diaMes=dt.getDate();
   const buscaCRM=`(${troca.sCRM})`;
-  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'em',{mes:troca.mes,ano:troca.ano,ciclo,ab,diaMes});
+  // SANITIZAR metade — só aceita '1' ou '2' real (corrige bug 'null' string vindo do banco)
+  const metadeReal=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
+  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'em',{mes:troca.mes,ano:troca.ano,ciclo,ab,diaMes,metade:metadeReal});
 
   // Iterar TODOS os 16 slots, lendo do estado REAL (não da EB direto)
   for(let i=0;i<16;i++){
@@ -2734,7 +2771,7 @@ async function aplicarTrocaEscala(troca){
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
       // Aplicar metade ou inteiro conforme tag
-      partes[idxParte]=novoNome+(troca.metade?' #'+troca.metade:'');
+      partes[idxParte]=novoNome+(metadeReal?' #'+metadeReal:'');
       const novoVal=partes.join(' | ');
       console.log('[aplicarTrocaEscala] Substituindo parte',idxParte,'em meio plantão');
       await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
@@ -2748,24 +2785,20 @@ async function aplicarTrocaEscala(troca){
         ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
         :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
       let novoVal;
-      if(troca.metade){
+      if(metadeReal){
         // MEIO PLANTÃO: cria string com pipe
-        // Solicitante fica com a metade que NÃO está sendo trocada
-        const metadeTrocada=troca.metade;// '1' ou '2'
-        const metadeSolicitante=metadeTrocada==='1'?'2':'1';
-        // Encontrar nome do solicitante (já está no valAtual)
+        const metadeTrocada=metadeReal;
         const nomeOriginal=valAtual.replace(/\s*#[12]$/,'').trim();
         if(metadeTrocada==='1'){
-          // Substituto pega 1ª metade, solicitante fica com 2ª
           novoVal=`${novoSub} #1 | ${nomeOriginal} #2`;
         } else {
-          // Solicitante fica com 1ª, substituto pega 2ª
           novoVal=`${nomeOriginal} #1 | ${novoSub} #2`;
         }
       } else {
+        // TROCA INTEIRA — substitui completamente
         novoVal=novoSub;
       }
-      console.log('[aplicarTrocaEscala] Aplicando troca no slot',i,'metade?',troca.metade);
+      console.log('[aplicarTrocaEscala] Aplicando troca no slot',i,'metade?',metadeReal);
       await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
       SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
       return true;
@@ -2947,6 +2980,33 @@ function toggleExtForm(){
 async function enviarTroca(){
   const pv=document.getElementById('tr-plantao').value;
   if(!pv){showToast('Selecione o plantão',true);return}
+  // ═══ VALIDAÇÃO DE DUPLICIDADE ═══
+  // Bloquear se já existe troca pendente do mesmo solicitante para este plantão
+  const piPre=JSON.parse(pv);
+  const dataKey=`${(piPre.ano||meuAno)}-${String(piPre.mes||meuMes).padStart(2,'0')}-${String(piPre.dia).padStart(2,'0')}`;
+  const turnoBase=piPre.turno;// turno original do plantão
+  const meuCRM=curUser.c;
+  const jaPendente=TROCAS.find(t=>{
+    if(t.status!=='pendente')return false;
+    if(t.sCRM!==meuCRM)return false;
+    // Comparar data e turno base (ignorando "(1ª metade)" etc para pegar tanto inteiro quanto meio)
+    const tDataKey=t.dt instanceof Date
+      ?`${t.dt.getFullYear()}-${String(t.dt.getMonth()+1).padStart(2,'0')}-${String(t.dt.getDate()).padStart(2,'0')}`
+      :null;
+    if(tDataKey!==dataKey)return false;
+    // Turno: pode ter sufixo de meio plantão, compara prefixo (HH:MM-HH:MM e função)
+    const turnoTroca=String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
+    const turnoPlantao=String(turnoBase||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
+    // Match parcial: se a função (CM, PED, SV+ENF, APOIO + número) bate
+    const fnTroca=turnoTroca.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?\d*\)?/i);
+    const fnPlantao=turnoPlantao.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?\d*\)?/i);
+    if(fnTroca&&fnPlantao&&fnTroca[0]===fnPlantao[0])return true;
+    return turnoTroca===turnoPlantao;
+  });
+  if(jaPendente){
+    showToast('⚠ Você já tem uma troca pendente para este plantão. Aguarde aprovação ou cancele a anterior.',true);
+    return;
+  }
   const isExt=document.getElementById('tr-is-ext').checked;
   let subNome,subCRM=0;
   if(isExt){
@@ -4493,23 +4553,51 @@ function exportXLSX(){
       ws[XLSX.utils.encode_cell({r:R,c:0})]={v:t.l,
         s:{font:{name:'Arial',sz:8,bold:true,color:{rgb:clr}},
            fill:{fgColor:{rgb:bg}},alignment:{horizontal:'left',vertical:'center',wrapText:false},border:bordas}};
-      // Colunas de cada dia
+      // Colunas de cada dia — LER DO ESTADO REAL DO DIA (ESCMES com prioridade)
       DA.forEach((ab,i)=>{
-        const arr=EB[sem.letra][ab]||[];
-        const val=ti<arr.length?arr[ti]:'';
-        let nome='',crm='',vinc='';
-        if(val){
-          const mV=val.match(/(CR|EF)$/);if(mV)vinc=mV[1];
-          const mC=val.match(/\((\d+)\)/);
-          if(mC){crm=mC[1];nome=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();}
-          else{nome=val.replace(/\s*(CR|EF)$/,'').trim();}
+        if(sem.dias[ab]===undefined){
+          ws[XLSX.utils.encode_cell({r:R,c:i+1})]={v:'',
+            s:{fill:{fgColor:{rgb:'FFF0F2F7'}},border:bordas}};
+          return;
         }
-        const crm2=crm?(' ('+crm+')'):'';
-        const vinc2=vinc?(' '+vinc):'';
-        const texto=val?(nome+crm2+vinc2):'';
+        const diaMes=sem.dias[ab];
+        const val=getSlotValDia(mesMes,mesAno,sem.letra,ab,ti,diaMes);
+        let texto='';
+        if(val){
+          // Meio plantão — 2 nomes na mesma célula com quebra de linha
+          if(val.includes('|')&&t.h===12){
+            const partes=val.split('|').map(p=>p.trim());
+            texto=partes.map((parte,idx)=>{
+              const mVp=parte.match(/(CR|EF)/);
+              const vincP=mVp?mVp[1]:'';
+              const mCRMp=parte.match(/\((\d+)\)/);
+              let nomeP='',crmP='';
+              if(mCRMp){
+                crmP=mCRMp[1];
+                nomeP=parte.replace(/\s*\(\d+\)\s*(CR|EF)?\s*#?[12]?$/,'').trim();
+              } else {
+                nomeP=parte.replace(/\s*(CR|EF)?\s*#?[12]?$/,'').trim();
+              }
+              const tag=parte.match(/#([12])/);
+              const metade=tag?tag[1]:String(idx+1);
+              const hCurto=t.not?(metade==='1'?'19-01':'01-07'):(metade==='1'?'07-13':'13-19');
+              return `${nomeP} (${crmP}) ${vincP} ${hCurto}h`;
+            }).join('\n');
+          } else {
+            // Plantão inteiro
+            let nome='',crm='',vinc='';
+            const mV=val.match(/(CR|EF)$/);if(mV)vinc=mV[1];
+            const mC=val.match(/\((\d+)\)/);
+            if(mC){crm=mC[1];nome=val.replace(/\s*\(\d+\)\s*(CR|EF)?$/,'').replace(/\s*\(\d+\)/,'').trim();}
+            else{nome=val.replace(/\s*(CR|EF)$/,'').trim();}
+            const crm2=crm?(' ('+crm+')'):'';
+            const vinc2=vinc?(' '+vinc):'';
+            texto=nome+crm2+vinc2;
+          }
+        }
         ws[XLSX.utils.encode_cell({r:R,c:i+1})]={v:texto,
           s:{font:fntCel,fill:{fgColor:{rgb:bg}},
-             alignment:{horizontal:'center',vertical:'center',wrapText:false},border:bordas}};
+             alignment:{horizontal:'center',vertical:'center',wrapText:true},border:bordas}};
       });
       R++;
     });
