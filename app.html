@@ -1467,8 +1467,6 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 }
 
 async function salvarTroca(troca){
-  // Sanitizar metade — SEMPRE explícito: '1', '2' ou null (nunca omitir, limpa lixo antigo)
-  const metadeLimpa=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
   const payload={
     codigo:troca.id,
     solicitante_nome:troca.sol,solicitante_crm:troca.sCRM||null,
@@ -1477,9 +1475,10 @@ async function salvarTroca(troca){
     (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
-    visivel_para:troca.vis||[],
-    metade:metadeLimpa
+    visivel_para:troca.vis||[]
   };
+  // Tentar salvar com metade — se coluna não existir, tenta sem
+  if(troca.metade)payload.metade=troca.metade;
   let {error}=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
   if(error&&error.message&&error.message.includes('metade')){
     delete payload.metade;
@@ -2166,22 +2165,27 @@ function filtrarEdMed(){
   const inp=document.getElementById('ed-med-busca');
   const sug=document.getElementById('ed-med-sug');
   const q=semAcento(inp.value.trim());
-  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext).map(m=>{
+  // Incluir internos E externos (externos marcados com badge)
+  const todos=MEDICOS.filter(m=>m.a!=='GESTOR').map(m=>{
     const p=m.n.split(' ');
-    return {c:m.c,n:m.n,fmt:formatarNome(m.n),abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
+    return {c:m.c,n:m.n,fmt:formatarNome(m.n),ext:!!m.ext,abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
   });
-  let lista=q?internos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):internos;
+  let lista=q?todos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):todos;
+  // Ordenar: internos primeiro, depois externos
+  lista.sort((a,b)=>(a.ext?1:0)-(b.ext?1:0));
   let html=`<div onclick="selecionarEdMed('','— Vaga —')"
     style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px;color:var(--text3);font-style:italic"
     onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">— Deixar vaga vazia —</div>`;
   if(lista.length){
-    html+=lista.slice(0,30).map(p=>`
+    html+=lista.slice(0,40).map(p=>{
+      const badge=p.ext?` <span style="background:var(--purple);color:#fff;font-size:8px;padding:1px 5px;border-radius:6px;font-weight:700;vertical-align:middle">EXTERNO</span>`:'';
+      return `
       <div onclick="selecionarEdMed('${p.abrev.replace(/'/g,"\\\\'")}','${p.fmt.replace(/'/g,"\\\\'")}')"
         style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
         onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
-        <div style="font-weight:600">${p.fmt}</div>
+        <div style="font-weight:600">${p.fmt}${badge}</div>
         <div style="font-size:10px;color:#9aa3bf">CRM ${p.c}</div>
-      </div>`).join('');
+      </div>`;}).join('');
   }
   sug.innerHTML=html;
   sug.style.display='block';
@@ -2755,55 +2759,45 @@ async function aplicarTrocaEscala(troca){
   const buscaCRM=`(${troca.sCRM})`;
   // SANITIZAR metade — só aceita '1' ou '2' real (corrige bug 'null' string vindo do banco)
   const metadeReal=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
-  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'em',{mes:troca.mes,ano:troca.ano,ciclo,ab,diaMes,metade:metadeReal});
+  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'troca inteira?',!metadeReal,{ciclo,ab,diaMes,metade:metadeReal});
+
+  const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
+  const novoSub=mSub
+    ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
+    :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
 
   // Iterar TODOS os 16 slots, lendo do estado REAL (não da EB direto)
   for(let i=0;i<16;i++){
     const valAtual=getSlotValDia(troca.mes,troca.ano,ciclo,ab,i,diaMes);
     if(!valAtual)continue;
-    // Se a célula tem meio plantão (separador |), tratar cada parte
-    if(valAtual.includes('|')){
-      const partes=valAtual.split('|').map(p=>p.trim());
-      const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
-      if(idxParte<0)continue;
-      // Substituir somente a parte do solicitante
-      const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
-      const novoNome=mSub
-        ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
-        :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
-      // Aplicar metade ou inteiro conforme tag
-      partes[idxParte]=novoNome+(metadeReal?' #'+metadeReal:'');
-      const novoVal=partes.join(' | ');
-      console.log('[aplicarTrocaEscala] Substituindo parte',idxParte,'em meio plantão');
-      await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
-      SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
-      return true;
-    }
-    // Slot inteiro com o solicitante
-    if(valAtual.includes(buscaCRM)){
-      const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
-      const novoSub=mSub
-        ?`${mSub.n.split(' ')[0]} ${mSub.n.split(' ').pop()} (${mSub.c}) ${getVinc(mSub.n)}`
-        :`${troca.sub.split(' ')[0]} ${troca.sub.split(' ').pop()} (${troca.bCRM||'?'}) CR`;
-      let novoVal;
-      if(metadeReal){
-        // MEIO PLANTÃO: cria string com pipe
-        const metadeTrocada=metadeReal;
-        const nomeOriginal=valAtual.replace(/\s*#[12]$/,'').trim();
-        if(metadeTrocada==='1'){
-          novoVal=`${novoSub} #1 | ${nomeOriginal} #2`;
-        } else {
-          novoVal=`${nomeOriginal} #1 | ${novoSub} #2`;
-        }
+    if(!valAtual.includes(buscaCRM))continue;// solicitante não está neste slot
+
+    let novoVal;
+    if(metadeReal){
+      // ═══ MEIO PLANTÃO REAL (checkbox marcado) ═══
+      if(valAtual.includes('|')){
+        // Slot já é meio plantão: substituir só a parte do solicitante
+        const partes=valAtual.split('|').map(p=>p.trim());
+        const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
+        if(idxParte<0)continue;
+        partes[idxParte]=novoSub+' #'+metadeReal;
+        novoVal=partes.join(' | ');
       } else {
-        // TROCA INTEIRA — substitui completamente
-        novoVal=novoSub;
+        // Slot inteiro vira meio plantão
+        const nomeOriginal=valAtual.replace(/\s*#[12]\s*$/,'').trim();
+        novoVal=(metadeReal==='1')
+          ?`${novoSub} #1 | ${nomeOriginal} #2`
+          :`${nomeOriginal} #1 | ${novoSub} #2`;
       }
-      console.log('[aplicarTrocaEscala] Aplicando troca no slot',i,'metade?',metadeReal);
-      await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
-      SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
-      return true;
+    } else {
+      // ═══ TROCA INTEIRA — SEMPRE substitui o slot COMPLETO ═══
+      // Mesmo que o slot estivesse marcado como meio plantão por engano, ZERA o pipe.
+      novoVal=novoSub;
     }
+    console.log('[aplicarTrocaEscala] Slot',i,'→',novoVal);
+    await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
+    SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
+    return true;
   }
   console.warn('[aplicarTrocaEscala] Solicitante não encontrado em nenhum slot. Verifique se o plantão ainda existe na escala do mês.');
   return false;
@@ -2837,22 +2831,7 @@ function renderTrocas(filtro=trFiltro){
     wrap.style.display='none';return;
   }
   lock.innerHTML='';wrap.style.display='block';
-  // Filtrar por mês/ano DERIVADO da data real do plantão (corrige trocas sumindo)
-  let lista=TROCAS.filter(t=>{
-    let tm=t.mes,ta=t.ano;
-    if(t.dt instanceof Date){tm=t.dt.getMonth()+1;ta=t.dt.getFullYear();}
-    return tm===trMes&&ta===trAno;
-  });
-  // DEDUPLICAR: esconde duplicatas (mesmo solicitante+substituto+data+turno+status)
-  const vistos=new Set();
-  lista=lista.filter(t=>{
-    const dkey=t.dt instanceof Date
-      ?`${t.dt.getFullYear()}-${t.dt.getMonth()+1}-${t.dt.getDate()}`:'';
-    const chave=`${t.sCRM}|${t.bCRM}|${dkey}|${String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim()}|${t.status}`;
-    if(vistos.has(chave))return false;
-    vistos.add(chave);
-    return true;
-  });
+  let lista=TROCAS.filter(t=>t.mes===trMes&&t.ano===trAno);
   if(!isG)lista=lista.filter(t=>t.vis&&t.vis.includes(nU));
   if(filtro!=='todos')lista=lista.filter(t=>t.status===filtro);
   const bm={pendente:'b-amber',aprovado:'b-green',rejeitado:'b-red',revertido:'b-purple'};
