@@ -1467,6 +1467,8 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 }
 
 async function salvarTroca(troca){
+  // Sanitizar metade — SEMPRE explícito: '1', '2' ou null (nunca omitir)
+  const metadeLimpa=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
   const payload={
     codigo:troca.id,
     solicitante_nome:troca.sol,solicitante_crm:troca.sCRM||null,
@@ -1475,12 +1477,12 @@ async function salvarTroca(troca){
     (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
-    visivel_para:troca.vis||[]
+    visivel_para:troca.vis||[],
+    metade:metadeLimpa// SEMPRE enviado — null limpa qualquer valor antigo
   };
-  // Tentar salvar com metade — se coluna não existir, tenta sem
-  if(troca.metade)payload.metade=troca.metade;
   let {error}=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
   if(error&&error.message&&error.message.includes('metade')){
+    // Coluna metade não existe ainda — tentar sem
     delete payload.metade;
     const r=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
     error=r.error;
@@ -2836,7 +2838,12 @@ function renderTrocas(filtro=trFiltro){
     wrap.style.display='none';return;
   }
   lock.innerHTML='';wrap.style.display='block';
-  let lista=TROCAS.filter(t=>t.mes===trMes&&t.ano===trAno);
+  // Filtrar por mês/ano DERIVADO da data real do plantão (corrige trocas sumindo)
+  let lista=TROCAS.filter(t=>{
+    let tm=t.mes,ta=t.ano;
+    if(t.dt instanceof Date){tm=t.dt.getMonth()+1;ta=t.dt.getFullYear();}
+    return tm===trMes&&ta===trAno;
+  });
   if(!isG)lista=lista.filter(t=>t.vis&&t.vis.includes(nU));
   if(filtro!=='todos')lista=lista.filter(t=>t.status===filtro);
   const bm={pendente:'b-amber',aprovado:'b-green',rejeitado:'b-red',revertido:'b-purple'};
@@ -2989,18 +2996,14 @@ async function enviarTroca(){
   const jaPendente=TROCAS.find(t=>{
     if(t.status!=='pendente')return false;
     if(t.sCRM!==meuCRM)return false;
-    // Comparar data e turno base (ignorando "(1ª metade)" etc para pegar tanto inteiro quanto meio)
+    // Comparar data
     const tDataKey=t.dt instanceof Date
       ?`${t.dt.getFullYear()}-${String(t.dt.getMonth()+1).padStart(2,'0')}-${String(t.dt.getDate()).padStart(2,'0')}`
       :null;
     if(tDataKey!==dataKey)return false;
-    // Turno: pode ter sufixo de meio plantão, compara prefixo (HH:MM-HH:MM e função)
+    // Comparar turno EXATO (removendo só o sufixo de metade) — CM(1) ≠ CM(2)
     const turnoTroca=String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
     const turnoPlantao=String(turnoBase||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
-    // Match parcial: se a função (CM, PED, SV+ENF, APOIO + número) bate
-    const fnTroca=turnoTroca.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?\d*\)?/i);
-    const fnPlantao=turnoPlantao.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?\d*\)?/i);
-    if(fnTroca&&fnPlantao&&fnTroca[0]===fnPlantao[0])return true;
     return turnoTroca===turnoPlantao;
   });
   if(jaPendente){
