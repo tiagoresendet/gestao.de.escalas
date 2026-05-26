@@ -2834,6 +2834,75 @@ async function aplicarTrocaEscala(troca){
   return false;
 }
 
+// DESFAZER troca na escala — espelho de aplicarTrocaEscala.
+// Busca o SUBSTITUTO na escala e devolve o SOLICITANTE ao lugar.
+async function desfazerTrocaEscala(troca){
+  const dt=troca.dt;
+  const col=JTC[dt.getDay()];
+  const ab=DA[col];
+  const ciclo=getCiclo(dt);
+  const diaMes=dt.getDate();
+  const buscaCRM=`(${troca.bCRM})`;// procura o SUBSTITUTO (quem assumiu)
+  let metadeReal=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
+  const turnoTemMetade=/\([12]ª metade\)/.test(String(troca.turno||''));
+  if(!turnoTemMetade)metadeReal=null;
+
+  // Reconstrói o nome do SOLICITANTE (quem volta ao plantão)
+  const mSol=MEDICOS.find(m=>m.c===troca.sCRM);
+  const nomeSol=mSol
+    ?`${mSol.n.split(' ')[0]} ${mSol.n.split(' ').pop()} (${mSol.c}) ${getVinc(mSol.n)}`
+    :`${troca.sol.split(' ')[0]} ${troca.sol.split(' ').pop()} (${troca.sCRM||'?'}) CR`;
+
+  for(let i=0;i<16;i++){
+    const valAtual=getSlotValDia(troca.mes,troca.ano,ciclo,ab,i,diaMes);
+    if(!valAtual)continue;
+    if(!valAtual.includes(buscaCRM))continue;// substituto não está neste slot
+
+    let novoVal;
+    if(!metadeReal){
+      // Troca inteira: devolve o solicitante inteiro, zera "|"
+      if(valAtual.includes('|')){
+        const partes=valAtual.split('|').map(p=>p.trim());
+        const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
+        if(idxParte<0)continue;
+        const todasDoSub=partes.every(p=>p.includes(buscaCRM));
+        if(todasDoSub||partes.length===1){
+          novoVal=nomeSol;
+        } else {
+          const tagAntiga=partes[idxParte].match(/#([12])/);
+          partes[idxParte]=nomeSol+(tagAntiga?' #'+tagAntiga[1]:'');
+          novoVal=partes.join(' | ');
+        }
+      } else {
+        novoVal=nomeSol;
+      }
+    } else {
+      // Meio plantão: devolve a parte do substituto ao solicitante
+      if(valAtual.includes('|')){
+        const partes=valAtual.split('|').map(p=>p.trim());
+        const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
+        if(idxParte<0)continue;
+        partes[idxParte]=nomeSol+' #'+metadeReal;
+        // Se as duas metades viraram a MESMA pessoa (solicitante), colapsa para inteiro
+        const crmsPartes=partes.map(p=>(p.match(/\((\d+)\)/)||[])[1]);
+        if(crmsPartes.every(c=>c===String(troca.sCRM))){
+          novoVal=nomeSol;// plantão inteiro do solicitante de volta
+        } else {
+          novoVal=partes.join(' | ');
+        }
+      } else {
+        novoVal=nomeSol;
+      }
+    }
+    console.log('[desfazerTrocaEscala] Slot',i,':',valAtual,'→',novoVal);
+    await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
+    SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
+    return true;
+  }
+  console.warn('[desfazerTrocaEscala] Substituto não encontrado no slot. A escala pode já ter sido alterada manualmente.');
+  return false;
+}
+
 // Retorna o valor do slot — prioridade ESCMES > SUBS > EB(template)
 function getSlotVal(mes,ano,semLetra,ab,ti){
   const k=keyMes(mes,ano);
@@ -2907,14 +2976,22 @@ async function aprovarTr(i){
   renderAll();showToast(ok?'Aprovada e aplicada!':'Troca aprovada!');
 }
 async function rejeitarTr(i){
-  TROCAS[i].status='rejeitado';
-  await atualizarStatusTroca(TROCAS[i].id,'rejeitado');
-  renderAll();showToast('Rejeitada.');
+  const t=TROCAS[i];
+  const eraAprovada=t.status==='aprovado';
+  t.status='rejeitado';
+  await atualizarStatusTroca(t.id,'rejeitado');
+  let ok=true;
+  if(eraAprovada)ok=await desfazerTrocaEscala(t);// desfaz na escala se já tinha aplicado
+  renderAll();showToast(eraAprovada?(ok?'Rejeitada e desfeita na escala!':'Rejeitada.'):'Rejeitada.');
 }
 async function reverterTr(i){
-  TROCAS[i].status='pendente';
-  await atualizarStatusTroca(TROCAS[i].id,'pendente');
-  renderAll();showToast('Revertida para pendente.');
+  const t=TROCAS[i];
+  const eraAprovada=t.status==='aprovado';
+  t.status='pendente';
+  await atualizarStatusTroca(t.id,'pendente');
+  let ok=true;
+  if(eraAprovada)ok=await desfazerTrocaEscala(t);// desfaz na escala se já tinha aplicado
+  renderAll();showToast(eraAprovada?(ok?'Revertida e desfeita na escala!':'Revertida para pendente.'):'Revertida para pendente.');
 }
 
 // CANCELAR TROCA — só o próprio solicitante (ou gestor) pode cancelar pendentes
