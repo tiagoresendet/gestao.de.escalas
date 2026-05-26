@@ -2164,27 +2164,31 @@ function atualizarVincInfo(){
   }
 }
 
-// Autocomplete editar slot da escala base
+// Autocomplete editar slot da escala (inclui internos E externos)
 function filtrarEdMed(){
   const inp=document.getElementById('ed-med-busca');
   const sug=document.getElementById('ed-med-sug');
   const q=semAcento(inp.value.trim());
-  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext).map(m=>{
+  const todos=MEDICOS.filter(m=>m.a!=='GESTOR').map(m=>{
     const p=m.n.split(' ');
-    return {c:m.c,n:m.n,fmt:formatarNome(m.n),abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
+    return {c:m.c,n:m.n,fmt:formatarNome(m.n),ext:!!m.ext,abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
   });
-  let lista=q?internos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):internos;
+  let lista=q?todos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):todos;
+  // Internos primeiro, externos depois
+  lista.sort((a,b)=>(a.ext?1:0)-(b.ext?1:0));
   let html=`<div onclick="selecionarEdMed('','— Vaga —')"
     style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px;color:var(--text3);font-style:italic"
     onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">— Deixar vaga vazia —</div>`;
   if(lista.length){
-    html+=lista.slice(0,30).map(p=>`
+    html+=lista.slice(0,40).map(p=>{
+      const badge=p.ext?` <span style="background:var(--purple,#9f7aea);color:#fff;font-size:8px;padding:1px 5px;border-radius:6px;font-weight:700;vertical-align:middle">EXTERNO</span>`:'';
+      return `
       <div onclick="selecionarEdMed('${p.abrev.replace(/'/g,"\\\\'")}','${p.fmt.replace(/'/g,"\\\\'")}')"
         style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
         onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
-        <div style="font-weight:600">${p.fmt}</div>
+        <div style="font-weight:600">${p.fmt}${badge}</div>
         <div style="font-size:10px;color:#9aa3bf">CRM ${p.c}</div>
-      </div>`).join('');
+      </div>`;}).join('');
   }
   sug.innerHTML=html;
   sug.style.display='block';
