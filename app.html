@@ -777,11 +777,13 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   <div class="m-box">
     <div class="m-t">Editar Plantonista na Escala</div>
     <div class="m-s" id="mo-ed-ctx"></div>
-    <div class="fg" style="position:relative"><label class="fl">Profissional</label>
-      <input type="text" class="fi" id="ed-med-busca" placeholder="Digite o nome ou CRM..." oninput="filtrarEdMed()" onfocus="filtrarEdMed()" autocomplete="off" style="padding-right:30px">
-      <span style="position:absolute;right:14px;top:38px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+    <div class="fg"><label class="fl">Profissional</label>
+      <div style="position:relative">
+        <input type="text" class="fi" id="ed-med-busca" placeholder="Digite o nome ou CRM..." oninput="filtrarEdMed()" onfocus="filtrarEdMed()" autocomplete="off" style="padding-right:30px">
+        <span style="position:absolute;right:14px;top:11px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+      </div>
       <input type="hidden" id="ed-med" value="">
-      <div id="ed-med-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
+      <div id="ed-med-sug" style="display:none;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:260px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.08);margin-top:4px"></div>
     </div>
     <div id="ed-vinc-info" style="background:var(--blue-bg);border:1px solid rgba(27,77,111,.2);border-radius:var(--r2);padding:9px 12px;font-size:11px;color:var(--blue);margin-bottom:8px;display:none">
       ℹ️ Vínculo: <strong id="ed-vinc-label">—</strong> · definido pelo cadastro do profissional
@@ -1467,6 +1469,9 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 }
 
 async function salvarTroca(troca){
+  // Sanitizar metade — SEMPRE explícito: '1', '2' ou null. Nunca omitir,
+  // senão o upsert mantém valor sujo antigo no banco (causa do bug meio plantão).
+  const metadeLimpa=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
   const payload={
     codigo:troca.id,
     solicitante_nome:troca.sol,solicitante_crm:troca.sCRM||null,
@@ -1475,10 +1480,9 @@ async function salvarTroca(troca){
     (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
-    visivel_para:troca.vis||[]
+    visivel_para:troca.vis||[],
+    metade:metadeLimpa
   };
-  // Tentar salvar com metade — se coluna não existir, tenta sem
-  if(troca.metade)payload.metade=troca.metade;
   let {error}=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
   if(error&&error.message&&error.message.includes('metade')){
     delete payload.metade;
@@ -2165,27 +2169,22 @@ function filtrarEdMed(){
   const inp=document.getElementById('ed-med-busca');
   const sug=document.getElementById('ed-med-sug');
   const q=semAcento(inp.value.trim());
-  // Incluir internos E externos (externos marcados com badge)
-  const todos=MEDICOS.filter(m=>m.a!=='GESTOR').map(m=>{
+  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext).map(m=>{
     const p=m.n.split(' ');
-    return {c:m.c,n:m.n,fmt:formatarNome(m.n),ext:!!m.ext,abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
+    return {c:m.c,n:m.n,fmt:formatarNome(m.n),abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};
   });
-  let lista=q?todos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):todos;
-  // Ordenar: internos primeiro, depois externos
-  lista.sort((a,b)=>(a.ext?1:0)-(b.ext?1:0));
+  let lista=q?internos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):internos;
   let html=`<div onclick="selecionarEdMed('','— Vaga —')"
     style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px;color:var(--text3);font-style:italic"
     onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">— Deixar vaga vazia —</div>`;
   if(lista.length){
-    html+=lista.slice(0,40).map(p=>{
-      const badge=p.ext?` <span style="background:var(--purple);color:#fff;font-size:8px;padding:1px 5px;border-radius:6px;font-weight:700;vertical-align:middle">EXTERNO</span>`:'';
-      return `
+    html+=lista.slice(0,30).map(p=>`
       <div onclick="selecionarEdMed('${p.abrev.replace(/'/g,"\\\\'")}','${p.fmt.replace(/'/g,"\\\\'")}')"
         style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
         onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
-        <div style="font-weight:600">${p.fmt}${badge}</div>
+        <div style="font-weight:600">${p.fmt}</div>
         <div style="font-size:10px;color:#9aa3bf">CRM ${p.c}</div>
-      </div>`;}).join('');
+      </div>`).join('');
   }
   sug.innerHTML=html;
   sug.style.display='block';
@@ -2757,9 +2756,13 @@ async function aplicarTrocaEscala(troca){
   const ciclo=getCiclo(dt);
   const diaMes=dt.getDate();
   const buscaCRM=`(${troca.sCRM})`;
-  // SANITIZAR metade — só aceita '1' ou '2' real (corrige bug 'null' string vindo do banco)
-  const metadeReal=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
-  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'troca inteira?',!metadeReal,{ciclo,ab,diaMes,metade:metadeReal});
+  // SANITIZAR metade — só aceita '1' ou '2' real
+  let metadeReal=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
+  // SALVAGUARDA: o turno é a fonte da verdade. Se NÃO tem marca de metade no
+  // texto do turno, é troca COMPLETA — ignora qualquer metade sujo no banco.
+  const turnoTemMetade=/\([12]ª metade\)/.test(String(troca.turno||''));
+  if(!turnoTemMetade)metadeReal=null;
+  console.log('[aplicarTrocaEscala] Procurando',buscaCRM,'| metade campo:',troca.metade,'| turno tem metade?',turnoTemMetade,'| É meio plantão?',!!metadeReal);
 
   const mSub=MEDICOS.find(m=>m.c===troca.bCRM);
   const novoSub=mSub
@@ -2773,28 +2776,52 @@ async function aplicarTrocaEscala(troca){
     if(!valAtual.includes(buscaCRM))continue;// solicitante não está neste slot
 
     let novoVal;
-    if(metadeReal){
-      // ═══ MEIO PLANTÃO REAL (checkbox marcado) ═══
+
+    // ════════════════════════════════════════════════════════════
+    // A DECISÃO DE DIVIDIR DEPENDE *SOMENTE* DE metadeReal (intenção da troca).
+    // NUNCA do estado atual do slot. Esse era o bug: trocas inteiras em slots
+    // que já tinham "|" eram tratadas como meio plantão.
+    // ════════════════════════════════════════════════════════════
+
+    if(!metadeReal){
+      // ─── TROCA INTEIRA — substitui o profissional inteiro, ZERA "|" indevido ───
       if(valAtual.includes('|')){
-        // Slot já é meio plantão: substituir só a parte do solicitante
+        const partes=valAtual.split('|').map(p=>p.trim());
+        const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
+        if(idxParte<0)continue;
+        // Se as duas metades eram do MESMO solicitante (pipe-lixo de troca inteira
+        // anterior), colapsa para nome único do substituto.
+        const todasDoSolicitante=partes.every(p=>p.includes(buscaCRM));
+        if(todasDoSolicitante||partes.length===1){
+          novoVal=novoSub;// inteiro limpo
+        } else {
+          // Dividia com OUTRO profissional de verdade: substituto herda só a fração
+          const tagAntiga=partes[idxParte].match(/#([12])/);
+          partes[idxParte]=novoSub+(tagAntiga?' #'+tagAntiga[1]:'');
+          novoVal=partes.join(' | ');
+        }
+      } else {
+        novoVal=novoSub;// inteiro limpo, sem "|"
+      }
+    } else {
+      // ─── MEIO PLANTÃO REAL (checkbox marcado na troca) ───
+      if(valAtual.includes('|')){
+        // Slot já dividido: trocar só a parte do solicitante mantendo divisão
         const partes=valAtual.split('|').map(p=>p.trim());
         const idxParte=partes.findIndex(p=>p.includes(buscaCRM));
         if(idxParte<0)continue;
         partes[idxParte]=novoSub+' #'+metadeReal;
         novoVal=partes.join(' | ');
       } else {
-        // Slot inteiro vira meio plantão
+        // Slot inteiro vira meio plantão: solicitante cede só a metade escolhida
         const nomeOriginal=valAtual.replace(/\s*#[12]\s*$/,'').trim();
         novoVal=(metadeReal==='1')
           ?`${novoSub} #1 | ${nomeOriginal} #2`
           :`${nomeOriginal} #1 | ${novoSub} #2`;
       }
-    } else {
-      // ═══ TROCA INTEIRA — SEMPRE substitui o slot COMPLETO ═══
-      // Mesmo que o slot estivesse marcado como meio plantão por engano, ZERA o pipe.
-      novoVal=novoSub;
     }
-    console.log('[aplicarTrocaEscala] Slot',i,'→',novoVal);
+
+    console.log('[aplicarTrocaEscala] Slot',i,':',valAtual,'→',novoVal);
     await salvarSlotMes(troca.mes,troca.ano,ciclo,ab,i,novoVal,diaMes);
     SUBS[keySub(troca.mes,troca.ano,ciclo,ab,i)]=novoVal;
     return true;
