@@ -2944,15 +2944,6 @@ function renderTrocas(filtro=trFiltro){
     if(t.dt instanceof Date){tm=t.dt.getMonth()+1;ta=t.dt.getFullYear();}
     return tm===trMes&&ta===trAno;
   });
-  // DEDUPLICAR: esconde duplicatas (mesmo solicitante+substituto+data+turno+status)
-  const vistos=new Set();
-  lista=lista.filter(t=>{
-    const dkey=t.dt instanceof Date?`${t.dt.getFullYear()}-${t.dt.getMonth()+1}-${t.dt.getDate()}`:'';
-    const chave=`${t.sCRM}|${t.bCRM}|${dkey}|${String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim()}|${t.status}`;
-    if(vistos.has(chave))return false;
-    vistos.add(chave);
-    return true;
-  });
   if(!isG)lista=lista.filter(t=>t.vis&&t.vis.includes(nU));
   if(filtro!=='todos')lista=lista.filter(t=>t.status===filtro);
   const bm={pendente:'b-amber',aprovado:'b-green',rejeitado:'b-red',revertido:'b-purple'};
