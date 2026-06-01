@@ -573,7 +573,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <div class="page" id="page-trocas">
         <div class="ph">
           <div><div class="pt">Trocas de Plantão</div></div>
-          <div class="ph-r"><button class="btn btn-g btn-sm" onclick="recarregarTrocas()" title="Recarregar trocas do servidor">⟳ Atualizar</button><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
+          <div class="ph-r"><button class="btn btn-g btn-sm" onclick="auditarTrocas()" title="Comparar app vs banco de dados">🔍 Auditar</button><button class="btn btn-g btn-sm" onclick="recarregarTrocas()" title="Recarregar trocas do servidor">⟳ Atualizar</button><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
         </div>
         <div class="ec" style="margin-bottom:10px">
           <div class="mc">
@@ -3011,6 +3011,135 @@ async function recarregarTrocas(){
   }catch(e){
     console.error('Erro ao recarregar trocas:',e);
     showToast('Erro ao atualizar — '+(e.message||'verifique conexão'),true);
+  }
+}
+
+// AUDITORIA DE TROCAS — compara banco vs app, mostra divergências
+async function auditarTrocas(){
+  if(!sb){showToast('Sem conexão com servidor',true);return}
+  showToast('Auditando banco...');
+  try{
+    const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
+    if(eT)throw eT;
+
+    // Estado do app
+    const noApp=TROCAS.length;
+    const noBanco=trs.length;
+
+    // Mapear por código
+    const codApp=new Set(TROCAS.map(t=>t.id));
+    const codBanco=new Set(trs.map(t=>t.codigo));
+
+    // Faltando no app (no banco mas não carregadas)
+    const faltando=trs.filter(t=>!codApp.has(t.codigo));
+    // Sobrando no app (carregadas mas não no banco — improvável, mas verifica)
+    const sobrando=TROCAS.filter(t=>!codBanco.has(t.id));
+
+    // Registros do banco com problemas
+    const problemas=trs.filter(t=>{
+      if(!t.codigo)return true;
+      if(!t.data_plantao)return true;
+      if(!t.solicitante_crm&&!t.solicitante_nome)return true;
+      if(!t.status)return true;
+      return false;
+    });
+
+    // Por status
+    const porStatus={};
+    trs.forEach(t=>{porStatus[t.status||'(sem status)']=(porStatus[t.status||'(sem status)']||0)+1});
+
+    // Por mês/ano (derivado da data real)
+    const porMes={};
+    trs.forEach(t=>{
+      if(!t.data_plantao){porMes['(sem data)']=(porMes['(sem data)']||0)+1;return}
+      const p=String(t.data_plantao).split('T')[0].split('-');
+      const k=`${p[0]}-${p[1]}`;
+      porMes[k]=(porMes[k]||0)+1;
+    });
+
+    // Montar relatório no modal
+    let html=`<div style="font-family:monospace;font-size:12px;line-height:1.6">
+      <div style="background:${noApp===noBanco?'#dcfce7':'#fef3c7'};padding:10px;border-radius:6px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">${noApp===noBanco?'✓ App sincronizado com banco':'⚠ Divergência detectada'}</div>
+        <div>Trocas no banco: <strong>${noBanco}</strong></div>
+        <div>Trocas no app: <strong>${noApp}</strong></div>
+      </div>`;
+
+    if(faltando.length){
+      html+=`<div style="background:#fee2e2;padding:10px;border-radius:6px;margin-bottom:12px">
+        <div style="font-weight:700;color:#991b1b;margin-bottom:6px">❌ ${faltando.length} troca(s) no banco mas NÃO carregadas no app:</div>`;
+      faltando.slice(0,20).forEach(t=>{
+        html+=`<div style="border-bottom:1px solid #fecaca;padding:4px 0">
+          <strong>${t.codigo}</strong> — ${t.solicitante_nome||'?'} → ${t.substituto_nome||'?'}<br>
+          ${t.data_plantao||'(sem data)'} · ${t.turno||'?'} · status: <strong>${t.status||'?'}</strong>
+        </div>`;
+      });
+      if(faltando.length>20)html+=`<div style="margin-top:6px;font-style:italic">... e mais ${faltando.length-20}</div>`;
+      html+=`</div>`;
+    }
+
+    if(sobrando.length){
+      html+=`<div style="background:#fef3c7;padding:10px;border-radius:6px;margin-bottom:12px">
+        <div style="font-weight:700;color:#92400e;margin-bottom:6px">⚠ ${sobrando.length} troca(s) no app mas NÃO no banco (não salvas):</div>`;
+      sobrando.slice(0,10).forEach(t=>{
+        html+=`<div>${t.id} — ${t.sol||'?'} → ${t.sub||'?'} (${t.data||'?'})</div>`;
+      });
+      html+=`</div>`;
+    }
+
+    if(problemas.length){
+      html+=`<div style="background:#fef3c7;padding:10px;border-radius:6px;margin-bottom:12px">
+        <div style="font-weight:700;color:#92400e;margin-bottom:6px">⚠ ${problemas.length} troca(s) no banco com campos inválidos:</div>`;
+      problemas.slice(0,10).forEach(t=>{
+        const faltas=[];
+        if(!t.codigo)faltas.push('codigo');
+        if(!t.data_plantao)faltas.push('data_plantao');
+        if(!t.solicitante_crm&&!t.solicitante_nome)faltas.push('solicitante');
+        if(!t.status)faltas.push('status');
+        html+=`<div>${t.codigo||'(sem código)'} — falta: ${faltas.join(', ')}</div>`;
+      });
+      html+=`</div>`;
+    }
+
+    html+=`<div style="background:#f1f5f9;padding:10px;border-radius:6px;margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:6px">📊 Por status (banco):</div>`;
+    Object.entries(porStatus).forEach(([s,n])=>{html+=`<div>${s}: <strong>${n}</strong></div>`;});
+    html+=`</div>`;
+
+    html+=`<div style="background:#f1f5f9;padding:10px;border-radius:6px;margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:6px">📅 Por mês/ano do plantão (banco):</div>`;
+    Object.entries(porMes).sort().forEach(([m,n])=>{html+=`<div>${m}: <strong>${n}</strong></div>`;});
+    html+=`</div>`;
+
+    if(faltando.length===0&&sobrando.length===0&&problemas.length===0){
+      html+=`<div style="background:#dcfce7;padding:10px;border-radius:6px;text-align:center;font-weight:700;color:#166534">
+        ✓ Tudo OK — banco e app estão alinhados.<br>Se você está procurando uma troca específica, ela pode estar em outro mês ou outro status.
+      </div>`;
+    } else if(faltando.length>0){
+      html+=`<div style="background:#dbeafe;padding:10px;border-radius:6px;font-size:11px">
+        <strong>O que fazer:</strong> as trocas listadas em vermelho estão no banco mas o app não conseguiu carregá-las. Clique em <strong>⟳ Atualizar</strong> e tente de novo. Se persistir, pode haver problema na conexão ou nos campos da troca.
+      </div>`;
+    }
+    html+=`</div>`;
+
+    // Abrir modal
+    const wrap=document.getElementById('audit-modal-wrap');
+    if(!wrap){
+      const div=document.createElement('div');
+      div.id='audit-modal-wrap';
+      div.className='mo';
+      div.style.display='flex';
+      div.innerHTML=`<div class="m-box" style="max-width:700px"><div class="m-t">🔍 Auditoria de Trocas</div><div id="audit-modal-body"></div><div class="m-act"><button class="btn btn-g" onclick="document.getElementById('audit-modal-wrap').style.display='none'">Fechar</button></div></div>`;
+      document.body.appendChild(div);
+    } else {
+      wrap.style.display='flex';
+    }
+    document.getElementById('audit-modal-body').innerHTML=html;
+    console.log('[Auditoria] Banco:',noBanco,'App:',noApp,'Faltando:',faltando.length,'Sobrando:',sobrando.length);
+    console.log('[Auditoria] Trocas faltando no app:',faltando);
+  }catch(e){
+    console.error('Erro auditoria:',e);
+    showToast('Erro ao auditar — '+(e.message||'verifique console'),true);
   }
 }
 function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('todos');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
