@@ -573,7 +573,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <div class="page" id="page-trocas">
         <div class="ph">
           <div><div class="pt">Trocas de Plantão</div></div>
-          <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
+          <div class="ph-r"><button class="btn btn-g btn-sm" onclick="recarregarTrocas()" title="Recarregar trocas do servidor">⟳ Atualizar</button><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
         </div>
         <div class="ec" style="margin-bottom:10px">
           <div class="mc">
@@ -2459,9 +2459,15 @@ function renderCC(filtro=''){
     const idx=MEDICOS.indexOf(m);const av=ini2(m.n);const v=getVinc(m.n);
     const ext=m.ext?`<div style="font-size:9px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;display:inline-block;margin-bottom:3px;color:var(--text2)">🏥 ${m.unidade||'Externa'}</div>`:'';
     const migBtn=isG&&m.ext?`<button class="btn btn-s btn-xs" onclick="migrarMed(${idx})">⬇</button>`:'';
+    // Garantir tag "EXTERNO" no rodapé do card para todo m.ext=true, mesmo
+    // se a área "EXTERNO" não estiver nas areas[]
+    let areasTxt=m.a||'';
+    if(m.ext&&!/EXTERNO/i.test(areasTxt)){
+      areasTxt=areasTxt?areasTxt+' · EXTERNO':'EXTERNO';
+    }
     return `<div class="cc-c" style="align-items:flex-start">
       <div class="cc-av" style="background:${m.cor};margin-top:2px">${av}</div>
-      <div style="flex:1;min-width:0">${ext}<div class="cc-nm" title="${m.n}">${m.n}</div><div class="cc-cr">CRM ${m.c} · ${v} · ${m.a}</div></div>
+      <div style="flex:1;min-width:0">${ext}<div class="cc-nm" title="${m.n}">${m.n}</div><div class="cc-cr">CRM ${m.c} · ${v} · ${areasTxt}</div></div>
       ${isG?`<div class="cc-ac">${migBtn}<button class="btn btn-g btn-xs" onclick="abrirEditMed(${idx})">✏</button><button class="btn btn-d btn-xs" onclick="excluirMed(${idx})">✕</button></div>`:''}
     </div>`;
   }).join('')||'<div style="color:var(--text3);font-size:12px;grid-column:1/-1;padding:12px 0">Nenhum encontrado.</div>';
@@ -2931,7 +2937,22 @@ function renderTrocas(filtro=trFiltro){
     wrap.style.display='none';return;
   }
   lock.innerHTML='';wrap.style.display='block';
-  let lista=TROCAS.filter(t=>t.mes===trMes&&t.ano===trAno);
+  // Filtrar por mês/ano DERIVADO da data real do plantão (corrige trocas sumindo
+  // quando t.mes/t.ano gravados divergem da data real)
+  let lista=TROCAS.filter(t=>{
+    let tm=t.mes,ta=t.ano;
+    if(t.dt instanceof Date){tm=t.dt.getMonth()+1;ta=t.dt.getFullYear();}
+    return tm===trMes&&ta===trAno;
+  });
+  // DEDUPLICAR: esconde duplicatas (mesmo solicitante+substituto+data+turno+status)
+  const vistos=new Set();
+  lista=lista.filter(t=>{
+    const dkey=t.dt instanceof Date?`${t.dt.getFullYear()}-${t.dt.getMonth()+1}-${t.dt.getDate()}`:'';
+    const chave=`${t.sCRM}|${t.bCRM}|${dkey}|${String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim()}|${t.status}`;
+    if(vistos.has(chave))return false;
+    vistos.add(chave);
+    return true;
+  });
   if(!isG)lista=lista.filter(t=>t.vis&&t.vis.includes(nU));
   if(filtro!=='todos')lista=lista.filter(t=>t.status===filtro);
   const bm={pendente:'b-amber',aprovado:'b-green',rejeitado:'b-red',revertido:'b-purple'};
@@ -2969,6 +2990,38 @@ function renderTrocas(filtro=trFiltro){
   atualizarBadge();
 }
 function filtrarTr(f,btn){document.querySelectorAll('#tr-wrap .f-b').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTrocas(f)}
+// Recarrega APENAS as trocas do banco (botão ⟳ Atualizar)
+async function recarregarTrocas(){
+  if(!sb){showToast('Sem conexão com servidor',true);return}
+  showToast('Atualizando trocas...');
+  try{
+    const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
+    if(eT)throw eT;
+    TROCAS.length=0;
+    trs.forEach(t=>{
+      let dt=new Date();
+      if(t.data_plantao){
+        const partes=String(t.data_plantao).split('T')[0].split('-');
+        if(partes.length===3){
+          dt=new Date(parseInt(partes[0]),parseInt(partes[1])-1,parseInt(partes[2]),12,0,0);
+        }
+      }
+      const metadeSan=(t.metade==='1'||t.metade==='2')?t.metade:null;
+      TROCAS.push({
+        id:t.codigo,sol:t.solicitante_nome,sCRM:t.solicitante_crm,
+        sub:t.substituto_nome,bCRM:t.substituto_crm,
+        data:dt.toLocaleDateString('pt-BR'),dt:dt,
+        turno:t.turno,area:t.area,motivo:t.motivo||'',metade:metadeSan,
+        status:t.status,mes:t.mes,ano:t.ano,vis:t.visivel_para||[]
+      });
+    });
+    renderTrocas();
+    showToast(`${trs.length} trocas carregadas.`);
+  }catch(e){
+    console.error('Erro ao recarregar trocas:',e);
+    showToast('Erro ao atualizar — '+(e.message||'verifique conexão'),true);
+  }
+}
 function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('todos');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
 async function aprovarTr(i){
   const ok=await aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
@@ -3013,7 +3066,18 @@ function atualizarBadge(){
   const p=TROCAS.filter(t=>t.status==='pendente').length;
   const bt=document.getElementById('badge-tr');if(bt){bt.textContent=p;bt.style.display=p?'inline':'none'}
   const bp=document.getElementById('badge-pub');
-  if(bp){bp.style.display=Object.values(PUB).some(x=>!x.ok)?'inline':'none'}
+  if(bp){
+    // Badge "!" só aparece se há mês VIGENTE ou FUTURO bloqueado (não publicado).
+    // Meses passados bloqueados não contam — não há mais o que fazer com eles.
+    const hj=new Date();const mAtual=hj.getMonth()+1,aAtual=hj.getFullYear();
+    const temPend=Object.entries(PUB).some(([k,x])=>{
+      if(x.ok)return false;
+      const [m,a]=k.split('-').map(Number);
+      if(!m||!a)return false;
+      return (a>aAtual)||(a===aAtual&&m>=mAtual);
+    });
+    bp.style.display=temPend?'inline':'none';
+  }
   const dp=document.getElementById('d-pend');if(dp)dp.textContent=p;
 }
 
