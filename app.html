@@ -585,10 +585,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div id="tr-lock"></div>
         <div id="tr-wrap">
           <div class="filtros">
-            <button class="f-b active" onclick="filtrarTr('todos',this)">Todos</button>
-            <button class="f-b" onclick="filtrarTr('pendente',this)">⏳ Pendentes</button>
+            <button class="f-b active" onclick="filtrarTr('pendente',this)">⏳ Pendentes</button>
             <button class="f-b" onclick="filtrarTr('aprovado',this)">✓ Aprovados</button>
             <button class="f-b" onclick="filtrarTr('rejeitado',this)">✕ Rejeitados</button>
+            <button class="f-b" onclick="filtrarTr('todos',this)">Todos</button>
             <button class="f-b" onclick="filtrarTr('revertido',this)">↩ Revertidos</button>
           </div>
           <div id="tr-list"></div>
@@ -1295,7 +1295,7 @@ const _agora=new Date();
 let mesMes=_agora.getMonth()+1,mesAno=_agora.getFullYear();
 let meuMes=mesMes,meuAno=mesAno,trMes=mesMes,trAno=mesAno;
 let relMes=mesMes,relAno=mesAno,viewerMes=mesMes,viewerAno=mesAno,calMes=mesMes,calAno=mesAno;
-let editCtx=null,editMedIdx=null,editSenhaIdx=null,trFiltro='todos',relFiltroAtual='todos';
+let editCtx=null,editMedIdx=null,editSenhaIdx=null,trFiltro='pendente',relFiltroAtual='todos';
 let ccAbaAtual='int';
 
 // ══════════════════════════════════════════
@@ -1664,10 +1664,15 @@ function navTo(pg){
     var agora=new Date();mesMes=agora.getMonth()+1;mesAno=agora.getFullYear();
     setTimeout(renderEscala,10);
   }
-  // Ao abrir trocas, sempre ir para mês vigente
+  // Ao abrir trocas, sempre ir para mês vigente e mostrar pendentes
   if(pg==='trocas'){
     var agora2=new Date();trMes=agora2.getMonth()+1;trAno=agora2.getFullYear();
-    setTimeout(function(){document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('todos');},10);
+    setTimeout(function(){
+      document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;
+      renderTrocas('pendente');
+      // Marca o botão Pendentes (1º) como ativo
+      document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)});
+    },10);
   }
   var p=document.getElementById('page-'+pg);if(p)p.classList.add('active');
   var ni=document.querySelector('.ni[data-p="'+pg+'"]');if(ni)ni.classList.add('active');
@@ -3142,7 +3147,7 @@ async function auditarTrocas(){
     showToast('Erro ao auditar — '+(e.message||'verifique console'),true);
   }
 }
-function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('todos');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
+function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('pendente');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
 async function aprovarTr(i){
   const ok=await aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
   await atualizarStatusTroca(TROCAS[i].id,'aprovado');
