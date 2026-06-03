@@ -1494,8 +1494,16 @@ async function salvarTroca(troca){
 }
 
 async function atualizarStatusTroca(codigo,status){
-  const {error}=await sb.from('trocas').update({status}).eq('codigo',codigo);
-  if(error)console.error('Erro status troca:',error);
+  // Retorna {ok, error} para o chamador poder reagir a falhas
+  if(!sb)return {ok:false,error:'Sem conexão com servidor'};
+  try{
+    const {error}=await sb.from('trocas').update({status}).eq('codigo',codigo);
+    if(error){console.error('Erro status troca:',error);return {ok:false,error:error.message||'Erro do banco'};}
+    return {ok:true};
+  }catch(e){
+    console.error('Exceção status troca:',e);
+    return {ok:false,error:e.message||'Exceção desconhecida'};
+  }
 }
 
 // ══ LOCAL STORAGE (fallback offline) ══
@@ -2956,14 +2964,16 @@ function renderTrocas(filtro=trFiltro){
   document.getElementById('tr-list').innerHTML=lista.length?lista.map(t=>{
     const idx=TROCAS.indexOf(t);const isSub=t.vis&&t.vis.includes(nU)&&t.sol!==nU;
     const ehSolicitante=(t.sol===nU);
-    // Gestor: aprovar/rejeitar/reverter
+    // Escapar aspas no ID para evitar quebra do HTML
+    const idSafe=String(t.id||'').replace(/'/g,"\\'");
+    // Gestor: aprovar/rejeitar/reverter — passa ID (não índice instável)
     const acoesGestor=isG?`
-      ${t.status==='pendente'?`<button class="btn btn-s btn-xs" onclick="aprovarTr(${idx})" title="Aprovar">✓ Aprovar</button><button class="btn btn-d btn-xs" onclick="rejeitarTr(${idx})" title="Rejeitar">✕ Rejeitar</button>`:''}
-      ${(t.status==='aprovado'||t.status==='rejeitado')?`<button class="btn btn-g btn-xs" title="Reverter para pendente" onclick="reverterTr(${idx})">↩ Reverter</button>`:''}
+      ${t.status==='pendente'?`<button class="btn btn-s btn-xs" onclick="aprovarTr('${idSafe}')" title="Aprovar">✓ Aprovar</button><button class="btn btn-d btn-xs" onclick="rejeitarTr('${idSafe}')" title="Rejeitar">✕ Rejeitar</button>`:''}
+      ${(t.status==='aprovado'||t.status==='rejeitado')?`<button class="btn btn-g btn-xs" title="Reverter para pendente" onclick="reverterTr('${idSafe}')">↩ Reverter</button>`:''}
     `:'';
     // Solicitante: cancelar a própria solicitação pendente
     const acoesSolicitante=(ehSolicitante&&t.status==='pendente')?`
-      <button class="btn btn-d btn-xs" onclick="cancelarTr(${idx})" title="Cancelar minha solicitação">✕ Cancelar solicitação</button>
+      <button class="btn btn-d btn-xs" onclick="cancelarTr('${idSafe}')" title="Cancelar minha solicitação">✕ Cancelar solicitação</button>
     `:'';
     return `<div class="tr-i">
       <div class="tr-dot ${t.status}"></div>
@@ -3148,33 +3158,87 @@ async function auditarTrocas(){
   }
 }
 function mudarMesTrocas(d){trMes+=d;if(trMes>12){trMes=1;trAno++}if(trMes<1){trMes=12;trAno--}document.getElementById('mc-tr').textContent=MP[trMes]+' '+trAno;renderTrocas('pendente');document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)})}
-async function aprovarTr(i){
-  const ok=await aplicarTrocaEscala(TROCAS[i]);TROCAS[i].status='aprovado';
-  await atualizarStatusTroca(TROCAS[i].id,'aprovado');
-  renderAll();showToast(ok?'Aprovada e aplicada!':'Troca aprovada!');
+// Resolve a troca pelo ID (e não pelo índice instável). Aceita também idx legado.
+function resolverTroca(idOuIdx){
+  if(typeof idOuIdx==='number'){
+    if(idOuIdx>=0&&idOuIdx<TROCAS.length){
+      const cand=TROCAS[idOuIdx];
+      // Confirma re-buscando pelo ID (caso o array tenha mudado)
+      return TROCAS.find(x=>x.id===cand.id)||cand;
+    }
+    return null;
+  }
+  return TROCAS.find(x=>x.id===idOuIdx)||null;
 }
-async function rejeitarTr(i){
-  const t=TROCAS[i];
+
+async function aprovarTr(idOuIdx){
+  const t=resolverTroca(idOuIdx);
+  if(!t){showToast('Troca não encontrada — atualize a lista.',true);return}
+  if(t.status==='aprovado'){showToast('Esta troca já está aprovada.',true);return}
+  const statusAnterior=t.status;
+  // 1. Salva no banco PRIMEIRO. Se falhar, não muda nada.
+  const r=await atualizarStatusTroca(t.id,'aprovado');
+  if(!r.ok){
+    showToast('❌ Não consegui salvar no banco: '+(r.error||'erro desconhecido')+'. Tente novamente.',true);
+    console.error('[aprovarTr] FALHA ao gravar status no banco para troca',t.id,r.error);
+    return;
+  }
+  // 2. Banco confirmou — atualiza estado local
+  t.status='aprovado';
+  // 3. Aplica na escala
+  let ok=false;
+  try{ok=await aplicarTrocaEscala(t);}
+  catch(e){console.error('[aprovarTr] Erro ao aplicar na escala:',e);}
+  renderAll();
+  showToast(ok?'✓ Aprovada e aplicada na escala!':'✓ Aprovada (atenção: verifique a escala manualmente).');
+}
+
+async function rejeitarTr(idOuIdx){
+  const t=resolverTroca(idOuIdx);
+  if(!t){showToast('Troca não encontrada — atualize a lista.',true);return}
+  if(t.status==='rejeitado'){showToast('Esta troca já está rejeitada.',true);return}
   const eraAprovada=t.status==='aprovado';
+  const r=await atualizarStatusTroca(t.id,'rejeitado');
+  if(!r.ok){
+    showToast('❌ Não consegui salvar no banco: '+(r.error||'erro desconhecido'),true);
+    console.error('[rejeitarTr] FALHA',t.id,r.error);
+    return;
+  }
   t.status='rejeitado';
-  await atualizarStatusTroca(t.id,'rejeitado');
   let ok=true;
-  if(eraAprovada)ok=await desfazerTrocaEscala(t);// desfaz na escala se já tinha aplicado
-  renderAll();showToast(eraAprovada?(ok?'Rejeitada e desfeita na escala!':'Rejeitada.'):'Rejeitada.');
+  if(eraAprovada){
+    try{ok=await desfazerTrocaEscala(t);}
+    catch(e){ok=false;console.error('[rejeitarTr] Erro ao desfazer:',e);}
+  }
+  renderAll();
+  showToast(eraAprovada?(ok?'✓ Rejeitada e desfeita na escala!':'⚠ Rejeitada (verifique a escala).'):'✓ Rejeitada.');
 }
-async function reverterTr(i){
-  const t=TROCAS[i];
+
+async function reverterTr(idOuIdx){
+  const t=resolverTroca(idOuIdx);
+  if(!t){showToast('Troca não encontrada — atualize a lista.',true);return}
+  if(t.status==='pendente'){showToast('Esta troca já está pendente.',true);return}
   const eraAprovada=t.status==='aprovado';
+  const r=await atualizarStatusTroca(t.id,'pendente');
+  if(!r.ok){
+    showToast('❌ Não consegui salvar no banco: '+(r.error||'erro desconhecido'),true);
+    console.error('[reverterTr] FALHA',t.id,r.error);
+    return;
+  }
   t.status='pendente';
-  await atualizarStatusTroca(t.id,'pendente');
   let ok=true;
-  if(eraAprovada)ok=await desfazerTrocaEscala(t);// desfaz na escala se já tinha aplicado
-  renderAll();showToast(eraAprovada?(ok?'Revertida e desfeita na escala!':'Revertida para pendente.'):'Revertida para pendente.');
+  if(eraAprovada){
+    try{ok=await desfazerTrocaEscala(t);}
+    catch(e){ok=false;console.error('[reverterTr] Erro ao desfazer:',e);}
+  }
+  renderAll();
+  showToast(eraAprovada?(ok?'✓ Revertida e desfeita na escala!':'⚠ Revertida (verifique a escala).'):'✓ Revertida para pendente.');
 }
 
 // CANCELAR TROCA — só o próprio solicitante (ou gestor) pode cancelar pendentes
-async function cancelarTr(i){
-  const t=TROCAS[i];if(!t)return;
+async function cancelarTr(idOuIdx){
+  const t=resolverTroca(idOuIdx);
+  if(!t){showToast('Troca não encontrada — atualize a lista.',true);return}
   const nU=curUser.nU||curUser.n.toUpperCase();
   if(t.sol!==nU&&!curUser.isGestor){showToast('Você só pode cancelar suas próprias trocas',true);return}
   if(t.status!=='pendente'){showToast('Apenas pendentes podem ser canceladas',true);return}
@@ -3182,10 +3246,11 @@ async function cancelarTr(i){
   try{
     const {error}=await sb.from('trocas').delete().eq('codigo',t.id);
     if(error)throw error;
-    TROCAS.splice(i,1);
+    const realIdx=TROCAS.findIndex(x=>x.id===t.id);
+    if(realIdx>=0)TROCAS.splice(realIdx,1);
     renderAll();
     showToast('Solicitação cancelada!');
-  }catch(e){console.error('cancelarTr:',e);showToast('Erro ao cancelar',true);}
+  }catch(e){console.error('cancelarTr:',e);showToast('Erro ao cancelar: '+(e.message||''),true);}
 }
 function atualizarBadge(){
   const p=TROCAS.filter(t=>t.status==='pendente').length;
