@@ -573,7 +573,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <div class="page" id="page-trocas">
         <div class="ph">
           <div><div class="pt">Trocas de Plantão</div></div>
-          <div class="ph-r"><button class="btn btn-g btn-sm" onclick="auditarTrocas()" title="Comparar app vs banco de dados">🔍 Auditar</button><button class="btn btn-g btn-sm" onclick="recarregarTrocas()" title="Recarregar trocas do servidor">⟳ Atualizar</button><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
+          <div class="ph-r"><button class="btn btn-g btn-sm" id="btn-auditar-tr" onclick="auditarTrocas()" title="Comparar app vs banco de dados" style="display:none">🔍 Auditar</button><button class="btn btn-g btn-sm" onclick="recarregarTrocas()" title="Recarregar trocas do servidor">⟳ Atualizar</button><button class="btn btn-p btn-sm" onclick="abrirMoTroca()">+ Solicitar Troca</button></div>
         </div>
         <div class="ec" style="margin-bottom:10px">
           <div class="mc">
@@ -887,9 +887,19 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 
 <div class="mo" id="mo-troca">
   <div class="m-box">
-    <div class="m-t">Solicitar Troca de Plantão</div>
+    <div class="m-t" id="mo-tr-titulo">Solicitar Troca de Plantão</div>
     <div class="m-s" id="mo-tr-sub"></div>
-    <div class="fg"><label class="fl">Meu Plantão</label>
+    <div class="fg" id="tr-sol-wrap" style="display:none">
+      <label class="fl">Solicitante (quem está passando o plantão)</label>
+      <div style="position:relative">
+        <input type="text" class="fi" id="tr-sol-busca" placeholder="Digite o nome ou CRM..." oninput="filtrarTrSol()" onfocus="filtrarTrSol()" autocomplete="off" style="padding-right:30px">
+        <span style="position:absolute;right:14px;top:11px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
+      </div>
+      <input type="hidden" id="tr-sol-crm" value="">
+      <div id="tr-sol-sug" style="display:none;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.08);margin-top:4px"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">💡 Como gestor, você está registrando uma troca em nome de outro plantonista.</div>
+    </div>
+    <div class="fg"><label class="fl" id="tr-plantao-lbl">Meu Plantão</label>
       <select class="fs" id="tr-plantao" onchange="atualizarTrTurno()"><option value="">— Selecione —</option></select>
     </div>
     <div class="fg"><label class="fl">Turno</label><input type="text" class="fi" id="tr-turno" readonly style="color:var(--text2)"></div>
@@ -1173,6 +1183,31 @@ function ini2(n){return n.split(' ').slice(0,2).map(p=>p[0]).join('')}
 function fmtData(dt){return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`}
 function diaS(dt){return['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dt.getDay()]}
 function fmtMoeda(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+// ══ CÓDIGO O.S. DA TROCA ══
+// Formato: DDMMAA-HHHH-FUNCAO-CRMSOL>CRMSUB[-Mn]
+// Ex: 040626-1907-CM1-28691>27663      (troca completa)
+// Ex: 040626-1907-CM1-28691>27663-M2   (2ª metade)
+function gerarCodigoTroca(troca){
+  const dt=troca.dt instanceof Date?troca.dt:new Date();
+  const dd=String(dt.getDate()).padStart(2,'0');
+  const mm=String(dt.getMonth()+1).padStart(2,'0');
+  const aa=String(dt.getFullYear()).slice(-2);
+  // Extrair horário do turno (ex: "19:00–07:00 CM (3)" → "1907")
+  const turnoStr=String(troca.turno||'');
+  let hh='0000';
+  const mh=turnoStr.match(/(\d{1,2})[:h]?\d{0,2}\s*[–\-]\s*(\d{1,2})/);
+  if(mh){hh=String(mh[1]).padStart(2,'0')+String(mh[2]).padStart(2,'0');}
+  // Extrair função (CM, PED, APOIO, SV+ENF) + número entre parênteses
+  let fn='';
+  const mf=turnoStr.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?(\d+)?\)?/i);
+  if(mf){fn=mf[1].toUpperCase().replace('+','')+(mf[2]||'');}
+  else{fn='X';}
+  const sCRM=troca.sCRM||'0';
+  const bCRM=troca.bCRM||'0';
+  const meta=(troca.metade==='1'||troca.metade==='2')?'-M'+troca.metade:'';
+  return `${dd}${mm}${aa}-${hh}-${fn}-${sCRM}>${bCRM}${meta}`;
+}
 
 // ══ TURNOS ══
 const TURNOS=[
@@ -1469,8 +1504,7 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 }
 
 async function salvarTroca(troca){
-  // Sanitizar metade — SEMPRE explícito: '1', '2' ou null. Nunca omitir,
-  // senão o upsert mantém valor sujo antigo no banco (causa do bug meio plantão).
+  if(!sb)return {ok:false,error:'Sem conexão com servidor'};
   const metadeLimpa=(troca.metade==='1'||troca.metade==='2')?troca.metade:null;
   const payload={
     codigo:troca.id,
@@ -1483,14 +1517,20 @@ async function salvarTroca(troca){
     visivel_para:troca.vis||[],
     metade:metadeLimpa
   };
-  let {error}=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
-  if(error&&error.message&&error.message.includes('metade')){
-    delete payload.metade;
-    const r=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
-    error=r.error;
-    console.warn('Coluna metade não existe — execute SQL v23');
+  try{
+    let {error}=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
+    if(error&&error.message&&error.message.includes('metade')){
+      delete payload.metade;
+      const r=await sb.from('trocas').upsert(payload,{onConflict:'codigo'});
+      error=r.error;
+      console.warn('Coluna metade não existe — execute SQL v23');
+    }
+    if(error){console.error('Erro troca:',error);return {ok:false,error:error.message||'Erro do banco'};}
+    return {ok:true};
+  }catch(e){
+    console.error('Exceção salvarTroca:',e);
+    return {ok:false,error:e.message||'Exceção desconhecida'};
   }
-  if(error)console.error('Erro troca:',error);
 }
 
 async function atualizarStatusTroca(codigo,status){
@@ -1847,6 +1887,9 @@ async function fazerLogin(){
   document.getElementById('nav-m').style.display=curUser.isPlantonista?'block':'none';
   document.getElementById('escala-ph-r').style.display=curRole==='gestor'?'flex':'none';
   document.getElementById('cc-ph-r').style.display=curRole==='gestor'?'flex':'none';
+  // Botão Auditar: só gestor vê
+  const btnAud=document.getElementById('btn-auditar-tr');
+  if(btnAud)btnAud.style.display=curUser.isGestor?'inline-flex':'none';
   initSidebar();
   if(curRole==='gestor')navTo('dashboard');
   else navTo('meu-plantao');
@@ -2259,14 +2302,69 @@ async function salvarEdicao(){
     showToast('Erro: dia do mês não identificado',true);
     return;
   }
+  // CAPTURAR valor ANTERIOR (antes de salvar) para detectar troca
+  const valAntes=getSlotValDia(m,a,letra,ab,ti,dm)||'';
   const ok=await salvarSlotMes(m,a,letra,ab,ti,val,dm);
   if(!ok){
     showToast('Erro ao salvar — verifique o console',true);
     return;
   }
   fecharMo('mo-editar');
+  // ═══ TROCA AUTOMÁTICA: se a escala está PUBLICADA e houve troca real de profissional ═══
+  if(ePub(m,a)){
+    await gerarTrocaAutoEdicao(valAntes,val,m,a,letra,ab,ti,dm);
+  }
   renderAll();
   showToast('Plantão salvo para o dia '+dm+'!');
+}
+
+// Gera troca automática quando gestor edita escala publicada
+async function gerarTrocaAutoEdicao(valAntes,valDepois,mes,ano,semLetra,ab,ti,diaMes){
+  // Extrair CRMs do antes e depois
+  const crmAntes=(valAntes.match(/\((\d+)\)/)||[])[1];
+  const crmDepois=(valDepois.match(/\((\d+)\)/)||[])[1];
+  // Se nenhum dos dois é válido OU são o mesmo profissional → não gera troca
+  if(!crmAntes&&!crmDepois)return;
+  if(crmAntes===crmDepois)return;
+  // Se "antes" estava vaga e agora preencheu, ou vice-versa → também não gera (não é troca)
+  if(!crmAntes||!crmDepois){
+    console.log('[trocaAuto] Não é troca (vaga ⇄ preenchido), nada a registrar.');
+    return;
+  }
+  const sCRM=parseInt(crmAntes),bCRM=parseInt(crmDepois);
+  const mSol=MEDICOS.find(x=>x.c===sCRM);
+  const mSub=MEDICOS.find(x=>x.c===bCRM);
+  if(!mSol||!mSub){console.warn('[trocaAuto] Profissional não encontrado:',sCRM,bCRM);return}
+  // Reconstruir turno a partir do TURNOS[ti]
+  const turno=TURNOS[ti]?TURNOS[ti].l:`Turno ${ti}`;
+  const area=TURNOS[ti]?TURNOS[ti].a:'';
+  const dtPlantao=new Date(ano,mes-1,diaMes,12,0,0);
+  const dataStr=`${String(diaMes).padStart(2,'0')}/${MA[mes]}/${ano}`;
+  const solNome=mSol.n.toUpperCase();
+  const subNome=mSub.n.toUpperCase();
+  // Detectar meio plantão (se valDepois ou valAntes contém #1/#2)
+  let metade=null;
+  const tagDepois=valDepois.match(/#([12])/);
+  if(tagDepois)metade=tagDepois[1];
+  const nova={
+    id:'',sol:solNome,sCRM:sCRM,sub:subNome,bCRM:bCRM,
+    data:dataStr,dt:dtPlantao,turno:turno,area:area,
+    metade,motivo:'Alteração manual pelo gestor (escala publicada)',
+    status:'aprovado',// já aprovada porque foi o gestor que fez
+    mes:mes,ano:ano,vis:[solNome,subNome]
+  };
+  nova.id=gerarCodigoTroca(nova);
+  let baseId=nova.id,ctr=2;
+  while(TROCAS.find(t=>t.id===nova.id)){nova.id=baseId+'-v'+ctr;ctr++;}
+  const r=await salvarTroca(nova);
+  if(r.ok){
+    TROCAS.unshift(nova);
+    showToast('✓ Troca automática registrada: O.S. '+nova.id);
+    console.log('[trocaAuto] Troca registrada:',nova.id,solNome,'→',subNome);
+  } else {
+    console.error('[trocaAuto] FALHA ao registrar troca automática:',r.error);
+    showToast('⚠ Plantão salvo, mas falhou em registrar troca: '+r.error,true);
+  }
 }
 
 // ══ ESCALA BASE ══
@@ -2980,6 +3078,7 @@ function renderTrocas(filtro=trFiltro){
       <div class="tr-b">
         <div class="tr-t">${nomeCurto(t.sol)} → ${nomeCurto(t.sub)}</div>
         <div class="tr-m">📅 ${t.data} · ${t.turno}<br><span class="${ac[t.area]||'ch-cm'}" style="margin-top:2px">${t.area}</span>${t.motivo?` · 💬 ${t.motivo}`:''}</div>
+        <div style="font-family:monospace;font-size:10px;color:var(--text3);margin-top:4px;padding:2px 6px;background:var(--bg3);border-radius:4px;display:inline-block" title="Código da troca (copie para buscar no banco)">O.S. ${t.id||'—'}</div>
         ${isSub&&t.status==='pendente'?'<div class="tr-tag">⚠️ Você é o substituto indicado</div>':''}
         ${ehSolicitante&&t.status==='pendente'?'<div style="font-size:10px;color:var(--amber);margin-top:2px">⏳ Aguardando aprovação do gestor</div>':''}
         ${t.status==='aprovado'?'<div style="font-size:10px;color:var(--green);margin-top:2px">✓ Aplicada na escala</div>':''}
@@ -3272,13 +3371,47 @@ function atualizarBadge(){
 }
 
 // ══ SOLICITAR TROCA ══
+// Estado para gestor lançando troca em nome de outro
+let trSolGestor=null;// {crm, nome} quando gestor escolhe solicitante; null = próprio usuário
 function abrirMoTroca(){
-  const crm=curUser.c;
+  trSolGestor=null;
+  // Mostrar campo solicitante apenas para gestor
+  const solWrap=document.getElementById('tr-sol-wrap');
+  const titulo=document.getElementById('mo-tr-titulo');
+  const lblPlantao=document.getElementById('tr-plantao-lbl');
+  if(curUser.isGestor){
+    solWrap.style.display='block';
+    titulo.textContent='Registrar Troca de Plantão';
+    lblPlantao.textContent='Plantão do solicitante';
+    document.getElementById('tr-sol-busca').value='';
+    document.getElementById('tr-sol-crm').value='';
+    document.getElementById('tr-sol-sug').style.display='none';
+    // Limpa o select de plantões — só carrega após escolher solicitante
+    document.getElementById('tr-plantao').innerHTML='<option value="">— Escolha o solicitante primeiro —</option>';
+  } else {
+    solWrap.style.display='none';
+    titulo.textContent='Solicitar Troca de Plantão';
+    lblPlantao.textContent='Meu Plantão';
+    popularPlantoesTroca(curUser.c);
+  }
+  document.getElementById('tr-turno').value='';document.getElementById('tr-area').value='';
+  document.getElementById('tr-motivo').value='';
+  const tsBus=document.getElementById('tr-sub-busca');if(tsBus)tsBus.value='';
+  const tsHid=document.getElementById('tr-sub');if(tsHid)tsHid.value='';
+  const chk=document.getElementById('tr-is-ext');if(chk)chk.checked=false;toggleExtForm();
+  const meioCk=document.getElementById('tr-meio-check');if(meioCk)meioCk.checked=false;
+  const meioOpc=document.getElementById('tr-meio-opcoes');if(meioOpc)meioOpc.style.display='none';
+  const meioWrap=document.getElementById('tr-meio-wrap');if(meioWrap)meioWrap.style.display='none';
+  abrirMo('mo-troca');
+}
+
+// Popula o select de plantões para um CRM (interno) específico
+function popularPlantoesTroca(crm){
   const pts=plantoesDe(crm,meuMes,meuAno);
   const hj=hoje();
   const futuros=pts.filter(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d>=hj});
   const sel=document.getElementById('tr-plantao');
-  sel.innerHTML='<option value="">— Selecione —</option>';
+  sel.innerHTML='<option value="">— Selecione o plantão —</option>';
   futuros.forEach(p=>{
     const o=document.createElement('option');
     o.value=JSON.stringify({dia:p.dia,turno:p.turno,area:p.area,not:p.not,h:p.h,mes:meuMes,ano:meuAno});
@@ -3287,17 +3420,33 @@ function abrirMoTroca(){
     o.textContent=`${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${meuMes.toString().padStart(2,'0')} · ${p.turno}`;
     sel.appendChild(o);
   });
-  document.getElementById('tr-turno').value='';document.getElementById('tr-area').value='';
-  document.getElementById('tr-motivo').value='';
-  const tsBus=document.getElementById('tr-sub-busca');if(tsBus)tsBus.value='';
-  const tsHid=document.getElementById('tr-sub');if(tsHid)tsHid.value='';
-  const chk=document.getElementById('tr-is-ext');if(chk)chk.checked=false;toggleExtForm();
-  // Reset meio plantão
-  const meioCk=document.getElementById('tr-meio-check');if(meioCk)meioCk.checked=false;
-  const meioOpc=document.getElementById('tr-meio-opcoes');if(meioOpc)meioOpc.style.display='none';
-  const meioWrap=document.getElementById('tr-meio-wrap');if(meioWrap)meioWrap.style.display='none';
   document.getElementById('mo-tr-sub').textContent=futuros.length?`${futuros.length} plantão(ões) disponíveis`:'Nenhum plantão futuro este mês';
-  abrirMo('mo-troca');
+}
+
+// Autocomplete do solicitante (apenas gestor)
+function filtrarTrSol(){
+  const inp=document.getElementById('tr-sol-busca');
+  const sug=document.getElementById('tr-sol-sug');
+  const q=semAcento(inp.value.trim());
+  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext);
+  let lista=q?internos.filter(m=>semAcento(formatarNome(m.n)).includes(q)||String(m.c).includes(q)):internos;
+  if(!lista.length){sug.innerHTML='<div style="padding:10px;font-size:12px;color:var(--text3)">Nenhum profissional</div>';sug.style.display='block';return}
+  sug.innerHTML=lista.slice(0,30).map(m=>`
+    <div onclick="selecionarTrSol(${m.c},'${formatarNome(m.n).replace(/'/g,"\\'")}')"
+      style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px"
+      onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'">
+      <div style="font-weight:600">${formatarNome(m.n)}</div>
+      <div style="font-size:10px;color:#9aa3bf">CRM ${m.c}</div>
+    </div>`).join('');
+  sug.style.display='block';
+}
+function selecionarTrSol(crm,fmt){
+  document.getElementById('tr-sol-busca').value=fmt;
+  document.getElementById('tr-sol-crm').value=crm;
+  document.getElementById('tr-sol-sug').style.display='none';
+  const med=MEDICOS.find(m=>m.c===crm);
+  trSolGestor=med?{crm:crm,nome:med.n}:null;
+  popularPlantoesTroca(crm);
 }
 function atualizarTrTurno(){
   const o=document.getElementById('tr-plantao').selectedOptions[0];
@@ -3341,27 +3490,30 @@ async function enviarTroca(){
   // Bloquear se já existe troca pendente do mesmo solicitante para este plantão
   const piPre=JSON.parse(pv);
   const dataKey=`${(piPre.ano||meuAno)}-${String(piPre.mes||meuMes).padStart(2,'0')}-${String(piPre.dia).padStart(2,'0')}`;
-  const turnoBase=piPre.turno;// turno original do plantão
-  const meuCRM=curUser.c;
+  const turnoBase=piPre.turno;
+  // SOLICITANTE: se gestor escolheu outro plantonista, usa esse; senão, próprio usuário
+  let solCRM=curUser.c,solNome=(curUser.nU||curUser.n.toUpperCase());
+  if(curUser.isGestor&&trSolGestor){
+    solCRM=trSolGestor.crm;
+    solNome=trSolGestor.nome.toUpperCase();
+  }
+  const meuCRM=solCRM;
   const jaPendente=TROCAS.find(t=>{
     if(t.status!=='pendente')return false;
     if(t.sCRM!==meuCRM)return false;
-    // Comparar data e turno base (ignorando "(1ª metade)" etc para pegar tanto inteiro quanto meio)
     const tDataKey=t.dt instanceof Date
       ?`${t.dt.getFullYear()}-${String(t.dt.getMonth()+1).padStart(2,'0')}-${String(t.dt.getDate()).padStart(2,'0')}`
       :null;
     if(tDataKey!==dataKey)return false;
-    // Turno: pode ter sufixo de meio plantão, compara prefixo (HH:MM-HH:MM e função)
     const turnoTroca=String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
     const turnoPlantao=String(turnoBase||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
-    // Match parcial: se a função (CM, PED, SV+ENF, APOIO + número) bate
     const fnTroca=turnoTroca.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?\d*\)?/i);
     const fnPlantao=turnoPlantao.match(/(SV\+ENF|CM|PED|APOIO)\s*\(?\d*\)?/i);
     if(fnTroca&&fnPlantao&&fnTroca[0]===fnPlantao[0])return true;
     return turnoTroca===turnoPlantao;
   });
   if(jaPendente){
-    showToast('⚠ Você já tem uma troca pendente para este plantão. Aguarde aprovação ou cancele a anterior.',true);
+    showToast('⚠ Já existe troca pendente deste plantonista para esse plantão.',true);
     return;
   }
   const isExt=document.getElementById('tr-is-ext').checked;
@@ -3414,7 +3566,9 @@ async function enviarTroca(){
     }
   }
   const pi=JSON.parse(pv);
-  const nU=curUser.nU||curUser.n.toUpperCase();
+  // Solicitante final: gestor pode ter escolhido outro plantonista
+  const sCRMFinal=meuCRM;// definido lá em cima (=solCRM, considera trSolGestor)
+  const sNomeFinal=solNome;
   const df=`${pi.dia.toString().padStart(2,'0')}/${MA[pi.mes||meuMes]}/${pi.ano||meuAno}`;
   const dtPlantao=new Date(pi.ano||meuAno,(pi.mes||meuMes)-1,pi.dia,12,0,0);
   // Capturar meio plantão se marcado
@@ -3425,7 +3579,6 @@ async function enviarTroca(){
     const radioSel=document.querySelector('input[name="tr-metade"]:checked');
     metade=radioSel?radioSel.value:'2';
   }
-  // Calcular horário a exibir (turno completo ou metade)
   let turnoExibir=pi.turno;
   if(isMeio){
     const not=pi.not===true;
@@ -3435,15 +3588,25 @@ async function enviarTroca(){
       turnoExibir=not?'01:00–07:00 (2ª metade)':'13:00–19:00 (2ª metade)';
     }
   }
-  const nova={id:'T'+(TROCAS.length+1).toString().padStart(3,'0'),sol:nU,sCRM:curUser.c,sub:subNome,bCRM:subCRM,
+  const nova={id:'',sol:sNomeFinal,sCRM:sCRMFinal,sub:subNome,bCRM:subCRM,
     data:df,dt:dtPlantao,turno:turnoExibir,area:pi.area,
-    metade,// '1', '2' ou null
-    motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[nU,subNome]};
+    metade,
+    motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[sNomeFinal,subNome]};
+  nova.id=gerarCodigoTroca(nova);
+  let baseId=nova.id,ctr=2;
+  while(TROCAS.find(t=>t.id===nova.id)){nova.id=baseId+'-v'+ctr;ctr++;}
+  // SALVAR NO BANCO PRIMEIRO. Se falhar, NÃO insere no app.
+  const r=await salvarTroca(nova);
+  if(!r.ok){
+    showToast('❌ Falha ao enviar troca: '+(r.error||'erro desconhecido')+'. Tente novamente.',true);
+    console.error('[enviarTroca] FALHA gravação:',r.error,nova);
+    return;
+  }
+  // Banco confirmou — adiciona na lista local
   TROCAS.unshift(nova);
-  await salvarTroca(nova);
   const uniLinhaExt=isExt?'\nUnidade de origem: '+document.getElementById('tr-ext-uni').value:'';
   const tagMeio=isMeio?'\n⇄ MEIO PLANTÃO ('+(metade==='1'?'1ª':'2ª')+' metade — 6h)':'';
-  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${curUser.n.toUpperCase()}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${turnoExibir}${tagMeio}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
+  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${sNomeFinal}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${turnoExibir}${tagMeio}\n\nO.S. ${nova.id}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
   document.getElementById('wpp-msg').textContent=msg;
   document.getElementById('btn-cp').textContent='Copiar';document.getElementById('btn-cp').classList.remove('ok');
   fecharMo('mo-troca');abrirMo('mo-conf');renderAll();
