@@ -584,6 +584,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         </div>
         <div id="tr-lock"></div>
         <div id="tr-wrap">
+          <div style="position:relative;margin-bottom:8px">
+            <input type="text" id="tr-busca" class="fi" placeholder="🔍 Buscar por O.S., nome ou CRM..."
+              oninput="renderTrocas()" autocomplete="off" style="padding-right:34px">
+            <button onclick="document.getElementById('tr-busca').value='';renderTrocas()" title="Limpar busca"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;color:var(--text3);font-size:16px;padding:4px 8px">✕</button>
+          </div>
           <div class="filtros">
             <button class="f-b active" onclick="filtrarTr('pendente',this)">⏳ Pendentes</button>
             <button class="f-b" onclick="filtrarTr('aprovado',this)">✓ Aprovados</button>
@@ -1145,6 +1151,31 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 <script>
 'use strict';
 // ══════════════════════════════════════════════════
+// VERSÃO DO APP — incrementar a cada deploy para forçar atualização
+// Quando o navegador detectar versão local diferente da atual, limpa cache
+// e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
+// ══════════════════════════════════════════════════
+const APP_VERSION='2026.06.10.01';
+(function checarVersao(){
+  try{
+    const KEY='kos_app_version';
+    const v=localStorage.getItem(KEY);
+    if(v&&v!==APP_VERSION){
+      console.log('[Versão] Local:',v,'→ Nova:',APP_VERSION,'— atualizando...');
+      // Preserva apenas a sessão (login) — limpa o resto
+      const sess=localStorage.getItem('cais_session_v1');
+      localStorage.clear();
+      if(sess)localStorage.setItem('cais_session_v1',sess);
+      localStorage.setItem(KEY,APP_VERSION);
+      // Força reload sem cache
+      location.reload();
+      return;
+    }
+    localStorage.setItem(KEY,APP_VERSION);
+  }catch(e){console.warn('Versão check:',e);}
+})();
+
+// ══════════════════════════════════════════════════
 // CONSTANTES E TABELA DE PREÇOS
 // ══════════════════════════════════════════════════
 const MP=['','JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
@@ -1347,12 +1378,63 @@ const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{
 // Estado de conexão
 let dbOk=false;
 let dbCarregando=false;
+let ultimaSync=null;// timestamp da última sincronização bem-sucedida
 
 function mostrarStatusDB(ok,msg){
   const el=document.getElementById('db-status');
   if(!el)return;
-  el.textContent=ok?'🟢 '+msg:'🔴 '+msg;
-  el.style.color=ok?'var(--green)':'var(--red)';
+  if(ok){
+    ultimaSync=Date.now();
+    el.textContent='🟢 '+msg;
+    el.style.color='var(--green)';
+    el.style.cursor='pointer';
+    el.title='Clique para sincronizar agora';
+    el.onclick=()=>{if(!dbCarregando)recarregarTudo();};
+  } else {
+    el.textContent='🔴 '+msg;
+    el.style.color='var(--red)';
+  }
+}
+
+// Atualiza o texto a cada 15s para mostrar "há X tempo"
+function atualizarTextoSync(){
+  const el=document.getElementById('db-status');
+  if(!el||!ultimaSync)return;
+  const seg=Math.floor((Date.now()-ultimaSync)/1000);
+  let txt='',cor='var(--green)';
+  if(seg<30){txt='🟢 Sincronizado';cor='var(--green)';}
+  else if(seg<120){txt=`🟢 Sincronizado há ${seg}s`;cor='var(--green)';}
+  else if(seg<300){txt=`🟡 Há ${Math.floor(seg/60)}min`;cor='var(--amber)';}
+  else {txt=`🔴 Há ${Math.floor(seg/60)}min`;cor='var(--red)';}
+  el.textContent=txt;
+  el.style.color=cor;
+}
+setInterval(atualizarTextoSync,15000);
+
+// Sincronização automática a cada 60s (só quando aba está em foco)
+async function sincronizarAutomatico(){
+  if(document.hidden)return;// economiza quando aba não está visível
+  if(dbCarregando)return;
+  if(!sb)return;
+  console.log('[Auto-sync] Recarregando trocas e escala...');
+  try{
+    // Recarrega só trocas e escala_mensal — não precisa recarregar profissionais toda hora
+    if(typeof recarregarTrocas==='function')await recarregarTrocas();
+    if(typeof carregarESCMES==='function'){await carregarESCMES();renderAll();}
+    ultimaSync=Date.now();
+    atualizarTextoSync();
+  }catch(e){console.warn('Auto-sync falhou:',e);}
+}
+setInterval(sincronizarAutomatico,60000);// 60 segundos
+
+// Recarrega TUDO do banco (clicar no status ou pressionar F5 lógico)
+async function recarregarTudo(){
+  if(dbCarregando)return;
+  showToast('Sincronizando com servidor...');
+  await carregarSupabase();
+  renderAll();
+  ultimaSync=Date.now();
+  atualizarTextoSync();
 }
 
 // ══ CARREGAR DADOS DO SUPABASE ══
@@ -3048,13 +3130,32 @@ function renderTrocas(filtro=trFiltro){
     wrap.style.display='none';return;
   }
   lock.innerHTML='';wrap.style.display='block';
-  // Filtrar por mês/ano DERIVADO da data real do plantão (corrige trocas sumindo
-  // quando t.mes/t.ano gravados divergem da data real)
-  let lista=TROCAS.filter(t=>{
-    let tm=t.mes,ta=t.ano;
-    if(t.dt instanceof Date){tm=t.dt.getMonth()+1;ta=t.dt.getFullYear();}
-    return tm===trMes&&ta===trAno;
-  });
+  // Termo de busca (se houver, ignora filtro de mês e tem prioridade)
+  const inpBusca=document.getElementById('tr-busca');
+  const busca=inpBusca?semAcento(inpBusca.value.trim().toLowerCase()):'';
+  let lista;
+  if(busca){
+    // Busca em TUDO (todos os meses) — útil para auditar
+    lista=TROCAS.filter(t=>{
+      const campos=[
+        String(t.id||'').toLowerCase(),
+        semAcento(String(t.sol||'').toLowerCase()),
+        semAcento(String(t.sub||'').toLowerCase()),
+        String(t.sCRM||''),
+        String(t.bCRM||''),
+        semAcento(String(t.turno||'').toLowerCase()),
+        String(t.data||'').toLowerCase()
+      ].join(' ');
+      return campos.includes(busca);
+    });
+  } else {
+    // Sem busca: filtro de mês/ano DERIVADO da data real do plantão
+    lista=TROCAS.filter(t=>{
+      let tm=t.mes,ta=t.ano;
+      if(t.dt instanceof Date){tm=t.dt.getMonth()+1;ta=t.dt.getFullYear();}
+      return tm===trMes&&ta===trAno;
+    });
+  }
   if(!isG)lista=lista.filter(t=>t.vis&&t.vis.includes(nU));
   if(filtro!=='todos')lista=lista.filter(t=>t.status===filtro);
   const bm={pendente:'b-amber',aprovado:'b-green',rejeitado:'b-red',revertido:'b-purple'};
@@ -3091,7 +3192,17 @@ function renderTrocas(filtro=trFiltro){
         </div>
       </div>
     </div>`;
-  }).join(''):'<div style="color:var(--text3);text-align:center;padding:22px;font-size:13px">Nenhuma troca neste mês</div>';
+  }).join(''):`<div style="color:var(--text3);text-align:center;padding:22px;font-size:13px">${busca?'Nenhuma troca encontrada para "'+inpBusca.value+'"':'Nenhuma troca neste mês'}</div>`;
+  // Indicador visual quando há busca ativa
+  const tlHeader=document.getElementById('tr-busca-info');
+  if(tlHeader)tlHeader.remove();
+  if(busca){
+    const info=document.createElement('div');
+    info.id='tr-busca-info';
+    info.style.cssText='background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:7px 10px;margin-bottom:8px;font-size:11px;color:#1e40af;display:flex;justify-content:space-between;align-items:center';
+    info.innerHTML=`<span>🔍 Busca global ativa — ${lista.length} resultado(s) em <strong>todos os meses</strong></span><span style="font-style:italic">(filtro de mês ignorado)</span>`;
+    document.getElementById('tr-list').insertBefore(info,document.getElementById('tr-list').firstChild);
+  }
   atualizarBadge();
 }
 function filtrarTr(f,btn){document.querySelectorAll('#tr-wrap .f-b').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTrocas(f)}
