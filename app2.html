@@ -4360,20 +4360,81 @@ function mudarAbaRel(aba,btn){
 }
 
 function renderRelExterno(){
-  // Externos: profissionais com ext=true que aparecem em trocas aprovadas no mês
-  const trocasExt=TROCAS.filter(t=>t.mes===relMes&&t.ano===relAno&&t.status==='aprovado');
-  // Também verificar se há externos na escala base (via CRM de médico ext)
-  const externos=MEDICOS.filter(m=>m.ext);
-  // Cruzar externos com trocas aprovadas
-  const extsNoMes=[];
-  trocasExt.forEach(t=>{
-    const mExt=MEDICOS.find(m=>m.c===t.bCRM&&m.ext);
-    if(mExt&&!extsNoMes.find(x=>x.c===mExt.c)){
-      extsNoMes.push({...mExt,troca:t});
+  // Coletar plantões de TODOS os externos no mês — 3 fontes (igual ao dashboard)
+  const externosMap={};
+  const k=keyMes(relMes,relAno);
+
+  // FONTE 1: Slots manuais (DIA_X em ESCMES) — alterações pontuais por dia
+  if(ESCMES[k]){
+    Object.keys(ESCMES[k]).filter(key=>key.startsWith('DIA_')).forEach(dk=>{
+      const diaMes=parseInt(dk.replace('DIA_',''));
+      const diaArr=ESCMES[k][dk]||[];
+      diaArr.forEach((val,ti)=>{
+        if(!val)return;
+        const match=val.match(/\((\d+)\)/);
+        if(!match)return;
+        const crm=parseInt(match[1]);
+        const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
+        if(!med)return;
+        if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
+        const t=TURNOS[ti];if(!t)return;
+        const dt=new Date(relAno,relMes-1,diaMes,12,0,0);
+        const ds=dt.getDay();const fds=(ds===0||ds===6);
+        externosMap[crm].plantoes.push({
+          dia:diaMes,dt,turnoIdx:ti,
+          data:String(diaMes).padStart(2,'0')+'/'+String(relMes).padStart(2,'0')+'/'+relAno,
+          turno:t.l,area:t.a,h:t.h,fds,not:t.not
+        });
+      });
+    });
+  }
+
+  // FONTE 2: Plantões gerados normalmente (snapshot/EB para externos pré-cadastrados)
+  const todosPlantoesMes=gerarPlantoesMes(relMes,relAno);
+  todosPlantoesMes.forEach(p=>{
+    const med=MEDICOS.find(m=>m.c===p.crm);
+    if(med&&med.ext===true){
+      if(!externosMap[med.c])externosMap[med.c]={prof:med,plantoes:[]};
+      const dataStr=p.dt.toLocaleDateString('pt-BR');
+      const jaTem=externosMap[med.c].plantoes.find(x=>x.data===dataStr&&x.turno===p.turno);
+      if(!jaTem){
+        externosMap[med.c].plantoes.push({
+          dia:p.dia,dt:p.dt,turnoIdx:p.turnoIdx,
+          data:dataStr,turno:p.turno,area:p.area,h:p.h,fds:p.fds,not:p.not
+        });
+      }
     }
   });
+
+  // FONTE 3: Trocas aprovadas com substituto externo — filtra pela data REAL do plantão
+  const trocasMes=TROCAS.filter(t=>{
+    if(t.status!=='aprovado')return false;
+    if(!(t.dt instanceof Date))return false;
+    return t.dt.getMonth()+1===relMes&&t.dt.getFullYear()===relAno;
+  });
+  trocasMes.forEach(t=>{
+    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext===true);
+    if(!ext)return;
+    if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
+    const jaTem=externosMap[ext.c].plantoes.find(p=>p.data===t.data&&p.turno===t.turno);
+    if(jaTem)return;
+    // Extrair horas do texto do turno (ex: "07:00–19:00 CM (1)") — fallback 0
+    let h=12;
+    const turnoStr=String(t.turno||'');
+    if(/01:00.{1,3}07:00/.test(turnoStr)||/19:00.{1,3}01:00/.test(turnoStr))h=6;// noturno 6h
+    if(/13:00.{1,3}19:00/.test(turnoStr)||/07:00.{1,3}13:00/.test(turnoStr))h=6;// diurno 6h
+    if(/\(1ª metade\)|\(2ª metade\)/.test(turnoStr))h=6;
+    const ds=t.dt.getDay();const fds=(ds===0||ds===6);
+    externosMap[ext.c].plantoes.push({
+      dia:t.dt.getDate(),dt:t.dt,turnoIdx:null,
+      data:t.data,turno:t.turno,area:t.area,h,fds,
+      not:/19:00|01:00|07:00 ?/i.test(turnoStr)&&!/07:00.{1,3}13:00|07:00.{1,3}19:00|13:00.{1,3}19:00/.test(turnoStr)
+    });
+  });
+
+  const extList=Object.values(externosMap);
   const el=document.getElementById('rel-ext-content');
-  if(!extsNoMes.length){
+  if(!extList.length){
     el.innerHTML=`<div style="text-align:center;padding:32px;color:var(--text2)">
       <div style="font-size:32px;margin-bottom:10px">✓</div>
       <div style="font-size:14px;font-weight:600">Nenhum externo em ${MP[relMes]}/${relAno}</div>
@@ -4381,22 +4442,72 @@ function renderRelExterno(){
     </div>`;
     return;
   }
+
+  // Calcular valores para cada externo
+  const linhasComValor=extList.map(x=>{
+    const med=x.prof;
+    const totalH=x.plantoes.reduce((s,p)=>s+(p.h||0),0);
+    let totalValor=0;
+    x.plantoes.forEach(p=>{
+      // Calcular usando o sistema VALORES (categoria + função + dia)
+      // Função
+      let funcaoKey='CM_PED_APOIO';
+      if(p.area==='SV+ENF')funcaoKey='SV_ENF';
+      const cat=med.categoria||'GENERALISTA';
+      // Pediatra RQE em SV+ENF: irregular, R$ 0
+      if(cat==='PEDIATRA_RQE'&&funcaoKey==='SV_ENF')return;
+      const tipoDia=p.fds?'FDS':'UTIL';
+      const k=`${cat}|${funcaoKey}|${tipoDia}`;
+      const vh=VALORES[k]||0;
+      p.valor=vh*p.h;
+      totalValor+=p.valor;
+    });
+    return {med,plantoes:x.plantoes.sort((a,b)=>a.dt-b.dt),totalH,totalValor};
+  }).sort((a,b)=>b.totalValor-a.totalValor);
+
+  const totalGeralValor=linhasComValor.reduce((s,x)=>s+x.totalValor,0);
+  const totalGeralHoras=linhasComValor.reduce((s,x)=>s+x.totalH,0);
+
   el.innerHTML=`
-    <div style="margin-bottom:10px;font-size:12px;color:var(--text2)">${extsNoMes.length} profissional(is) externo(s) em ${MP[relMes]}/${relAno}</div>
-    <div class="rt-wrap"><table class="rt">
-      <thead><tr><th>Profissional</th><th>CRM</th><th>Unidade de Origem</th><th>Troca</th><th>Data</th><th>Turno</th><th>Área</th></tr></thead>
-      <tbody>
-        ${extsNoMes.map(m=>`<tr>
-          <td style="font-weight:600">${m.n}</td>
-          <td style="font-family:var(--mono)">${m.c}</td>
-          <td>${m.unidade||'—'}</td>
-          <td style="font-size:11px;color:var(--text2)">${m.troca.sol?nomeCurto(m.troca.sol)+' →':''} ${nomeCurto(m.n)}</td>
-          <td>${m.troca.data||'—'}</td>
-          <td style="font-size:11px">${m.troca.turno||'—'}</td>
-          <td><span class="badge ${m.troca.area==='SV+ENF'?'b-red':m.troca.area==='PED'?'b-amber':'b-blue'}">${m.troca.area||'—'}</span></td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div>`;
+    <div style="background:var(--green-bg);border:1px solid rgba(45,201,122,.3);border-radius:8px;padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">${linhasComValor.length} profissional(is) externo(s)</div>
+        <div style="font-size:13px;color:var(--text)">${totalGeralHoras}h cobertas em ${MP[relMes]}/${relAno}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--text3)">Total estimado (bruto)</div>
+        <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(totalGeralValor)}</div>
+      </div>
+    </div>
+    ${linhasComValor.map(x=>{
+      const cat=(x.med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+      return `<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:13px">${x.med.n}</div>
+            <div style="font-size:11px;color:var(--text2)">CRM ${x.med.c} · ${cat} · ${x.med.unidade||'—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--text3)">${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
+            <div style="font-size:16px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(x.totalValor)}</div>
+          </div>
+        </div>
+        <div class="rt-wrap"><table class="rt" style="font-size:11px">
+          <thead><tr><th>Data</th><th>Turno</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th style="text-align:right">Valor (bruto)</th></tr></thead>
+          <tbody>
+            ${x.plantoes.map(p=>`<tr>
+              <td>${p.data}</td>
+              <td style="font-size:10.5px">${p.turno}</td>
+              <td><span class="badge ${p.area==='SV+ENF'?'b-red':p.area==='PED'?'b-amber':p.area==='APOIO'?'b-green':'b-blue'}">${p.area||'—'}</span></td>
+              <td style="text-align:center">${p.h}h</td>
+              <td style="text-align:center;font-size:10.5px">${p.fds?'FDS':'DDS'}</td>
+              <td style="text-align:right;font-weight:700;color:${p.valor>0?'var(--green)':'var(--text3)'}">${p.valor>0?fmtMoeda(p.valor):'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    }).join('')}
+  `;
 }
 
 // ══ MODAL RELATÓRIO POR PROFISSIONAL ══
