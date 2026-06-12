@@ -689,7 +689,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <!-- ══ VALORES DOS PLANTÕES ══ -->
       <div class="page" id="page-valores">
         <div class="ph">
-          <div><div class="pt">💰 Valores dos Plantões</div><div class="ps">Configure o valor por HORA. O app calcula multiplicando pelas horas do plantão.</div></div>
+          <div><div class="pt">💰 Valores dos Plantões</div><div class="ps">Configure o valor <strong>BRUTO</strong> por HORA. O app calcula multiplicando pelas horas do plantão.</div></div>
           <div class="ph-r"><button class="btn btn-p btn-sm" onclick="salvarValoresPlantao()">💾 Salvar</button></div>
         </div>
         <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#78350f">
@@ -770,7 +770,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
                 <th>Profissional</th><th>CRM</th><th>Áreas no Mês</th>
                 <th>H.DDS Porta</th><th>H.FDS Porta</th>
                 <th>H.DDS SV+ENF</th><th>H.FDS SV+ENF</th>
-                <th>Total Horas</th><th>Valor Est.</th><th>PDF</th>
+                <th>Total Horas</th><th>Valor Est. (bruto)</th><th>PDF</th>
               </tr></thead>
               <tbody id="rel-tbody"></tbody>
               <tfoot id="rel-tfoot"></tfoot>
@@ -1245,7 +1245,7 @@ const DN=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
 const JTC={0:6,1:0,2:1,3:2,4:3,5:4,6:5};
 const REF=new Date(2024,0,1);
 
-// TABELA DE PREÇOS LÍQUIDOS (R$/hora)
+// TABELA DE PREÇOS BRUTOS (R$/hora) — usado como fallback (sobrescrito por VALORES do banco)
 const PRECO={
   'CM_DU':87.00,    // CM ou PED — Seg a Sex
   'CM_FDS':94.25,   // CM ou PED — Sáb e Dom
@@ -3127,6 +3127,15 @@ function calcularValorPlantao(medico, turnoIdx, dtPlantao){
   return {valor:valorHora*horas,viaFolha:false,motivoZero:null};
 }
 
+// Versão simplificada para usar em iteração de plantões já gerados (com turnoIdx + dt)
+// Retorna apenas o valor R$ (ou 0). Usa o profissional pelo crm do plantão.
+function valorDoPlantao(p){
+  const med=MEDICOS.find(m=>m.c===p.crm);
+  if(!med)return 0;
+  const r=calcularValorPlantao(med,p.turnoIdx,p.dt);
+  return r.valor;
+}
+
 // ══ ESCALA MENSAL — carregar snapshots ══
 async function carregarESCMES(){
   try{
@@ -4030,8 +4039,8 @@ function renderMeusPlantoes(){
     </div>`).join('')+
     `<div class="fin-c" style="background:var(--green-bg);border:1px solid rgba(45,201,122,.2);grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div>
-        <div class="fin-label" style="color:var(--green)">TOTAL ESTIMADO DO MÊS</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">Valores líquidos aproximados · CAIS Campinas</div>
+        <div class="fin-label" style="color:var(--green)">TOTAL ESTIMADO DO MÊS (BRUTO)</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Valor bruto · sem descontos</div>
       </div>
       <div style="font-size:26px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(st.totalFin)}</div>
     </div>`;
@@ -4303,7 +4312,7 @@ function renderRelatorio(filtro=relFiltroAtual){
     <div class="sc"><div class="sl">Total Horas</div><div class="sv">${totH}h</div><div class="ss">Todos</div></div>
     <div class="sc"><div class="sl">Média/Profissional</div><div class="sv">${media}h</div><div class="ss">No mês</div></div>
     <div class="sc"><div class="sl">Plant. FDS</div><div class="sv">${lista.reduce((s,d)=>s+d.fds,0)}</div><div class="ss">Sáb e Dom</div></div>
-    <div class="sc"><div class="sl">Folha Estimada</div><div class="sv" style="font-size:14px;color:var(--green)">${fmtMoeda(totFin)}</div><div class="ss">Valor líquido</div></div>`;
+    <div class="sc"><div class="sl">Folha Estimada</div><div class="sv" style="font-size:14px;color:var(--green)">${fmtMoeda(totFin)}</div><div class="ss">Valor bruto</div></div>`;
 
   const aB={'SV+ENF':'b-red','PED':'b-amber','APOIO':'b-green','CM':'b-blue'};
   // Fix 10: colunas corretas conforme especificado
@@ -4990,7 +4999,9 @@ function pdfPlantonista(crm,mes,ano){
   const hDuSV=f.SV_DU.h;const hFdsSV=f.SV_FDS.h;
   const vDuPorta=f.CM_DU.v;const vFdsPorta=f.CM_FDS.v;
   const vDuSV=f.SV_DU.v;const vFdsSV=f.SV_FDS.v;
-  const ptsRows=pts.map(p=>`
+  const ptsRows=pts.map(p=>{
+    const v=valorDoPlantao(p);
+    return `
     <tr>
       <td><strong>${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${mes.toString().padStart(2,'0')}/${ano}</strong></td>
       <td>${p.turno}</td>
@@ -4998,8 +5009,9 @@ function pdfPlantonista(crm,mes,ano){
       <td style="text-align:center">${p.h}h</td>
       <td style="text-align:center">${p.fds?'FDS':'DDS'}</td>
       <td style="text-align:center">${p.not?'NOT':'DIA'}</td>
-      <td style="text-align:right;font-weight:700;color:#166534">${p.area!=='APOIO'?fmtMoeda(p.h*getPreco(p.area,p.fds)):'—'}</td>
-    </tr>`).join('');
+      <td style="text-align:right;font-weight:700;color:#166534">${v>0?fmtMoeda(v):(st.viaFolha?'<span style=\"font-style:italic;color:#888\">via folha</span>':'—')}</td>
+    </tr>`;
+  }).join('');
   const w=window.open('','_blank');
   if(!w){showToast('Permita pop-ups para exportar PDF',true);return}
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -5050,45 +5062,53 @@ function pdfPlantonista(crm,mes,ano){
     <div class="info-item"><div class="info-l">Profissional</div><div class="info-v">${med.n}</div></div>
     <div class="info-item"><div class="info-l">CRM</div><div class="info-v">${med.c}</div></div>
     <div class="info-item"><div class="info-l">Vínculo</div><div class="info-v">${vinc}</div></div>
+    <div class="info-item"><div class="info-l">Categoria</div><div class="info-v">${(med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista'}</div></div>
     <div class="info-item"><div class="info-l">Áreas no mês</div><div class="info-v">${areasReais.join(', ')||med.a}</div></div>
     <div class="info-item"><div class="info-l">Total Plantões</div><div class="info-v">${st.total}</div></div>
     <div class="info-item"><div class="info-l">Total Horas</div><div class="info-v">${st.hTotal}h</div></div>
   </div>
   <div class="sec" style="margin-bottom:7px">Horas por Categoria — ${MP[mes]} ${ano}</div>
-  <div class="cat-grid">
+  ${(()=>{
+    const cat=med.categoria||'GENERALISTA';
+    const taxaPortaDDS=VALORES[`${cat}|CM_PED_APOIO|UTIL`]||0;
+    const taxaPortaFDS=VALORES[`${cat}|CM_PED_APOIO|FDS`]||0;
+    const taxaSVDDS=cat==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|UTIL']||0):0;
+    const taxaSVFDS=cat==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|FDS']||0):0;
+    return `<div class="cat-grid">
     <div class="cat-box cat-porta-dds">
       <div class="cat-label" style="color:#1d4ed8">PORTA — DDS</div>
       <div class="cat-h" style="color:#1d4ed8">${hDuPorta}h</div>
       <div class="cat-v" style="color:#1d4ed8">${hDuPorta>0?fmtMoeda(vDuPorta):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.CM_DU)}/h</div>
+      <div class="cat-rate">${fmtMoeda(taxaPortaDDS)}/h</div>
     </div>
     <div class="cat-box cat-porta-fds">
       <div class="cat-label" style="color:#2563eb">PORTA — FDS</div>
       <div class="cat-h" style="color:#2563eb">${hFdsPorta}h</div>
       <div class="cat-v" style="color:#2563eb">${hFdsPorta>0?fmtMoeda(vFdsPorta):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.CM_FDS)}/h</div>
+      <div class="cat-rate">${fmtMoeda(taxaPortaFDS)}/h</div>
     </div>
     <div class="cat-box cat-sv-dds">
       <div class="cat-label" style="color:#dc2626">SV+ENF — DDS</div>
       <div class="cat-h" style="color:#dc2626">${hDuSV}h</div>
       <div class="cat-v" style="color:#dc2626">${hDuSV>0?fmtMoeda(vDuSV):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.SV_DU)}/h</div>
+      <div class="cat-rate">${cat==='GENERALISTA'?fmtMoeda(taxaSVDDS)+'/h':'n/a'}</div>
     </div>
     <div class="cat-box cat-sv-fds">
       <div class="cat-label" style="color:#b91c1c">SV+ENF — FDS</div>
       <div class="cat-h" style="color:#b91c1c">${hFdsSV}h</div>
       <div class="cat-v" style="color:#b91c1c">${hFdsSV>0?fmtMoeda(vFdsSV):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.SV_FDS)}/h</div>
+      <div class="cat-rate">${cat==='GENERALISTA'?fmtMoeda(taxaSVFDS)+'/h':'n/a'}</div>
     </div>
-  </div>
+  </div>`;
+  })()}
   <div class="total-box">
-    <div><div class="total-label">Total Estimado — ${MP[mes]} ${ano}</div>
-      <div style="font-size:8px;color:#888;margin-top:2px">Valores líquidos aproximados</div></div>
+    <div><div class="total-label">Total Estimado BRUTO — ${MP[mes]} ${ano}</div>
+      <div style="font-size:8px;color:#888;margin-top:2px">Valores brutos</div></div>
     <div class="total-v">${fmtMoeda(st.totalFin)}</div>
   </div>
   <div class="sec" style="margin-bottom:7px">Detalhamento dos Plantões</div>
   <table>
-    <thead><tr><th>Data</th><th>Horário / Função</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th class="c">Período</th><th style="text-align:right">Valor Est.</th></tr></thead>
+    <thead><tr><th>Data</th><th>Horário / Função</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th class="c">Período</th><th style="text-align:right">Valor Est. (bruto)</th></tr></thead>
     <tbody>${ptsRows}</tbody>
     <tfoot><tr>
       <td colspan="3">TOTAL</td>
@@ -5296,11 +5316,14 @@ function pdfRelatorio(){
       <div class="stat"><div class="stat-l">Folha Est.</div><div class="stat-v" style="font-size:10px;color:#166534">${fmtMoeda(totFin)}</div></div>
     </div>
     <div class="preco-box">
-      <div style="font-size:6.5px;font-weight:800;color:#1a3a5c;margin-bottom:2px">VALORES LÍQUIDOS</div>
-      <div class="preco-item"><div class="preco-l">Porta Seg–Sex</div><div class="preco-v">${fmtMoeda(PRECO.CM_DU)}/h</div></div>
-      <div class="preco-item"><div class="preco-l">Porta Sáb–Dom</div><div class="preco-v">${fmtMoeda(PRECO.CM_FDS)}/h</div></div>
-      <div class="preco-item"><div class="preco-l">SV+ENF Seg–Sex</div><div class="preco-v">${fmtMoeda(PRECO.SV_DU)}/h</div></div>
-      <div class="preco-item"><div class="preco-l">SV+ENF Sáb–Dom</div><div class="preco-v">${fmtMoeda(PRECO.SV_FDS)}/h</div></div>
+      <div style="font-size:6.5px;font-weight:800;color:#1a3a5c;margin-bottom:2px">VALORES BRUTOS · GENERALISTA</div>
+      <div class="preco-item"><div class="preco-l">Porta Seg–Sex</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|CM_PED_APOIO|UTIL']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">Porta Sáb–Dom</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|CM_PED_APOIO|FDS']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">SV+ENF Seg–Sex</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|SV_ENF|UTIL']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">SV+ENF Sáb–Dom</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|SV_ENF|FDS']||0)}/h</div></div>
+      <div style="font-size:6.5px;font-weight:800;color:#1a3a5c;margin:3px 0 2px">PEDIATRA RQE</div>
+      <div class="preco-item"><div class="preco-l">Porta Seg–Sex</div><div class="preco-v">${fmtMoeda(VALORES['PEDIATRA_RQE|CM_PED_APOIO|UTIL']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">Porta Sáb–Dom</div><div class="preco-v">${fmtMoeda(VALORES['PEDIATRA_RQE|CM_PED_APOIO|FDS']||0)}/h</div></div>
     </div>
   </div>
   <table>
@@ -5308,7 +5331,7 @@ function pdfRelatorio(){
       <th style="min-width:130px">Profissional</th><th>CRM</th><th>Áreas no Mês</th>
       <th class="c">H.DDS<br>Porta</th><th class="c">H.FDS<br>Porta</th>
       <th class="c">H.DDS<br>SV+ENF</th><th class="c">H.FDS<br>SV+ENF</th>
-      <th class="c">Total<br>Horas</th><th style="text-align:right">Valor Est.</th>
+      <th class="c">Total<br>Horas</th><th style="text-align:right">Valor Est. (bruto)</th>
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr>
