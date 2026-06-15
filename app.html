@@ -433,7 +433,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div class="tb-sep"></div>
     <span class="tb-month" id="tb-month"></span>
     <span class="tb-date" id="tb-date"></span>
-    <span class="tb-date" id="db-status" style="font-size:10px;margin-left:4px"></span>
+    <button id="db-status" type="button" onclick="if(!dbCarregando)recarregarTudo();" title="Sincronizar com o servidor agora"
+      style="background:transparent;border:1px solid transparent;cursor:pointer;font-size:10px;margin-left:4px;padding:4px 9px;border-radius:6px;color:var(--text2);font-weight:600;display:inline-flex;align-items:center;gap:4px;min-height:28px;transition:all .15s"
+      onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--border2)'"
+      onmouseout="this.style.background='transparent';this.style.borderColor='transparent'"></button>
     <div class="tb-r">
       <div style="display:flex;align-items:center;gap:7px">
         <div style="position:relative;display:flex;align-items:center;gap:6px">
@@ -466,6 +469,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ni" data-p="eb"><span class="ni-ic">⊞</span>Escala Base</div>
         <div class="ni" data-p="cal-ab"><span class="ni-ic">📆</span>Calendário A/B</div>
         <div class="ni" data-p="logins"><span class="ni-ic">🔑</span>Acessos</div>
+        <div class="ni" data-p="valores"><span class="ni-ic">💰</span>Valores</div>
         <div class="ni" data-p="relatorio"><span class="ni-ic">📊</span>Relatórios</div>
       </div>
       <!-- PLANTONISTA -->
@@ -487,25 +491,45 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
             <button class="btn btn-g btn-sm" onclick="gerarRelProfModal()">📋 Relatório por Profissional</button>
           </div>
         </div>
-        <div class="sg">
-          <div class="sc"><div class="sl">Plantonistas Ativos</div><div class="sv" id="d-tot">—</div><div class="ss">Corpo clínico interno</div></div>
-          <div class="sc"><div class="sl">Plantões no Mês</div><div class="sv" id="d-plant">—</div><div class="ss" id="d-plant-s"></div></div>
-          <div class="sc"><div class="sl">Trocas Pendentes</div><div class="sv" id="d-pend" style="color:var(--amber)">0</div><div class="ss">Aguardando aprovação</div></div>
-          <div class="sc"><div class="sl">Status da Escala</div><div class="sv" id="d-mes" style="font-size:15px">—</div><div class="ss" id="d-pub-st"></div></div>
+
+        <!-- LINHA 1: Alertas / O que precisa de atenção -->
+        <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%);border:1px solid #fde68a">
+          <div class="ct" style="display:flex;align-items:center;gap:6px;color:#92400e">⚠️ Atenção do Gestor</div>
+          <div id="d-alertas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px"></div>
         </div>
-        <!-- Stats por área -->
+
+        <!-- LINHA 2: Mês em números -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px">
+          <div class="sc"><div class="sl">Plantões no Mês</div><div class="sv" id="d-plant">—</div><div class="ss" id="d-plant-s"></div></div>
+          <div class="sc"><div class="sl">Total de Horas</div><div class="sv" id="d-horas">—</div><div class="ss" id="d-horas-s"></div></div>
+          <div class="sc"><div class="sl">Profissionais Escalados</div><div class="sv" id="d-prof-esc">—</div><div class="ss" id="d-prof-esc-s"></div></div>
+          <div class="sc"><div class="sl">% Externos</div><div class="sv" id="d-extpct" style="color:var(--purple,#7c3aed)">—</div><div class="ss" id="d-extpct-s"></div></div>
+          <div class="sc"><div class="sl">Trocas Aprovadas</div><div class="sv" id="d-trapr" style="color:var(--blue)">—</div><div class="ss" id="d-trapr-s"></div></div>
+        </div>
+
+        <!-- LINHA 3: Financeiro -->
+        <div class="card" style="margin-bottom:12px">
+          <div class="ct">💰 Financeiro do Mês</div>
+          <div id="d-fin" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px"></div>
+        </div>
+
+        <!-- LINHA 5: Visão de equipe -->
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="d-area-stats"></div>
         <div class="two-col" style="margin-bottom:12px">
-          <div class="card"><div class="ct">⚠️ Abaixo de 48h no mês</div><div id="d-48"></div></div>
-          <div class="card"><div class="ct">📤 Mais trocas solicitadas</div><div id="d-tr-top"></div></div>
+          <div class="card"><div class="ct">🏆 Top Plantonistas (horas)</div><div id="d-top"></div></div>
+          <div class="card"><div class="ct">⚠️ Sem plantões no mês</div><div id="d-sem"></div></div>
         </div>
+
+        <!-- Externos -->
         <div class="card" style="margin-bottom:12px">
           <div class="ct">🔄 Plantonistas Externos no Mês</div>
           <div id="d-externos"></div>
         </div>
+
+        <!-- Trocas pendentes -->
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div class="ct" style="margin:0">Trocas Pendentes</div>
+            <div class="ct" style="margin:0">⏳ Trocas Pendentes</div>
             <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
           </div>
           <div id="d-tr-list"></div>
@@ -685,6 +709,53 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         </div>
       </div>
 
+      <!-- ══ VALORES DOS PLANTÕES ══ -->
+      <div class="page" id="page-valores">
+        <div class="ph">
+          <div><div class="pt">💰 Valores dos Plantões</div><div class="ps">Configure o valor <strong>BRUTO</strong> por HORA. O app calcula multiplicando pelas horas do plantão.</div></div>
+          <div class="ph-r"><button class="btn btn-p btn-sm" onclick="salvarValoresPlantao()">💾 Salvar</button></div>
+        </div>
+        <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:#78350f">
+          ℹ️ Profissionais com vínculo <strong>EF (Efetivo)</strong> não recebem por aqui — pagamento via folha. No relatório aparecerão como "via folha" e não somam no total geral.
+        </div>
+        <div style="display:grid;gap:12px">
+
+          <div class="cc-c" style="display:block">
+            <div style="font-weight:700;font-size:13px;color:var(--blue);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)">🩺 GENERALISTA — SV+ENF</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="fg" style="margin:0"><label class="fl">Dia útil (R$/h)</label><input type="number" step="0.01" min="0" class="fi" id="val-gen-svenf-util" placeholder="0,00"></div>
+              <div class="fg" style="margin:0"><label class="fl">Final de semana (R$/h)</label><input type="number" step="0.01" min="0" class="fi" id="val-gen-svenf-fds" placeholder="0,00"></div>
+            </div>
+          </div>
+
+          <div class="cc-c" style="display:block">
+            <div style="font-weight:700;font-size:13px;color:var(--blue);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)">🩺 GENERALISTA — CM / PED / APOIO</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="fg" style="margin:0"><label class="fl">Dia útil (R$/h)</label><input type="number" step="0.01" min="0" class="fi" id="val-gen-cmpedapoio-util" placeholder="0,00"></div>
+              <div class="fg" style="margin:0"><label class="fl">Final de semana (R$/h)</label><input type="number" step="0.01" min="0" class="fi" id="val-gen-cmpedapoio-fds" placeholder="0,00"></div>
+            </div>
+          </div>
+
+          <div class="cc-c" style="display:block">
+            <div style="font-weight:700;font-size:13px;color:var(--purple);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)">👶 PEDIATRA RQE — CM / PED / APOIO</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="fg" style="margin:0"><label class="fl">Dia útil (R$/h)</label><input type="number" step="0.01" min="0" class="fi" id="val-ped-cmpedapoio-util" placeholder="0,00"></div>
+              <div class="fg" style="margin:0"><label class="fl">Final de semana (R$/h)</label><input type="number" step="0.01" min="0" class="fi" id="val-ped-cmpedapoio-fds" placeholder="0,00"></div>
+            </div>
+          </div>
+
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:12px;padding:10px;background:var(--bg3);border-radius:6px">
+          <strong>Como o cálculo funciona:</strong><br>
+          1. App identifica o profissional pelo CRM da escala<br>
+          2. Olha o vínculo: se <strong>EF</strong> → R$ 0,00 (via folha); se <strong>CR</strong> → continua<br>
+          3. Olha a categoria do profissional (Generalista ou Pediatra RQE)<br>
+          4. Olha a função da linha onde está alocado (SV+ENF, CM, PED ou APOIO)<br>
+          5. Verifica se o dia é <strong>útil</strong> (seg–sex) ou <strong>FDS</strong> (sáb–dom)<br>
+          6. Multiplica valor/h × horas do plantão (12h, 6h, etc)
+        </div>
+      </div>
+
       <!-- ══ RELATÓRIOS GESTOR ══ -->
       <div class="page" id="page-relatorio">
         <div class="ph">
@@ -722,7 +793,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
                 <th>Profissional</th><th>CRM</th><th>Áreas no Mês</th>
                 <th>H.DDS Porta</th><th>H.FDS Porta</th>
                 <th>H.DDS SV+ENF</th><th>H.FDS SV+ENF</th>
-                <th>Total Horas</th><th>Valor Est.</th><th>PDF</th>
+                <th>Total Horas</th><th>Valor Est. (bruto)</th><th>PDF</th>
               </tr></thead>
               <tbody id="rel-tbody"></tbody>
               <tfoot id="rel-tfoot"></tfoot>
@@ -749,7 +820,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
               <span class="mc-l" id="mc-meu"></span>
               <button class="mc-b" onclick="mudarMeuMes(1)">›</button>
             </div>
-            <button class="btn btn-a btn-sm" onclick="pdfPlantonista(curUser.c,meuMes,meuAno)">📄 Meu PDF</button>
+            <button class="btn btn-a btn-sm" onclick="pdfPlantonista(curUser.c,meuMes,meuAno)">📄 Relatório Mensal</button>
             <button class="btn btn-p btn-sm" onclick="abrirMoTroca()">⇄ Trocar</button>
           </div>
         </div>
@@ -839,6 +910,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div class="fg"><label class="fl">Vínculo</label>
       <select class="fs" id="add-vinc"><option value="CR">CR — Credenciado</option><option value="EF">EF — Efetivo</option></select>
     </div>
+    <div class="fg"><label class="fl">Categoria <span style="font-weight:400;color:var(--text3)">(define o valor do plantão)</span></label>
+      <select class="fs" id="add-categoria">
+        <option value="GENERALISTA">Generalista</option>
+        <option value="PEDIATRA_RQE">Pediatra RQE</option>
+      </select>
+    </div>
     <div class="fg" id="add-ext-uni-wrap" style="display:none">
       <label class="fl">Unidade de Lotação <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
       <select class="fs" id="add-ext-uni">
@@ -883,6 +960,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     </div>
     <div class="fg"><label class="fl">Vínculo</label>
       <select class="fs" id="em-vinc"><option value="CR">CR</option><option value="EF">EF</option></select>
+    </div>
+    <div class="fg"><label class="fl">Categoria <span style="font-weight:400;color:var(--text3)">(define o valor do plantão)</span></label>
+      <select class="fs" id="em-categoria">
+        <option value="GENERALISTA">Generalista</option>
+        <option value="PEDIATRA_RQE">Pediatra RQE</option>
+      </select>
     </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-edit-med')">Cancelar</button>
@@ -1181,11 +1264,14 @@ const APP_VERSION='2026.06.10.01';
 const MP=['','JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 const MA=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 const DA=['SEG','TER','QUA','QUI','SEX','SAB','DOM'];
+// Mapa global de classes CSS de chip por área (usado em vários renders)
+const aCC={'SV+ENF':'ch-sv','CM':'ch-cm','PED':'ch-ped','APOIO':'ch-apo'};
+const ac=aCC;// alias para compatibilidade
 const DN=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
 const JTC={0:6,1:0,2:1,3:2,4:3,5:4,6:5};
 const REF=new Date(2024,0,1);
 
-// TABELA DE PREÇOS LÍQUIDOS (R$/hora)
+// TABELA DE PREÇOS BRUTOS (R$/hora) — usado como fallback (sobrescrito por VALORES do banco)
 const PRECO={
   'CM_DU':87.00,    // CM ou PED — Seg a Sex
   'CM_FDS':94.25,   // CM ou PED — Sáb e Dom
@@ -1350,6 +1436,17 @@ let PUB={'4-2026':{ok:true,d:'01/04/2026'},'5-2026':{ok:false,d:null},'6-2026':{
 const keyM=(m,a)=>`${m}-${a}`;
 const ePub=(m,a)=>!!(PUB[keyM(m,a)]?.ok);
 
+// ══ VALORES DOS PLANTÕES ══ (valor por hora, configurável pelo gestor)
+const VALORES_DEFAULT={
+  'GENERALISTA|SV_ENF|UTIL':0,
+  'GENERALISTA|SV_ENF|FDS':0,
+  'GENERALISTA|CM_PED_APOIO|UTIL':0,
+  'GENERALISTA|CM_PED_APOIO|FDS':0,
+  'PEDIATRA_RQE|CM_PED_APOIO|UTIL':0,
+  'PEDIATRA_RQE|CM_PED_APOIO|FDS':0
+};
+let VALORES=Object.assign({},VALORES_DEFAULT);
+
 // ══ TROCAS ══ (Fix 4: lista vazia por padrão, sem dados fake)
 let TROCAS=[];
 
@@ -1385,13 +1482,10 @@ function mostrarStatusDB(ok,msg){
   if(!el)return;
   if(ok){
     ultimaSync=Date.now();
-    el.textContent='🟢 '+msg;
+    el.innerHTML='🟢 '+msg+' <span style="opacity:.7">⟳</span>';
     el.style.color='var(--green)';
-    el.style.cursor='pointer';
-    el.title='Clique para sincronizar agora';
-    el.onclick=()=>{if(!dbCarregando)recarregarTudo();};
   } else {
-    el.textContent='🔴 '+msg;
+    el.innerHTML='🔴 '+msg+' <span style="opacity:.7">⟳</span>';
     el.style.color='var(--red)';
   }
 }
@@ -1406,7 +1500,7 @@ function atualizarTextoSync(){
   else if(seg<120){txt=`🟢 Sincronizado há ${seg}s`;cor='var(--green)';}
   else if(seg<300){txt=`🟡 Há ${Math.floor(seg/60)}min`;cor='var(--amber)';}
   else {txt=`🔴 Há ${Math.floor(seg/60)}min`;cor='var(--red)';}
-  el.textContent=txt;
+  el.innerHTML=txt+' <span style="opacity:.7">⟳</span>';
   el.style.color=cor;
 }
 setInterval(atualizarTextoSync,15000);
@@ -1450,7 +1544,8 @@ async function carregarSupabase(){
     profs.forEach(p=>MEDICOS.push({
       n:p.nome,c:p.crm,a:(p.areas||[]).join('/'),areas:p.areas||[],
       cor:p.cor||'#22a35a',vinculo:p.vinculo||'CR',
-      ext:p.externo||false,unidade:p.unidade||''
+      ext:p.externo||false,unidade:p.unidade||'',
+      categoria:p.categoria||'GENERALISTA'
     }));
 
     // Escala base
@@ -1514,6 +1609,7 @@ async function carregarSupabase(){
     // Snapshots de escala mensal (CRUCIAL — preserva escalas publicadas)
     await carregarESCMES();
     await carregarDeclaracoes();
+    await carregarValoresPlantao();
 
     // Trocas
     const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
@@ -1740,16 +1836,36 @@ function statsProf(crm,mes,ano){
   const hN=pts.filter(p=>p.not).reduce((s,p)=>s+p.h,0);
   const hF=pts.filter(p=>p.fds).reduce((s,p)=>s+p.h,0);
   const hU=pts.filter(p=>!p.fds).reduce((s,p)=>s+p.h,0);
-  // Financeiro por categoria
+  // Financeiro por categoria — agrupado para exibir na tabela
   const fin={CM_DU:{h:0,v:0},CM_FDS:{h:0,v:0},SV_DU:{h:0,v:0},SV_FDS:{h:0,v:0}};
+  // Buscar médico para obter categoria + vínculo
+  const med=MEDICOS.find(m=>m.c===crm);
+  const isEF=med&&getVinc(med.n)==='EF';
+  let totalFin=0;
+  let viaFolha=isEF;
   pts.forEach(p=>{
-    if(p.area==='APOIO')return;// apoio não tem tabela de preço definida
     const isSV=(p.area==='SV+ENF');
     const key=isSV?(p.fds?'SV_FDS':'SV_DU'):(p.fds?'CM_FDS':'CM_DU');
-    fin[key].h+=p.h;fin[key].v+=p.h*getPreco(p.area,p.fds);
+    fin[key].h+=p.h;
+    // Calcular valor pelo novo sistema (categoria do médico + função + tipo dia)
+    if(med&&!isEF){
+      // Calcula via VALORES configurável. APOIO entra como CM_PED_APOIO.
+      const cat=med.categoria||'GENERALISTA';
+      let funcaoKey;
+      if(p.area==='SV+ENF'){
+        if(cat==='PEDIATRA_RQE')return;// Pediatra RQE em SV+ENF: situação irregular, R$ 0
+        funcaoKey='SV_ENF';
+      } else {
+        funcaoKey='CM_PED_APOIO';
+      }
+      const k=`${cat}|${funcaoKey}|${p.fds?'FDS':'UTIL'}`;
+      const valorHora=VALORES[k]||0;
+      const v=valorHora*p.h;
+      fin[key].v+=v;
+      totalFin+=v;
+    }
   });
-  const totalFin=Object.values(fin).reduce((s,x)=>s+x.v,0);
-  return {pts,total:pts.length,du,fds,hD,hN,hF,hU,hTotal:hD+hN,fin,totalFin};
+  return {pts,total:pts.length,du,fds,hD,hN,hF,hU,hTotal:hD+hN,fin,totalFin,viaFolha};
 }
 
 // ══════════════════════════════════
@@ -1803,6 +1919,10 @@ function navTo(pg){
       // Marca o botão Pendentes (1º) como ativo
       document.querySelectorAll('#tr-wrap .f-b').forEach((b,i)=>{b.classList.toggle('active',i===0)});
     },10);
+  }
+  // Ao abrir Valores, preenche o form com valores atuais
+  if(pg==='valores'){
+    setTimeout(preencherFormValores,10);
   }
   var p=document.getElementById('page-'+pg);if(p)p.classList.add('active');
   var ni=document.querySelector('.ni[data-p="'+pg+'"]');if(ni)ni.classList.add('active');
@@ -1994,13 +2114,24 @@ function mudarViewerMes(d){viewerMes+=d;if(viewerMes>12){viewerMes=1;viewerAno++
 function nav(el){if(!el)return;navTo(el.dataset.p);}
 
 function renderAll(){
-  renderEscala();renderEB();renderCalAB();renderCC();renderTrocas();renderLogins();
-  renderMeusPlantoes();renderDashboard();renderRelatorio();
-  renderGestaoEscalas();preencherSelects();
-  document.getElementById('tb-month').textContent='Escala Vigente: '+MP[mesMes]+' '+mesAno;
-  const hj=hoje();const DIAS=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  document.getElementById('tb-date').textContent='Goiânia, '+DIAS[hj.getDay()]+', '+hj.getDate()+' de '+MESES[hj.getMonth()]+' de '+hj.getFullYear();
+  const safe=(fn,nome)=>{try{fn();}catch(e){console.error('Erro em '+nome+':',e);}};
+  safe(renderEscala,'renderEscala');
+  safe(renderEB,'renderEB');
+  safe(renderCalAB,'renderCalAB');
+  safe(renderCC,'renderCC');
+  safe(renderTrocas,'renderTrocas');
+  safe(renderLogins,'renderLogins');
+  safe(renderMeusPlantoes,'renderMeusPlantoes');
+  safe(renderDashboard,'renderDashboard');
+  safe(renderRelatorio,'renderRelatorio');
+  safe(renderGestaoEscalas,'renderGestaoEscalas');
+  safe(preencherSelects,'preencherSelects');
+  try{
+    document.getElementById('tb-month').textContent='Escala Vigente: '+MP[mesMes]+' '+mesAno;
+    const hj=hoje();const DIAS=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    document.getElementById('tb-date').textContent='Goiânia, '+DIAS[hj.getDay()]+', '+hj.getDate()+' de '+MESES[hj.getMonth()]+' de '+hj.getFullYear();
+  }catch(e){console.error('Erro no header de data:',e);}
 }
 
 // ══ ESCALA HTML — COLUNAS FIXAS ══
@@ -2672,7 +2803,7 @@ function abrirEditMed(idx){
   document.getElementById('mo-em-sub').textContent=m.n;
   document.getElementById('em-nome').value=m.n;document.getElementById('em-crm').value=m.c;
   document.getElementById('em-vinc').value=getVinc(m.n);
-  // Fix 7: preencher checkboxes com areas[] ou a string
+  document.getElementById('em-categoria').value=m.categoria||'GENERALISTA';
   const areasAtivas=m.areas||([m.a]||[]).filter(Boolean);
   document.querySelectorAll('#em-areas-check input').forEach(cb=>{
     cb.checked=areasAtivas.includes(cb.value);
@@ -2685,18 +2816,23 @@ async function salvarEditMed(){
   const crmAntigo=m.c;
   const nn=document.getElementById('em-nome').value.trim().toUpperCase();
   const vc=document.getElementById('em-vinc').value;
+  const cat=document.getElementById('em-categoria').value||'GENERALISTA';
   const areas=[...document.querySelectorAll('#em-areas-check input:checked')].map(cb=>cb.value);
   const novoCRM=parseInt(document.getElementById('em-crm').value)||m.c;
   if(!nn){showToast('Nome obrigatório',true);return}
   if(!novoCRM){showToast('CRM inválido',true);return}
   // PERSISTIR NO BANCO PRIMEIRO
   try{
-    const {error}=await sb.from('profissionais').update({
-      nome:nn,crm:novoCRM,vinculo:vc,areas,
-      
-    }).eq('crm',crmAntigo);
+    const payload={nome:nn,crm:novoCRM,vinculo:vc,areas,categoria:cat};
+    let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+    // Se a coluna categoria não existir ainda, tenta sem ela
+    if(error&&error.message&&error.message.toLowerCase().includes('categoria')){
+      delete payload.categoria;
+      const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+      error=r.error;
+      console.warn('Coluna categoria não existe — execute SQL v24');
+    }
     if(error)throw error;
-    // Atualizar login se nome ou CRM mudaram
     if(nn!==m.n||novoCRM!==crmAntigo){
       await sb.from('logins').update({nome:nn,crm:novoCRM}).eq('crm',crmAntigo);
     }
@@ -2705,7 +2841,7 @@ async function salvarEditMed(){
     showToast('Erro ao salvar — tente novamente',true);return;
   }
   // Estado local após confirmação do banco
-  m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;
+  m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;m.categoria=cat;
   if(vc==='EF')EFETIVOS.add(nn);else EFETIVOS.delete(nn);
   // Sincronizar LOGINS local
   const li=LOGINS.findIndex(l=>l.c==crmAntigo);
@@ -2740,6 +2876,7 @@ async function addMedico(){
   const n=document.getElementById('add-nome').value.trim().toUpperCase();
   const c=parseInt(document.getElementById('add-crm').value);
   const v=document.getElementById('add-vinc').value;
+  const cat=document.getElementById('add-categoria').value||'GENERALISTA';
   const isExt=document.getElementById('add-is-ext').checked;
   if(!n||!c){showToast('Nome e CRM obrigatórios',true);return}
   if(MEDICOS.find(m=>m.c===c)){showToast('CRM já cadastrado',true);return}
@@ -2751,13 +2888,17 @@ async function addMedico(){
     if(!wppExt){showToast('WhatsApp do externo é obrigatório',true);return}
   }
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
-  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v};
+  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v,categoria:cat};
   if(v==='EF')EFETIVOS.add(n);
   try{
-    const {error:eP}=await sb.from('profissionais').upsert({
-      nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,
-      externo:isExt,unidade:isExt?uni:null
-    },{onConflict:'crm'});
+    const payload={nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,externo:isExt,unidade:isExt?uni:null,categoria:cat};
+    let {error:eP}=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
+    if(eP&&eP.message&&eP.message.toLowerCase().includes('categoria')){
+      delete payload.categoria;
+      const r=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
+      eP=r.error;
+      console.warn('Coluna categoria não existe — execute SQL v24');
+    }
     if(eP)throw eP;
     // INTERNOS: criar login automático com permissão plantonista
     if(!isExt){
@@ -2791,6 +2932,8 @@ async function addMedico(){
   document.getElementById('add-ext-uni-wrap').style.display='none';
   document.getElementById('add-ext-wpp-wrap').style.display='none';
   document.getElementById('add-ext-wpp').value='';
+  document.getElementById('add-categoria').value='GENERALISTA';
+  document.getElementById('add-vinc').value='CR';
 }
 
 // Toggle dos campos extras quando marca "externo"
@@ -2927,6 +3070,107 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
 }
 
 // Carrega snapshots de todos os meses já publicados
+// ══ VALORES DOS PLANTÕES — carregar, salvar, calcular ══
+
+async function carregarValoresPlantao(){
+  if(!sb)return;
+  try{
+    const {data,error}=await sb.from('valores_plantao').select('*');
+    if(error){
+      // Tabela não existe ainda — usa defaults, sem alarme
+      if(error.code==='42P01'||(error.message||'').includes('relation')){
+        console.warn('Tabela valores_plantao não existe — rode o SQL fornecido');
+        return;
+      }
+      throw error;
+    }
+    // Reseta para defaults e sobrescreve com o que veio do banco
+    Object.assign(VALORES,VALORES_DEFAULT);
+    (data||[]).forEach(r=>{
+      const k=`${r.categoria}|${r.funcao}|${r.tipo_dia}`;
+      if(k in VALORES_DEFAULT)VALORES[k]=parseFloat(r.valor_hora)||0;
+    });
+  }catch(e){console.error('carregarValoresPlantao:',e);}
+}
+
+function preencherFormValores(){
+  const get=k=>VALORES[k]||0;
+  const setVal=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v?v.toFixed(2):'';};
+  setVal('val-gen-svenf-util',     get('GENERALISTA|SV_ENF|UTIL'));
+  setVal('val-gen-svenf-fds',      get('GENERALISTA|SV_ENF|FDS'));
+  setVal('val-gen-cmpedapoio-util',get('GENERALISTA|CM_PED_APOIO|UTIL'));
+  setVal('val-gen-cmpedapoio-fds', get('GENERALISTA|CM_PED_APOIO|FDS'));
+  setVal('val-ped-cmpedapoio-util',get('PEDIATRA_RQE|CM_PED_APOIO|UTIL'));
+  setVal('val-ped-cmpedapoio-fds', get('PEDIATRA_RQE|CM_PED_APOIO|FDS'));
+}
+
+async function salvarValoresPlantao(){
+  if(!sb){showToast('Sem conexão com servidor',true);return}
+  const num=id=>parseFloat(document.getElementById(id).value)||0;
+  const linhas=[
+    {categoria:'GENERALISTA',funcao:'SV_ENF',       tipo_dia:'UTIL',valor_hora:num('val-gen-svenf-util')},
+    {categoria:'GENERALISTA',funcao:'SV_ENF',       tipo_dia:'FDS', valor_hora:num('val-gen-svenf-fds')},
+    {categoria:'GENERALISTA',funcao:'CM_PED_APOIO', tipo_dia:'UTIL',valor_hora:num('val-gen-cmpedapoio-util')},
+    {categoria:'GENERALISTA',funcao:'CM_PED_APOIO', tipo_dia:'FDS', valor_hora:num('val-gen-cmpedapoio-fds')},
+    {categoria:'PEDIATRA_RQE',funcao:'CM_PED_APOIO',tipo_dia:'UTIL',valor_hora:num('val-ped-cmpedapoio-util')},
+    {categoria:'PEDIATRA_RQE',funcao:'CM_PED_APOIO',tipo_dia:'FDS', valor_hora:num('val-ped-cmpedapoio-fds')}
+  ];
+  try{
+    const {error}=await sb.from('valores_plantao').upsert(linhas,{onConflict:'categoria,funcao,tipo_dia'});
+    if(error)throw error;
+    // Atualiza estado local
+    linhas.forEach(l=>{VALORES[`${l.categoria}|${l.funcao}|${l.tipo_dia}`]=l.valor_hora;});
+    showToast('💾 Valores salvos! Os relatórios usarão estes valores.');
+    if(typeof renderRel==='function')renderRel();
+  }catch(e){
+    console.error('Erro ao salvar valores:',e);
+    showToast('Erro ao salvar — '+(e.message||'verifique se rodou o SQL'),true);
+  }
+}
+
+// Calcula o valor de UM plantão para um profissional específico.
+// Retorna {valor, viaFolha, motivoZero}
+function calcularValorPlantao(medico, turnoIdx, dtPlantao){
+  // EF: via folha, R$ 0
+  const vinc=getVinc(medico.n);
+  if(vinc==='EF')return {valor:0,viaFolha:true,motivoZero:'EF — via folha'};
+  // Categoria do profissional (default: Generalista)
+  const cat=medico.categoria||'GENERALISTA';
+  // Função (linha) na escala
+  const t=TURNOS[turnoIdx];
+  if(!t)return {valor:0,viaFolha:false,motivoZero:'turno inválido'};
+  const area=t.a;// 'SV+ENF', 'CM', 'PED', 'APOIO'
+  // Pediatra RQE só recebe em CM/PED/APOIO. Se cair em SV+ENF (cenário raro),
+  // não calcula (situação irregular).
+  let funcaoKey;
+  if(area==='SV+ENF'){
+    if(cat==='PEDIATRA_RQE')return {valor:0,viaFolha:false,motivoZero:'Pediatra RQE em SV+ENF (não previsto)'};
+    funcaoKey='SV_ENF';
+  } else {
+    funcaoKey='CM_PED_APOIO';
+  }
+  // Tipo de dia: FDS se sábado ou domingo, senão UTIL
+  const diaSem=dtPlantao.getDay();// 0=dom, 6=sab
+  const tipoDia=(diaSem===0||diaSem===6)?'FDS':'UTIL';
+  // Buscar valor por hora
+  const k=`${cat}|${funcaoKey}|${tipoDia}`;
+  const valorHora=VALORES[k]||0;
+  if(valorHora===0)return {valor:0,viaFolha:false,motivoZero:'valor/h não cadastrado'};
+  // Horas do plantão
+  const horas=t.h||0;
+  return {valor:valorHora*horas,viaFolha:false,motivoZero:null};
+}
+
+// Versão simplificada para usar em iteração de plantões já gerados (com turnoIdx + dt)
+// Retorna apenas o valor R$ (ou 0). Usa o profissional pelo crm do plantão.
+function valorDoPlantao(p){
+  const med=MEDICOS.find(m=>m.c===p.crm);
+  if(!med)return 0;
+  const r=calcularValorPlantao(med,p.turnoIdx,p.dt);
+  return r.valor;
+}
+
+// ══ ESCALA MENSAL — carregar snapshots ══
 async function carregarESCMES(){
   try{
     const {data,error}=await sb.from('escala_mensal').select('*');
@@ -3814,23 +4058,31 @@ function renderMeusPlantoes(){
     '<div class="tipo-c" style="grid-column:1/-1;text-align:center"><div class="tipo-l">Sem plantões</div></div>';
 
   // FINANCEIRO
-  const f=st.fin;const cats=[
-    {key:'CM_DU',label:'PORTA (CM/PED)',sub:'Seg–Sex',cls:'fin-cm',cor:'var(--blue)'},
-    {key:'CM_FDS',label:'PORTA (CM/PED)',sub:'Sáb–Dom',cls:'fin-cm',cor:'var(--blue)'},
-    {key:'SV_DU',label:'SV+ENF',sub:'Seg–Sex',cls:'fin-sv',cor:'var(--red)'},
-    {key:'SV_FDS',label:'SV+ENF',sub:'Sáb–Dom',cls:'fin-sv',cor:'var(--red)'},
+  const f=st.fin;
+  // Categoria do plantonista para mostrar taxas corretas
+  const medDash=MEDICOS.find(m=>m.c===crm);
+  const catDash=medDash?(medDash.categoria||'GENERALISTA'):'GENERALISTA';
+  const taxaPortaUtil=VALORES[`${catDash}|CM_PED_APOIO|UTIL`]||0;
+  const taxaPortaFds=VALORES[`${catDash}|CM_PED_APOIO|FDS`]||0;
+  const taxaSvUtil=catDash==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|UTIL']||0):0;
+  const taxaSvFds=catDash==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|FDS']||0):0;
+  const cats=[
+    {key:'CM_DU',label:'PORTA (CM/PED)',sub:'Seg–Sex',cls:'fin-cm',cor:'var(--blue)',rate:taxaPortaUtil,rateLabel:fmtMoeda(taxaPortaUtil)+'/hora'},
+    {key:'CM_FDS',label:'PORTA (CM/PED)',sub:'Sáb–Dom',cls:'fin-cm',cor:'var(--blue)',rate:taxaPortaFds,rateLabel:fmtMoeda(taxaPortaFds)+'/hora'},
+    {key:'SV_DU',label:'SV+ENF',sub:'Seg–Sex',cls:'fin-sv',cor:'var(--red)',rate:taxaSvUtil,rateLabel:catDash==='GENERALISTA'?(fmtMoeda(taxaSvUtil)+'/hora'):'n/a'},
+    {key:'SV_FDS',label:'SV+ENF',sub:'Sáb–Dom',cls:'fin-sv',cor:'var(--red)',rate:taxaSvFds,rateLabel:catDash==='GENERALISTA'?(fmtMoeda(taxaSvFds)+'/hora'):'n/a'},
   ];
   document.getElementById('fin-grid').innerHTML=cats.map(cat=>`
     <div class="fin-c ${cat.cls}">
       <div class="fin-label" style="color:${cat.cor}">${cat.label}<br><span style="font-weight:400;font-size:9px;color:var(--text2)">${cat.sub}</span></div>
       <div class="fin-horas" style="color:${cat.cor}">${f[cat.key].h}h</div>
       <div class="fin-valor" style="color:${cat.cor}">${f[cat.key].v>0?fmtMoeda(f[cat.key].v):'R$ 0,00'}</div>
-      <div class="fin-det">${fmtMoeda(getPreco(cat.key.startsWith('SV')?'SV+ENF':'CM',cat.key.endsWith('FDS')))}/hora</div>
+      <div class="fin-det">${cat.rateLabel}</div>
     </div>`).join('')+
     `<div class="fin-c" style="background:var(--green-bg);border:1px solid rgba(45,201,122,.2);grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div>
-        <div class="fin-label" style="color:var(--green)">TOTAL ESTIMADO DO MÊS</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">Valores líquidos aproximados · CAIS Campinas</div>
+        <div class="fin-label" style="color:var(--green)">TOTAL ESTIMADO DO MÊS (BRUTO)</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Valor bruto · sem descontos</div>
       </div>
       <div style="font-size:26px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(st.totalFin)}</div>
     </div>`;
@@ -3847,7 +4099,7 @@ function renderMeusPlantoes(){
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
         <span class="${aCC[p.area]||'ch-apo'}">${p.area}</span>
         <span class="${p.not?'ch-not':'ch-dia'}">${p.not?'NOT':'DIA'}</span>
-        <div style="font-size:10px;color:var(--green);font-weight:600">${p.area!=='APOIO'?fmtMoeda(p.h*getPreco(p.area,p.fds)):''}</div>
+        <div style="font-size:10px;color:var(--green);font-weight:600">${(()=>{const v=valorDoPlantao(p);return v>0?fmtMoeda(v):'';})()}</div>
       </div>
       ${tipo==='prox'?`<button class="btn btn-g btn-xs" onclick='abrirMoTrocaEsp(${p.dia},"${p.turno}","${p.area}")'>Trocar</button>`:''}
     </div>`;
@@ -3866,18 +4118,166 @@ function abrirMoTrocaEsp(dia,turno,area){
   },80);
 }
 
-// ══ DASHBOARD GESTOR ══
+// ══ DASHBOARD GESTOR (5 LINHAS) ══
 function renderDashboard(){
+  try {
+    return _renderDashboardImpl();
+  } catch(e) {
+    console.error('Erro em renderDashboard:', e);
+    const el=document.getElementById('d-alertas');
+    if(el)el.innerHTML='<div style="padding:10px;color:var(--red);font-size:12px">⚠️ Erro ao renderizar dashboard: '+(e.message||'desconhecido')+'</div>';
+  }
+}
+function _renderDashboardImpl(){
   const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext);
-  document.getElementById('d-tot').textContent=internos.length;
+  const externos=MEDICOS.filter(m=>m.ext);
   document.getElementById('dash-sub').textContent=`${MP[mesMes]} ${mesAno}`;
-  document.getElementById('d-mes').textContent=`${MA[mesMes]}/${mesAno}`;
-  document.getElementById('d-pub-st').innerHTML=ePub(mesMes,mesAno)?'<span style="color:var(--green)">✅ Publicada</span>':'<span style="color:var(--amber)">🔒 Bloqueada</span>';
 
+  // ─── DADOS BASE ───
   const todosPts=gerarPlantoesMes(mesMes,mesAno);
-  document.getElementById('d-plant').textContent=todosPts.length;
-  document.getElementById('d-plant-s').textContent=`${todosPts.filter(p=>!p.fds).length} dias úteis · ${todosPts.filter(p=>p.fds).length} FDS`;
+  const totalH=todosPts.reduce((s,p)=>s+(p.h||0),0);
+  const totalP=todosPts.length;
+  const pendList=TROCAS.filter(t=>t.status==='pendente');
+  const escPub=ePub(mesMes,mesAno);
 
+  // Próximo mês
+  const nMes=mesMes===12?1:mesMes+1;
+  const nAno=mesMes===12?mesAno+1:mesAno;
+  const nMesTemEsc=ESCMES[keyMes(nMes,nAno)]?Object.keys(ESCMES[keyMes(nMes,nAno)]).length>0:false;
+
+  // Vagas em branco — total de slots possíveis vs preenchidos
+  // (estimativa: para cada dia do mês × 16 slots, mas só conta turnos que não sejam '—')
+  const diasNoMes=new Date(mesAno,mesMes,0).getDate();
+  let vagasTotais=0,vagasVazias=0;
+  for(let d=1;d<=diasNoMes;d++){
+    const dt=new Date(mesAno,mesMes-1,d);
+    const ciclo=getCiclo(dt);
+    const ab=DA[JTC[dt.getDay()]];
+    for(let ti=0;ti<16;ti++){
+      const v=getSlotValDia(mesMes,mesAno,ciclo,ab,ti,d);
+      vagasTotais++;
+      if(!v||v.trim()==='')vagasVazias++;
+    }
+  }
+  const cobPct=0;// removido do dashboard a pedido do usuário (era % cobertura)
+
+  // Declarações pendentes
+  const externosNoMes=coletarExternosMes(mesMes,mesAno);
+  const decsPend=externosNoMes.filter(x=>{
+    const k=x.med.c+'-'+mesMes+'-'+mesAno;
+    return !(DECLARACOES[k]&&DECLARACOES[k].enviada);
+  });
+
+  // ─── LINHA 1: ALERTAS ───
+  const alertas=[];
+  if(pendList.length>0){
+    alertas.push({icon:'⏳',cor:'#92400e',bg:'#fef3c7',label:'Trocas pendentes',val:pendList.length,
+      sub:'Aguardando aprovação',action:()=>nav(document.querySelector('[data-p=trocas]'))});
+  }
+  if(vagasVazias>0){
+    alertas.push({icon:'🕳️',cor:'#991b1b',bg:'#fee2e2',label:'Vagas em branco',val:vagasVazias,
+      sub:'Plantões sem profissional',action:()=>nav(document.querySelector('[data-p=escala]'))});
+  }
+  if(decsPend.length>0){
+    alertas.push({icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
+      sub:'Externos sem declaração',action:null});
+  }
+  if(!escPub){
+    alertas.push({icon:'🔒',cor:'#92400e',bg:'#fef3c7',label:'Escala atual',val:'Bloqueada',
+      sub:'Ainda não publicada',action:()=>nav(document.querySelector('[data-p=gestao-escalas]'))});
+  }
+  if(!nMesTemEsc){
+    alertas.push({icon:'📅',cor:'#7c2d12',bg:'#fed7aa',label:`Escala de ${MA[nMes]}/${nAno}`,val:'Não gerada',
+      sub:'Próximo mês ainda vazio',action:()=>nav(document.querySelector('[data-p=gestao-escalas]'))});
+  }
+  if(alertas.length===0){
+    alertas.push({icon:'✅',cor:'#166534',bg:'#dcfce7',label:'Tudo em ordem',val:'OK',
+      sub:'Nenhuma pendência crítica',action:null});
+  }
+  // Guardar ações em variável global temporária para event listener
+  window._dashAlertActions=alertas.map(a=>a.action);
+  document.getElementById('d-alertas').innerHTML=alertas.map((a,i)=>{
+    const click=a.action?'cursor:pointer':'';
+    const onclick=a.action?`onclick="window._dashAlertActions[${i}]&&window._dashAlertActions[${i}]()"`:'';
+    return `<div ${onclick} style="background:${a.bg};border:1px solid ${a.cor}33;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;${click}">
+      <div style="font-size:24px">${a.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:${a.cor};font-weight:700;text-transform:uppercase;letter-spacing:.04em">${a.label}</div>
+        <div style="font-size:18px;font-weight:800;color:${a.cor};line-height:1.1">${a.val}</div>
+        <div style="font-size:10px;color:${a.cor}aa">${a.sub}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ─── LINHA 2: NÚMEROS DO MÊS ───
+  document.getElementById('d-plant').textContent=totalP;
+  document.getElementById('d-plant-s').textContent=`${todosPts.filter(p=>!p.fds).length} dias úteis · ${todosPts.filter(p=>p.fds).length} FDS`;
+  document.getElementById('d-horas').textContent=totalH+'h';
+  document.getElementById('d-horas-s').textContent=`${todosPts.filter(p=>!p.not).reduce((s,p)=>s+p.h,0)}h diurnas · ${todosPts.filter(p=>p.not).reduce((s,p)=>s+p.h,0)}h noturnas`;
+  const crmsEscalados=new Set(todosPts.map(p=>p.crm));
+  document.getElementById('d-prof-esc').textContent=crmsEscalados.size;
+  document.getElementById('d-prof-esc-s').textContent=`${internos.length} no quadro`;
+  // % Externos
+  const plantoesExt=externosNoMes.reduce((s,x)=>s+x.plantoes.length,0);
+  const pctExt=totalP>0?Math.round((plantoesExt/totalP)*100):0;
+  const elExt=document.getElementById('d-extpct');
+  if(elExt){
+    elExt.textContent=pctExt+'%';
+    // Cor: verde se 0, roxo até 10%, âmbar 10-20%, vermelho >20%
+    elExt.style.color=pctExt===0?'var(--green)':pctExt<10?'var(--purple,#7c3aed)':pctExt<20?'var(--amber)':'var(--red)';
+  }
+  document.getElementById('d-extpct-s').textContent=plantoesExt>0?`${plantoesExt} de ${totalP} plantões`:'Sem dependência externa';
+  // Trocas aprovadas no mês (pela data real do plantão)
+  const trocasAprMes=TROCAS.filter(t=>{
+    if(t.status!=='aprovado')return false;
+    if(!(t.dt instanceof Date))return false;
+    return t.dt.getMonth()+1===mesMes&&t.dt.getFullYear()===mesAno;
+  });
+  document.getElementById('d-trapr').textContent=trocasAprMes.length;
+  const pendCount=pendList.filter(t=>{
+    if(!(t.dt instanceof Date))return t.mes===mesMes&&t.ano===mesAno;
+    return t.dt.getMonth()+1===mesMes&&t.dt.getFullYear()===mesAno;
+  }).length;
+  document.getElementById('d-trapr-s').textContent=pendCount>0?`${pendCount} ainda pendente${pendCount>1?'s':''}`:'Nenhuma pendente';
+
+  // ─── LINHA 3: FINANCEIRO ───
+  let custoTotal=0,custoGen=0,custoPed=0,custoExt=0,custoEF=0,hEF=0;
+  internos.concat(externos).forEach(m=>{
+    const st=statsProf(m.c,mesMes,mesAno);
+    if(getVinc(m.n)==='EF'){custoEF+=0;hEF+=st.hTotal;return;}
+    custoTotal+=st.totalFin;
+    if(m.ext)custoExt+=st.totalFin;
+    if((m.categoria||'GENERALISTA')==='PEDIATRA_RQE')custoPed+=st.totalFin;
+    else custoGen+=st.totalFin;
+  });
+  // Comparativo com mês anterior
+  const pMes=mesMes===1?12:mesMes-1;
+  const pAno=mesMes===1?mesAno-1:mesAno;
+  let custoAnt=0;
+  internos.concat(externos).forEach(m=>{
+    if(getVinc(m.n)==='EF')return;
+    custoAnt+=statsProf(m.c,pMes,pAno).totalFin;
+  });
+  let diffPct=0,diffSinal='';
+  if(custoAnt>0){
+    diffPct=Math.round(((custoTotal-custoAnt)/custoAnt)*100);
+    diffSinal=diffPct>0?'▲':(diffPct<0?'▼':'=');
+  }
+  const finCards=[
+    {label:'TOTAL BRUTO',val:fmtMoeda(custoTotal),sub:custoAnt>0?`${diffSinal} ${Math.abs(diffPct)}% vs ${MA[pMes]}`:'sem mês anterior',cor:'var(--green)',bg:'var(--green-bg)'},
+    {label:'GENERALISTA',val:fmtMoeda(custoGen),sub:`${Math.round((custoGen/custoTotal||0)*100)}% do total`,cor:'var(--blue)',bg:'var(--blue-bg)'},
+    {label:'PEDIATRA RQE',val:fmtMoeda(custoPed),sub:`${Math.round((custoPed/custoTotal||0)*100)}% do total`,cor:'var(--purple,#7c3aed)',bg:'#faf5ff'},
+    {label:'EXTERNOS',val:fmtMoeda(custoExt),sub:custoExt>0?`${externosNoMes.length} de outras unidades`:'Sem externos',cor:custoExt>0?'#b45309':'var(--text3)',bg:custoExt>0?'#fef3c7':'var(--bg3)'},
+    {label:'EFETIVOS (via folha)',val:hEF+'h',sub:'Não somam no total',cor:'var(--text3)',bg:'var(--bg3)'}
+  ];
+  document.getElementById('d-fin').innerHTML=finCards.map(c=>`
+    <div style="background:${c.bg};border:1px solid ${c.cor}33;border-radius:8px;padding:11px 13px">
+      <div style="font-size:10px;font-weight:700;color:${c.cor};text-transform:uppercase;letter-spacing:.05em">${c.label}</div>
+      <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:${c.cor};margin-top:2px">${c.val}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${c.sub}</div>
+    </div>`).join('');
+
+  // ─── LINHA 5: VISÃO DE EQUIPE ───
   // Stats por área
   const areas=['SV+ENF','CM','PED','APOIO'];
   const aClr={'SV+ENF':'var(--red)','CM':'var(--blue)','PED':'var(--amber)','APOIO':'var(--green)'};
@@ -3892,118 +4292,63 @@ function renderDashboard(){
     </div>`;
   }).join('');
 
-  // Abaixo de 48h
-  const abaixo=internos.map(m=>{const st=statsProf(m.c,mesMes,mesAno);return{n:m.n,h:st.hTotal,total:st.total}})
-    .filter(x=>x.total>0&&x.h<48).sort((a,b)=>a.h-b.h);
-  document.getElementById('d-48').innerHTML=abaixo.length?
-    abaixo.slice(0,4).map(p=>`<div class="al warn"><span>⚠️</span>
-      <div><div style="font-size:12px;font-weight:600">${nomeCurto(p.n)}</div>
-        <div style="font-size:11px;color:var(--text2)">${p.h}h neste mês</div></div></div>`).join(''):
-    '<div class="al ok"><span>✓</span><div style="font-size:12px;color:var(--text2)">Todos acima de 48h</div></div>';
+  // Top plantonistas
+  const topList=internos.map(m=>({n:m.n,c:m.c,h:statsProf(m.c,mesMes,mesAno).hTotal,total:statsProf(m.c,mesMes,mesAno).total}))
+    .filter(x=>x.h>0).sort((a,b)=>b.h-a.h).slice(0,5);
+  document.getElementById('d-top').innerHTML=topList.length?
+    topList.map((p,i)=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 9px;background:var(--bg3);border-radius:6px;margin-bottom:4px">
+      <div style="font-size:14px;font-weight:800;color:var(--blue);min-width:18px">${i+1}º</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nomeCurto(p.n)}</div>
+        <div style="font-size:10px;color:var(--text2)">${p.total} plantões</div>
+      </div>
+      <div style="font-weight:800;font-family:var(--mono);color:var(--blue)">${p.h}h</div>
+    </div>`).join(''):
+    '<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px 0">Nenhum plantão no mês</div>';
 
-  const ct={};TROCAS.forEach(t=>{ct[t.sol]=(ct[t.sol]||0)+1});
-  document.getElementById('d-tr-top').innerHTML=Object.entries(ct).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,c])=>
-    `<div class="al danger"><span>📤</span><div><div style="font-size:12px;font-weight:600">${nomeCurto(n)}</div>
-      <div style="font-size:11px;color:var(--text2)">${c} troca${c>1?'s':''}</div></div></div>`).join('')||
-    '<div style="color:var(--text3);font-size:12px">Nenhuma troca registrada</div>';
+  // Sem plantões
+  const semPts=internos.filter(m=>statsProf(m.c,mesMes,mesAno).total===0);
+  const semExpandido=window._semExpandido===true;
+  const semVisible=semExpandido?semPts:semPts.slice(0,5);
+  document.getElementById('d-sem').innerHTML=semPts.length?
+    semVisible.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;margin-bottom:4px">
+      <span style="color:#92400e">⚠️</span>
+      <div style="font-size:12px;color:#78350f;flex:1">${nomeCurto(m.n)}</div>
+      <div style="font-size:10px;color:#92400eaa">CRM ${m.c}</div>
+    </div>`).join('')+(semPts.length>5?`<div style="text-align:center;margin-top:6px"><button onclick="window._semExpandido=${!semExpandido};renderDashboard()" style="background:transparent;border:1px solid var(--border2);color:var(--blue);font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer">${semExpandido?'▲ Recolher':`▼ Mostrar todos (${semPts.length})`}</button></div>`:''):
+    '<div class="al ok"><span>✓</span><div style="font-size:12px;color:var(--text2)">Todos os profissionais têm plantões</div></div>';
 
-  const pendList=TROCAS.filter(t=>t.status==='pendente');
+  // Trocas pendentes no fim da página
   document.getElementById('d-tr-list').innerHTML=pendList.length?
-    pendList.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r2);margin-bottom:5px;flex-wrap:wrap">
+    pendList.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r2);margin-bottom:5px;flex-wrap:wrap">
       <div class="tr-dot pendente"></div>
       <div style="flex:1;font-size:12px;font-weight:600;min-width:80px">${nomeCurto(t.sol)} → ${nomeCurto(t.sub)}</div>
       <span style="font-size:11px;color:var(--text2)">${t.data}</span>
-      <span class="badge b-amber">Pendente</span></div>`).join(''):
+      <span class="badge b-amber">Pendente</span></div>`).join('')+(pendList.length>5?`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px">... e mais ${pendList.length-5}</div>`:''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhuma troca pendente ✓</div>';
 
-  // ═══ Plantonistas Externos no Mês ═══
-  // Estratégia: 3 fontes - manuais ESCMES por dia + plantões gerados + trocas aprovadas
-  const externosMap={};
-  const k=keyMes(mesMes,mesAno);
-
-  // FONTE 1: Slots manuais (DIA_X em ESCMES) — alterações pontuais por dia
-  if(ESCMES[k]){
-    Object.keys(ESCMES[k]).filter(key=>key.startsWith('DIA_')).forEach(dk=>{
-      const diaMes=parseInt(dk.replace('DIA_',''));
-      const diaArr=ESCMES[k][dk]||[];
-      diaArr.forEach((val,ti)=>{
-        if(!val)return;
-        const match=val.match(/\((\d+)\)/);
-        if(!match)return;
-        const crm=parseInt(match[1]);
-        const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
-        if(!med)return;
-        if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
-        const t=TURNOS[ti];
-        externosMap[crm].plantoes.push({
-          dia:diaMes,
-          data:String(diaMes).padStart(2,'0')+'/'+String(mesMes).padStart(2,'0')+'/'+mesAno,
-          turno:t?t.l:'?',
-          area:t?t.a:'?',
-          h:t?t.h:0
-        });
-      });
-    });
-  }
-
-  // FONTE 2: Plantões gerados normalmente (snapshot/EB para externos pré-cadastrados)
-  const todosPlantoesMes=gerarPlantoesMes(mesMes,mesAno);
-  todosPlantoesMes.forEach(p=>{
-    const med=MEDICOS.find(m=>m.c===p.crm);
-    if(med&&med.ext===true){
-      if(!externosMap[med.c])externosMap[med.c]={prof:med,plantoes:[]};
-      // Não duplicar
-      const dataStr=p.dt.toLocaleDateString('pt-BR');
-      const jaTem=externosMap[med.c].plantoes.find(x=>x.data===dataStr&&x.turno===p.turno);
-      if(!jaTem){
-        externosMap[med.c].plantoes.push({
-          dia:p.dia,data:dataStr,turno:p.turno,area:p.area,h:p.h
-        });
-      }
-    }
-  });
-
-  // FONTE 3: Trocas aprovadas com substituto externo
-  const trocasMes=TROCAS.filter(t=>t.mes===mesMes&&t.ano===mesAno&&t.status==='aprovado');
-  trocasMes.forEach(t=>{
-    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext===true);
-    if(ext){
-      if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
-      const jaTem=externosMap[ext.c].plantoes.find(p=>p.data===t.data&&p.turno===t.turno);
-      if(!jaTem){
-        externosMap[ext.c].plantoes.push({data:t.data,turno:t.turno,area:t.area,h:0});
-      }
-    }
-  });
-  const extList=Object.values(externosMap);
-  document.getElementById('d-externos').innerHTML=extList.length?
-    extList.map(x=>{
-      const pf=getPerfil(x.prof.c)||{};
-      const totalH=x.plantoes.reduce((s,p)=>s+(p.h||0),0);
-      const decKey=x.prof.c+'-'+mesMes+'-'+mesAno;
-      const enviada=DECLARACOES[decKey]&&DECLARACOES[decKey].enviada;
-      const btnDec=enviada
-        ?`<button onclick="toggleDeclaracao(${x.prof.c},${mesMes},${mesAno})" style="background:#e8f7ee;border:1px solid #22a35a;color:#22a35a;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap" title="Declaração enviada · clique para desmarcar">✓ Declaração enviada</button>`
-        :`<button onclick="toggleDeclaracao(${x.prof.c},${mesMes},${mesAno})" style="background:#fff;border:1px dashed var(--text3);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap" title="Marcar como declaração enviada"
-            onmouseover="this.style.borderStyle='solid';this.style.borderColor='var(--blue)';this.style.color='var(--blue)'"
-            onmouseout="this.style.borderStyle='dashed';this.style.borderColor='var(--text3)';this.style.color='var(--text2)'">📄 Marcar declaração</button>`;
-      return `<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;margin-bottom:6px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-          <div style="flex:1;min-width:160px">
-            <div style="font-size:13px;font-weight:700">${formatarNome(x.prof.n)}</div>
-            <div style="font-size:11px;color:var(--text2);margin-top:1px">CRM ${x.prof.c} · ${x.prof.unidade||'?'}${pf.whatsapp?' · 📱 '+pf.whatsapp:''}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span class="badge b-purple">${x.plantoes.length} plantão${x.plantoes.length!==1?'es':''}${totalH?' · '+totalH+'h':''}</span>
-            ${btnDec}
-          </div>
+  // ─── EXTERNOS NO MÊS (caixa de baixo) ───
+  const el=document.getElementById('d-externos');
+  el.innerHTML=externosNoMes.length?
+    externosNoMes.map(x=>{
+      const dec=DECLARACOES[x.med.c+'-'+mesMes+'-'+mesAno]&&DECLARACOES[x.med.c+'-'+mesMes+'-'+mesAno].enviada;
+      const btnDec=dec
+        ?`<button onclick="toggleDeclaracao(${x.med.c},${mesMes},${mesAno})" style="background:#e8f7ee;border:1px solid #22a35a;color:#22a35a;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Declaração enviada — clique para desmarcar">✓ Enviada</button>`
+        :`<button onclick="toggleDeclaracao(${x.med.c},${mesMes},${mesAno})" style="background:#fff;border:1px dashed var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Clique para marcar declaração como enviada">📄 Marcar</button>`;
+      return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg3);border-radius:6px;margin-bottom:4px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:12px;font-weight:700">${x.med.n}</div>
+          <div style="font-size:10px;color:var(--text2)">CRM ${x.med.c} · ${x.med.unidade||'—'}</div>
         </div>
-        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
-          ${x.plantoes.map(p=>`<span style="font-size:10px;padding:3px 7px;background:var(--bg1);border:1px solid var(--border);border-radius:8px;font-family:var(--mono)">${p.data} · ${p.turno}</span>`).join('')}
+        <div style="font-size:11px;color:var(--text2);text-align:right">
+          <div>${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
+          <div style="color:var(--green);font-weight:700">${fmtMoeda(x.totalValor)}</div>
         </div>
+        ${btnDec}
       </div>`;
     }).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum externo neste mês</div>';
+
   atualizarBadge();
 }
 
@@ -4102,7 +4447,7 @@ function renderRelatorio(filtro=relFiltroAtual){
     <div class="sc"><div class="sl">Total Horas</div><div class="sv">${totH}h</div><div class="ss">Todos</div></div>
     <div class="sc"><div class="sl">Média/Profissional</div><div class="sv">${media}h</div><div class="ss">No mês</div></div>
     <div class="sc"><div class="sl">Plant. FDS</div><div class="sv">${lista.reduce((s,d)=>s+d.fds,0)}</div><div class="ss">Sáb e Dom</div></div>
-    <div class="sc"><div class="sl">Folha Estimada</div><div class="sv" style="font-size:14px;color:var(--green)">${fmtMoeda(totFin)}</div><div class="ss">Valor líquido</div></div>`;
+    <div class="sc"><div class="sl">Folha Estimada</div><div class="sv" style="font-size:14px;color:var(--green)">${fmtMoeda(totFin)}</div><div class="ss">Valor bruto</div></div>`;
 
   const aB={'SV+ENF':'b-red','PED':'b-amber','APOIO':'b-green','CM':'b-blue'};
   // Fix 10: colunas corretas conforme especificado
@@ -4119,7 +4464,7 @@ function renderRelatorio(filtro=relFiltroAtual){
       <td style="text-align:center">${d.hDuSV?d.hDuSV+'h':'—'}</td>
       <td style="text-align:center">${d.hFdsSV?d.hFdsSV+'h':'—'}</td>
       <td style="text-align:center;font-weight:800;font-family:var(--mono)">${d.hTotal?d.hTotal+'h':'—'}</td>
-      <td style="text-align:right;font-weight:700;color:var(--green)">${d.totalFin>0?fmtMoeda(d.totalFin):'—'}</td>
+      <td style="text-align:right;font-weight:700;color:${d.viaFolha?'var(--text3)':'var(--green)'}">${d.viaFolha?'<span style="font-size:10px;font-style:italic">via folha</span>':(d.totalFin>0?fmtMoeda(d.totalFin):'—')}</td>
       <td><button class="btn btn-a btn-xs" onclick="pdfPlantonista(${d.c},${relMes},${relAno})">📄</button></td>
     </tr>`;
   }).join('');
@@ -4149,21 +4494,104 @@ function mudarAbaRel(aba,btn){
   if(aba==='ext')renderRelExterno();
 }
 
-function renderRelExterno(){
-  // Externos: profissionais com ext=true que aparecem em trocas aprovadas no mês
-  const trocasExt=TROCAS.filter(t=>t.mes===relMes&&t.ano===relAno&&t.status==='aprovado');
-  // Também verificar se há externos na escala base (via CRM de médico ext)
-  const externos=MEDICOS.filter(m=>m.ext);
-  // Cruzar externos com trocas aprovadas
-  const extsNoMes=[];
-  trocasExt.forEach(t=>{
-    const mExt=MEDICOS.find(m=>m.c===t.bCRM&&m.ext);
-    if(mExt&&!extsNoMes.find(x=>x.c===mExt.c)){
-      extsNoMes.push({...mExt,troca:t});
+// Coleta TODOS os externos que cobriram plantões num mês — 3 fontes (manual + snapshot + trocas)
+// Retorna array com {med, plantoes:[{dia,dt,turnoIdx,data,turno,area,h,fds,not,valor}], totalH, totalValor}
+function coletarExternosMes(mes,ano){
+  const externosMap={};
+  const k=keyMes(mes,ano);
+
+  // FONTE 1: Slots manuais (DIA_X em ESCMES) — alterações pontuais por dia
+  if(ESCMES[k]){
+    Object.keys(ESCMES[k]).filter(key=>key.startsWith('DIA_')).forEach(dk=>{
+      const diaMes=parseInt(dk.replace('DIA_',''));
+      const diaArr=ESCMES[k][dk]||[];
+      diaArr.forEach((val,ti)=>{
+        if(!val)return;
+        const match=val.match(/\((\d+)\)/);
+        if(!match)return;
+        const crm=parseInt(match[1]);
+        const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
+        if(!med)return;
+        if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
+        const t=TURNOS[ti];if(!t)return;
+        const dt=new Date(ano,mes-1,diaMes,12,0,0);
+        const ds=dt.getDay();const fds=(ds===0||ds===6);
+        externosMap[crm].plantoes.push({
+          dia:diaMes,dt,turnoIdx:ti,
+          data:String(diaMes).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+ano,
+          turno:t.l,area:t.a,h:t.h,fds,not:t.not
+        });
+      });
+    });
+  }
+
+  // FONTE 2: Plantões gerados normalmente (snapshot/EB para externos pré-cadastrados)
+  const todosPlantoesMes=gerarPlantoesMes(mes,ano);
+  todosPlantoesMes.forEach(p=>{
+    const med=MEDICOS.find(m=>m.c===p.crm);
+    if(med&&med.ext===true){
+      if(!externosMap[med.c])externosMap[med.c]={prof:med,plantoes:[]};
+      const dataStr=p.dt.toLocaleDateString('pt-BR');
+      const jaTem=externosMap[med.c].plantoes.find(x=>x.data===dataStr&&x.turno===p.turno);
+      if(!jaTem){
+        externosMap[med.c].plantoes.push({
+          dia:p.dia,dt:p.dt,turnoIdx:p.turnoIdx,
+          data:dataStr,turno:p.turno,area:p.area,h:p.h,fds:p.fds,not:p.not
+        });
+      }
     }
   });
+
+  // FONTE 3: Trocas aprovadas com substituto externo
+  const trocasMes=TROCAS.filter(t=>{
+    if(t.status!=='aprovado')return false;
+    if(!(t.dt instanceof Date))return false;
+    return t.dt.getMonth()+1===mes&&t.dt.getFullYear()===ano;
+  });
+  trocasMes.forEach(t=>{
+    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext===true);
+    if(!ext)return;
+    if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
+    const jaTem=externosMap[ext.c].plantoes.find(p=>p.data===t.data&&p.turno===t.turno);
+    if(jaTem)return;
+    let h=12;
+    const turnoStr=String(t.turno||'');
+    if(/\(1ª metade\)|\(2ª metade\)/.test(turnoStr))h=6;
+    if(/13:00.{1,3}19:00|07:00.{1,3}13:00|01:00.{1,3}07:00|19:00.{1,3}01:00/.test(turnoStr))h=6;
+    const ds=t.dt.getDay();const fds=(ds===0||ds===6);
+    externosMap[ext.c].plantoes.push({
+      dia:t.dt.getDate(),dt:t.dt,turnoIdx:null,
+      data:t.data,turno:t.turno,area:t.area,h,fds,
+      not:/19:00|01:00/.test(turnoStr)&&!/07:00.{1,3}13:00|07:00.{1,3}19:00|13:00.{1,3}19:00/.test(turnoStr)
+    });
+  });
+
+  // Calcular valores
+  const lista=Object.values(externosMap).map(x=>{
+    const med=x.prof;
+    const cat=med.categoria||'GENERALISTA';
+    let totalH=0,totalValor=0;
+    x.plantoes.forEach(p=>{
+      totalH+=(p.h||0);
+      let funcaoKey='CM_PED_APOIO';
+      if(p.area==='SV+ENF')funcaoKey='SV_ENF';
+      if(cat==='PEDIATRA_RQE'&&funcaoKey==='SV_ENF'){p.valor=0;return;}
+      const tipoDia=p.fds?'FDS':'UTIL';
+      const vh=VALORES[`${cat}|${funcaoKey}|${tipoDia}`]||0;
+      p.valor=vh*p.h;
+      totalValor+=p.valor;
+    });
+    x.plantoes.sort((a,b)=>a.dt-b.dt);
+    return {med,plantoes:x.plantoes,totalH,totalValor};
+  }).sort((a,b)=>b.totalValor-a.totalValor);
+
+  return lista;
+}
+
+function renderRelExterno(){
+  const lista=coletarExternosMes(relMes,relAno);
   const el=document.getElementById('rel-ext-content');
-  if(!extsNoMes.length){
+  if(!lista.length){
     el.innerHTML=`<div style="text-align:center;padding:32px;color:var(--text2)">
       <div style="font-size:32px;margin-bottom:10px">✓</div>
       <div style="font-size:14px;font-weight:600">Nenhum externo em ${MP[relMes]}/${relAno}</div>
@@ -4171,23 +4599,60 @@ function renderRelExterno(){
     </div>`;
     return;
   }
+  const totalGeralValor=lista.reduce((s,x)=>s+x.totalValor,0);
+  const totalGeralHoras=lista.reduce((s,x)=>s+x.totalH,0);
   el.innerHTML=`
-    <div style="margin-bottom:10px;font-size:12px;color:var(--text2)">${extsNoMes.length} profissional(is) externo(s) em ${MP[relMes]}/${relAno}</div>
-    <div class="rt-wrap"><table class="rt">
-      <thead><tr><th>Profissional</th><th>CRM</th><th>Unidade de Origem</th><th>Troca</th><th>Data</th><th>Turno</th><th>Área</th></tr></thead>
-      <tbody>
-        ${extsNoMes.map(m=>`<tr>
-          <td style="font-weight:600">${m.n}</td>
-          <td style="font-family:var(--mono)">${m.c}</td>
-          <td>${m.unidade||'—'}</td>
-          <td style="font-size:11px;color:var(--text2)">${m.troca.sol?nomeCurto(m.troca.sol)+' →':''} ${nomeCurto(m.n)}</td>
-          <td>${m.troca.data||'—'}</td>
-          <td style="font-size:11px">${m.troca.turno||'—'}</td>
-          <td><span class="badge ${m.troca.area==='SV+ENF'?'b-red':m.troca.area==='PED'?'b-amber':'b-blue'}">${m.troca.area||'—'}</span></td>
-        </tr>`).join('')}
-      </tbody>
-    </table></div>`;
+    <div style="background:var(--green-bg);border:1px solid rgba(45,201,122,.3);border-radius:8px;padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">${lista.length} profissional(is) externo(s)</div>
+        <div style="font-size:13px;color:var(--text)">${totalGeralHoras}h cobertas em ${MP[relMes]}/${relAno}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--text3)">Total estimado (bruto)</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(totalGeralValor)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-a btn-sm" onclick="pdfExternosGeral()" title="PDF consolidado de todos os externos">📄 PDF Geral</button>
+          <button class="btn btn-s btn-sm" onclick="exportXLSXExternos()" title="Excel com os externos do mês">📊 Excel</button>
+        </div>
+      </div>
+    </div>
+    ${lista.map(x=>{
+      const cat=(x.med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+      return `<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:13px">${x.med.n}</div>
+            <div style="font-size:11px;color:var(--text2)">CRM ${x.med.c} · ${cat} · ${x.med.unidade||'—'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--text3)">${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
+              <div style="font-size:16px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(x.totalValor)}</div>
+            </div>
+            <button class="btn btn-a btn-xs" onclick="pdfFichaExterno(${x.med.c})" title="Ficha individual deste externo para enviar à unidade de origem">📄 Ficha</button>
+          </div>
+        </div>
+        <div class="rt-wrap"><table class="rt" style="font-size:11px">
+          <thead><tr><th>Data</th><th>Turno</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th style="text-align:right">Valor (bruto)</th></tr></thead>
+          <tbody>
+            ${x.plantoes.map(p=>`<tr>
+              <td>${p.data}</td>
+              <td style="font-size:10.5px">${p.turno}</td>
+              <td><span class="badge ${p.area==='SV+ENF'?'b-red':p.area==='PED'?'b-amber':p.area==='APOIO'?'b-green':'b-blue'}">${p.area||'—'}</span></td>
+              <td style="text-align:center">${p.h}h</td>
+              <td style="text-align:center;font-size:10.5px">${p.fds?'FDS':'DDS'}</td>
+              <td style="text-align:right;font-weight:700;color:${p.valor>0?'var(--green)':'var(--text3)'}">${p.valor>0?fmtMoeda(p.valor):'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    }).join('')}
+  `;
 }
+
+// Placeholder — função antiga removida (substituída por coletarExternosMes + renderRelExterno acima)
 
 // ══ MODAL RELATÓRIO POR PROFISSIONAL ══
 function gerarRelProfModal(){
@@ -4789,7 +5254,13 @@ function pdfPlantonista(crm,mes,ano){
   const hDuSV=f.SV_DU.h;const hFdsSV=f.SV_FDS.h;
   const vDuPorta=f.CM_DU.v;const vFdsPorta=f.CM_FDS.v;
   const vDuSV=f.SV_DU.v;const vFdsSV=f.SV_FDS.v;
-  const ptsRows=pts.map(p=>`
+  // Buscar o GESTOR real do sistema (não o usuário logado, que pode ser plantonista)
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:'Tiago Resende Telles',c:28691};
+  const nomeGestorPdf=gestorLogin.n||'Gestor de Escala';
+  const crmGestorPdf=gestorLogin.c||'';
+  const ptsRows=pts.map(p=>{
+    const v=valorDoPlantao(p);
+    return `
     <tr>
       <td><strong>${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${mes.toString().padStart(2,'0')}/${ano}</strong></td>
       <td>${p.turno}</td>
@@ -4797,8 +5268,9 @@ function pdfPlantonista(crm,mes,ano){
       <td style="text-align:center">${p.h}h</td>
       <td style="text-align:center">${p.fds?'FDS':'DDS'}</td>
       <td style="text-align:center">${p.not?'NOT':'DIA'}</td>
-      <td style="text-align:right;font-weight:700;color:#166534">${p.area!=='APOIO'?fmtMoeda(p.h*getPreco(p.area,p.fds)):'—'}</td>
-    </tr>`).join('');
+      <td style="text-align:right;font-weight:700;color:#166534">${v>0?fmtMoeda(v):(st.viaFolha?'<span style=\"font-style:italic;color:#888\">via folha</span>':'—')}</td>
+    </tr>`;
+  }).join('');
   const w=window.open('','_blank');
   if(!w){showToast('Permita pop-ups para exportar PDF',true);return}
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -4849,45 +5321,53 @@ function pdfPlantonista(crm,mes,ano){
     <div class="info-item"><div class="info-l">Profissional</div><div class="info-v">${med.n}</div></div>
     <div class="info-item"><div class="info-l">CRM</div><div class="info-v">${med.c}</div></div>
     <div class="info-item"><div class="info-l">Vínculo</div><div class="info-v">${vinc}</div></div>
+    <div class="info-item"><div class="info-l">Categoria</div><div class="info-v">${(med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista'}</div></div>
     <div class="info-item"><div class="info-l">Áreas no mês</div><div class="info-v">${areasReais.join(', ')||med.a}</div></div>
     <div class="info-item"><div class="info-l">Total Plantões</div><div class="info-v">${st.total}</div></div>
     <div class="info-item"><div class="info-l">Total Horas</div><div class="info-v">${st.hTotal}h</div></div>
   </div>
   <div class="sec" style="margin-bottom:7px">Horas por Categoria — ${MP[mes]} ${ano}</div>
-  <div class="cat-grid">
+  ${(()=>{
+    const cat=med.categoria||'GENERALISTA';
+    const taxaPortaDDS=VALORES[`${cat}|CM_PED_APOIO|UTIL`]||0;
+    const taxaPortaFDS=VALORES[`${cat}|CM_PED_APOIO|FDS`]||0;
+    const taxaSVDDS=cat==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|UTIL']||0):0;
+    const taxaSVFDS=cat==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|FDS']||0):0;
+    return `<div class="cat-grid">
     <div class="cat-box cat-porta-dds">
       <div class="cat-label" style="color:#1d4ed8">PORTA — DDS</div>
       <div class="cat-h" style="color:#1d4ed8">${hDuPorta}h</div>
       <div class="cat-v" style="color:#1d4ed8">${hDuPorta>0?fmtMoeda(vDuPorta):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.CM_DU)}/h</div>
+      <div class="cat-rate">${fmtMoeda(taxaPortaDDS)}/h</div>
     </div>
     <div class="cat-box cat-porta-fds">
       <div class="cat-label" style="color:#2563eb">PORTA — FDS</div>
       <div class="cat-h" style="color:#2563eb">${hFdsPorta}h</div>
       <div class="cat-v" style="color:#2563eb">${hFdsPorta>0?fmtMoeda(vFdsPorta):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.CM_FDS)}/h</div>
+      <div class="cat-rate">${fmtMoeda(taxaPortaFDS)}/h</div>
     </div>
     <div class="cat-box cat-sv-dds">
       <div class="cat-label" style="color:#dc2626">SV+ENF — DDS</div>
       <div class="cat-h" style="color:#dc2626">${hDuSV}h</div>
       <div class="cat-v" style="color:#dc2626">${hDuSV>0?fmtMoeda(vDuSV):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.SV_DU)}/h</div>
+      <div class="cat-rate">${cat==='GENERALISTA'?fmtMoeda(taxaSVDDS)+'/h':'n/a'}</div>
     </div>
     <div class="cat-box cat-sv-fds">
       <div class="cat-label" style="color:#b91c1c">SV+ENF — FDS</div>
       <div class="cat-h" style="color:#b91c1c">${hFdsSV}h</div>
       <div class="cat-v" style="color:#b91c1c">${hFdsSV>0?fmtMoeda(vFdsSV):'—'}</div>
-      <div class="cat-rate">${fmtMoeda(PRECO.SV_FDS)}/h</div>
+      <div class="cat-rate">${cat==='GENERALISTA'?fmtMoeda(taxaSVFDS)+'/h':'n/a'}</div>
     </div>
-  </div>
+  </div>`;
+  })()}
   <div class="total-box">
-    <div><div class="total-label">Total Estimado — ${MP[mes]} ${ano}</div>
-      <div style="font-size:8px;color:#888;margin-top:2px">Valores líquidos aproximados</div></div>
+    <div><div class="total-label">Total Estimado BRUTO — ${MP[mes]} ${ano}</div>
+      <div style="font-size:8px;color:#888;margin-top:2px">Valores brutos</div></div>
     <div class="total-v">${fmtMoeda(st.totalFin)}</div>
   </div>
   <div class="sec" style="margin-bottom:7px">Detalhamento dos Plantões</div>
   <table>
-    <thead><tr><th>Data</th><th>Horário / Função</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th class="c">Período</th><th style="text-align:right">Valor Est.</th></tr></thead>
+    <thead><tr><th>Data</th><th>Horário / Função</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th class="c">Período</th><th style="text-align:right">Valor Est. (bruto)</th></tr></thead>
     <tbody>${ptsRows}</tbody>
     <tfoot><tr>
       <td colspan="3">TOTAL</td>
@@ -4902,8 +5382,8 @@ function pdfPlantonista(crm,mes,ano){
       <div class="sign-sub">CRM ${med.c} · ${vinc}</div>
       <div class="sign-sub">Data: ___/___/______</div></div>
     <div class="sign-box"><div class="sign-line"></div>
-      <div class="sign-label">${curUser.n}</div>
-      <div class="sign-sub">Gestor de Escala · CRM ${curUser.c}</div>
+      <div class="sign-label">${nomeGestorPdf}</div>
+      <div class="sign-sub">Gestor de Escala${crmGestorPdf?' · CRM '+crmGestorPdf:''}</div>
       <div class="sign-sub">Data: ___/___/______</div></div>
   </div>
   <div class="footer">
@@ -4914,6 +5394,252 @@ function pdfPlantonista(crm,mes,ano){
   w.document.close();setTimeout(()=>w.print(),500);
 }
 
+// ══ PDF FICHA INDIVIDUAL DO EXTERNO ══
+// Mesma estrutura da Ficha do plantonista interno, adaptada para a unidade de origem.
+function pdfFichaExterno(crm){
+  const lista=coletarExternosMes(relMes,relAno);
+  const x=lista.find(it=>it.med.c===crm);
+  if(!x){showToast('Externo sem plantões no mês',true);return}
+  const med=x.med;
+  const mes=relMes,ano=relAno;
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:'Tiago Resende Telles',c:28691};
+  const nomeGestorPdf=gestorLogin.n||'Gestor de Escala';
+  const crmGestorPdf=gestorLogin.c||'';
+  const cat=(med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+  const ptsRows=x.plantoes.map(p=>`
+    <tr>
+      <td><strong>${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${mes.toString().padStart(2,'0')}/${ano}</strong></td>
+      <td>${p.turno}</td>
+      <td style="color:${p.area==='SV+ENF'?'#dc2626':p.area==='PED'?'#b45309':p.area==='APOIO'?'#166534':'#1d4ed8'};font-weight:700">${p.area}</td>
+      <td style="text-align:center">${p.h}h</td>
+      <td style="text-align:center">${p.fds?'FDS':'DDS'}</td>
+      <td style="text-align:center">${p.not?'NOT':'DIA'}</td>
+      <td style="text-align:right;font-weight:700;color:#166534">${p.valor>0?fmtMoeda(p.valor):'—'}</td>
+    </tr>`).join('');
+  const w=window.open('','_blank');
+  if(!w){showToast('Permita pop-ups para exportar PDF',true);return}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Ficha Externo — ${med.n} — ${MP[mes]} ${ano}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff}
+    @page{size:A4 portrait;margin:8mm}
+    .h{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
+    .h-left{display:flex;align-items:center;gap:8px}
+    .h-title{font-size:14px;font-weight:800;letter-spacing:-.01em}
+    .h-sub{font-size:9px;opacity:.9;margin-top:1px}
+    .h-right{font-size:8px;text-align:right;opacity:.95}
+    .ext-badge{background:#fff;color:#7c3aed;padding:3px 8px;border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.05em}
+    .info-bar{background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;padding:7px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+    .info-item{font-size:7.5px}
+    .info-l{color:#6b21a8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:6.5px}
+    .info-v{color:#1a1a2e;font-weight:700;font-size:9px;margin-top:1px}
+    .sec{background:#1f0a4d;color:#fff;padding:4px 9px;font-size:9px;font-weight:700;border-radius:3px;margin:8px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+    .total-box{background:linear-gradient(135deg,#166534 0%,#15803d 100%);color:#fff;padding:9px 12px;border-radius:5px;display:flex;justify-content:space-between;align-items:center;margin:6px 0}
+    .total-label{font-size:8px;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
+    .total-v{font-size:18px;font-weight:800;font-family:'Consolas',monospace}
+    table{width:100%;border-collapse:collapse;font-size:8px}
+    th{background:#1f0a4d;color:#fff;padding:5px 6px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #1f0a4d}
+    td{padding:4px 6px;border:1px solid #e5e7eb;background:#fff}
+    .c{text-align:center}
+    tr:nth-child(even) td{background:#faf5ff}
+    tfoot td{background:#1f0a4d!important;color:#fff!important;font-weight:800;font-size:8.5px}
+    .sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:18px}
+    .sign-box{text-align:center}
+    .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:32px}
+    .sign-label{font-weight:700;font-size:9px}
+    .sign-sub{font-size:7.5px;color:#6b7280;margin-top:1px}
+    .footer{margin-top:12px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;color:#6b7280;font-size:7px}
+    .aviso{background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:6px 9px;font-size:8px;color:#78350f;margin:6px 0}
+  </style></head><body>
+  <div class="h">
+    <div class="h-left"><div>
+      <div class="h-title">🏥 Ficha de Plantão — Profissional Externo</div>
+      <div class="h-sub">${MP[mes]} ${ano} · CAIS Campinas</div></div>
+      <div class="ext-badge">EXTERNO</div></div>
+    <div class="h-right">Gerado: ${new Date().toLocaleString('pt-BR')}<br>v16</div>
+  </div>
+  <div class="info-bar">
+    <div class="info-item"><div class="info-l">Profissional</div><div class="info-v">${med.n}</div></div>
+    <div class="info-item"><div class="info-l">CRM</div><div class="info-v">${med.c}</div></div>
+    <div class="info-item"><div class="info-l">Categoria</div><div class="info-v">${cat}</div></div>
+    <div class="info-item"><div class="info-l">Unidade de Origem</div><div class="info-v">${med.unidade||'—'}</div></div>
+    <div class="info-item"><div class="info-l">Total Plantões</div><div class="info-v">${x.plantoes.length}</div></div>
+    <div class="info-item"><div class="info-l">Total Horas</div><div class="info-v">${x.totalH}h</div></div>
+    <div class="info-item"><div class="info-l">Mês de referência</div><div class="info-v">${MP[mes]} ${ano}</div></div>
+    <div class="info-item"><div class="info-l">Unidade que cobriu</div><div class="info-v">CAIS Campinas</div></div>
+  </div>
+  <div class="aviso">📋 Esta ficha pode ser enviada à unidade de origem do profissional para fins de declaração / acerto de horas.</div>
+  <div class="total-box">
+    <div><div class="total-label">Total Estimado BRUTO — ${MP[mes]} ${ano}</div>
+      <div style="font-size:7px;margin-top:1px;opacity:.85">Valores brutos · sem descontos</div></div>
+    <div class="total-v">${fmtMoeda(x.totalValor)}</div>
+  </div>
+  <div class="sec">Detalhamento dos Plantões Cobertos</div>
+  <table>
+    <thead><tr><th>Data</th><th>Horário / Função</th><th>Área</th><th class="c">Horas</th><th class="c">Tipo</th><th class="c">Período</th><th style="text-align:right">Valor Est. (bruto)</th></tr></thead>
+    <tbody>${ptsRows}</tbody>
+    <tfoot><tr>
+      <td colspan="3">TOTAL</td>
+      <td style="text-align:center">${x.totalH}h</td>
+      <td></td><td></td>
+      <td style="text-align:right">${fmtMoeda(x.totalValor)}</td>
+    </tr></tfoot>
+  </table>
+  <div class="sign">
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">${med.n}</div>
+      <div class="sign-sub">CRM ${med.c} · ${med.unidade||'Externo'}</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">${nomeGestorPdf}</div>
+      <div class="sign-sub">Gestor de Escala${crmGestorPdf?' · CRM '+crmGestorPdf:''} · CAIS Campinas</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+  </div>
+  <div class="footer">
+    <span>CAIS Campinas · Ficha de Plantão Externo · ${MP[mes]} ${ano}</span>
+    <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+  </body></html>`);
+  w.document.close();setTimeout(()=>w.print(),500);
+}
+
+// ══ PDF GERAL DOS EXTERNOS DO MÊS — A4 PAISAGEM ══
+function pdfExternosGeral(){
+  const lista=coletarExternosMes(relMes,relAno);
+  if(!lista.length){showToast('Nenhum externo no mês',true);return}
+  const totalH=lista.reduce((s,x)=>s+x.totalH,0);
+  const totalV=lista.reduce((s,x)=>s+x.totalValor,0);
+  const totalP=lista.reduce((s,x)=>s+x.plantoes.length,0);
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:'Tiago Resende Telles',c:28691};
+  const nomeGestorPdf=gestorLogin.n||'Gestor de Escala';
+  const crmGestorPdf=gestorLogin.c||'';
+
+  const rows=lista.map(x=>{
+    const cat=(x.med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+    return `<tr>
+      <td style="font-weight:700">${x.med.n}</td>
+      <td style="text-align:center;font-family:monospace">${x.med.c}</td>
+      <td>${x.med.unidade||'—'}</td>
+      <td style="text-align:center;font-size:7.5px">${cat}</td>
+      <td style="text-align:center">${x.plantoes.length}</td>
+      <td style="text-align:center;font-weight:700">${x.totalH}h</td>
+      <td style="text-align:right;font-weight:700;color:#166534">${fmtMoeda(x.totalValor)}</td>
+    </tr>`;
+  }).join('');
+
+  const w=window.open('','_blank');
+  if(!w){showToast('Permita pop-ups para exportar PDF',true);return}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Externos — ${MP[relMes]} ${relAno}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff}
+    @page{size:A4 landscape;margin:8mm}
+    .h{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
+    .h-title{font-size:14px;font-weight:800}
+    .h-sub{font-size:9px;opacity:.9;margin-top:1px}
+    .h-right{font-size:8px;text-align:right}
+    .res-bar{background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:9px}
+    .res-item{font-size:8px}
+    .res-l{color:#6b21a8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
+    .res-v{color:#1a1a2e;font-weight:800;font-size:14px;margin-top:2px;font-family:'Consolas',monospace}
+    table{width:100%;border-collapse:collapse;font-size:8.5px}
+    th{background:#1f0a4d;color:#fff;padding:5px 7px;text-align:left;font-weight:700;font-size:8px;border:1px solid #1f0a4d}
+    td{padding:4px 7px;border:1px solid #e5e7eb;background:#fff}
+    tr:nth-child(even) td{background:#faf5ff}
+    tfoot td{background:#1f0a4d!important;color:#fff!important;font-weight:800;font-size:9px}
+    .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:18px}
+    .sign-box{text-align:center}
+    .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:30px}
+    .sign-label{font-weight:700;font-size:9px}
+    .sign-sub{font-size:7.5px;color:#6b7280;margin-top:1px}
+    .footer{margin-top:12px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;color:#6b7280;font-size:7.5px}
+  </style></head><body>
+  <div class="h">
+    <div><div class="h-title">🏥 Profissionais Externos — CAIS Campinas</div>
+      <div class="h-sub">${MP[relMes]} ${relAno} · Relatório Consolidado</div></div>
+    <div class="h-right">Gerado: ${new Date().toLocaleString('pt-BR')}<br>v16</div>
+  </div>
+  <div class="res-bar">
+    <div class="res-item"><div class="res-l">Profissionais Externos</div><div class="res-v">${lista.length}</div></div>
+    <div class="res-item"><div class="res-l">Plantões Cobertos</div><div class="res-v">${totalP}</div></div>
+    <div class="res-item"><div class="res-l">Total de Horas</div><div class="res-v">${totalH}h</div></div>
+    <div class="res-item"><div class="res-l">Total Estimado (BRUTO)</div><div class="res-v" style="color:#166534">${fmtMoeda(totalV)}</div></div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Profissional</th><th style="text-align:center">CRM</th><th>Unidade de Origem</th>
+      <th style="text-align:center">Categoria</th><th style="text-align:center">Plantões</th>
+      <th style="text-align:center">Horas</th><th style="text-align:right">Valor Est. (bruto)</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr>
+      <td colspan="4">TOTAL — ${lista.length} profissionais</td>
+      <td style="text-align:center">${totalP}</td>
+      <td style="text-align:center">${totalH}h</td>
+      <td style="text-align:right">${fmtMoeda(totalV)}</td>
+    </tr></tfoot>
+  </table>
+  <div class="sign">
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">${nomeGestorPdf}</div>
+      <div class="sign-sub">Gestor de Escala${crmGestorPdf?' · CRM '+crmGestorPdf:''} · CAIS Campinas</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">Coordenador de Saúde</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+  </div>
+  <div class="footer">
+    <span>CAIS Campinas · Externos · ${MP[relMes]} ${relAno}</span>
+    <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+  </body></html>`);
+  w.document.close();setTimeout(()=>w.print(),500);
+}
+
+// ══ EXCEL DOS EXTERNOS DO MÊS ══
+function exportXLSXExternos(){
+  if(typeof XLSX==='undefined'){showToast('Biblioteca Excel não carregada',true);return}
+  const lista=coletarExternosMes(relMes,relAno);
+  if(!lista.length){showToast('Nenhum externo no mês',true);return}
+  const wb=XLSX.utils.book_new();
+  // Aba 1: resumo
+  const resumoRows=[
+    ['Profissional','CRM','Unidade de Origem','Categoria','Total Plantões','Total Horas','Valor Est. (bruto)','Declaração Enviada']
+  ];
+  lista.forEach(x=>{
+    const cat=(x.med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+    const decKey=x.med.c+'-'+relMes+'-'+relAno;
+    const dec=DECLARACOES[decKey]&&DECLARACOES[decKey].enviada?'Sim':'Não';
+    resumoRows.push([x.med.n,x.med.c,x.med.unidade||'',cat,x.plantoes.length,x.totalH,x.totalValor,dec]);
+  });
+  resumoRows.push([]);
+  resumoRows.push(['TOTAL','','','',
+    lista.reduce((s,x)=>s+x.plantoes.length,0),
+    lista.reduce((s,x)=>s+x.totalH,0),
+    lista.reduce((s,x)=>s+x.totalValor,0),''
+  ]);
+  const ws1=XLSX.utils.aoa_to_sheet(resumoRows);
+  ws1['!cols']=[{wch:38},{wch:10},{wch:28},{wch:14},{wch:9},{wch:9},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Resumo');
+  // Aba 2: detalhado
+  const detRows=[['Profissional','CRM','Unidade','Data','Turno','Área','Horas','Tipo','Período','Valor (bruto)']];
+  lista.forEach(x=>{
+    x.plantoes.forEach(p=>{
+      detRows.push([
+        x.med.n,x.med.c,x.med.unidade||'',
+        p.data,p.turno,p.area||'',p.h,
+        p.fds?'FDS':'DDS',p.not?'NOT':'DIA',p.valor||0
+      ]);
+    });
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(detRows);
+  ws2['!cols']=[{wch:32},{wch:9},{wch:24},{wch:12},{wch:30},{wch:10},{wch:7},{wch:7},{wch:9},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Detalhado');
+  XLSX.writeFile(wb,`Externos_CAIS_${MP[relMes]}_${relAno}.xlsx`);
+  showToast('Excel dos externos gerado!');
+}
 
 // ══ PDF ESCALA DO MÊS — A4 PAISAGEM ══
 function pdfEscala(){
@@ -5095,11 +5821,14 @@ function pdfRelatorio(){
       <div class="stat"><div class="stat-l">Folha Est.</div><div class="stat-v" style="font-size:10px;color:#166534">${fmtMoeda(totFin)}</div></div>
     </div>
     <div class="preco-box">
-      <div style="font-size:6.5px;font-weight:800;color:#1a3a5c;margin-bottom:2px">VALORES LÍQUIDOS</div>
-      <div class="preco-item"><div class="preco-l">Porta Seg–Sex</div><div class="preco-v">${fmtMoeda(PRECO.CM_DU)}/h</div></div>
-      <div class="preco-item"><div class="preco-l">Porta Sáb–Dom</div><div class="preco-v">${fmtMoeda(PRECO.CM_FDS)}/h</div></div>
-      <div class="preco-item"><div class="preco-l">SV+ENF Seg–Sex</div><div class="preco-v">${fmtMoeda(PRECO.SV_DU)}/h</div></div>
-      <div class="preco-item"><div class="preco-l">SV+ENF Sáb–Dom</div><div class="preco-v">${fmtMoeda(PRECO.SV_FDS)}/h</div></div>
+      <div style="font-size:6.5px;font-weight:800;color:#1a3a5c;margin-bottom:2px">VALORES BRUTOS · GENERALISTA</div>
+      <div class="preco-item"><div class="preco-l">Porta Seg–Sex</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|CM_PED_APOIO|UTIL']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">Porta Sáb–Dom</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|CM_PED_APOIO|FDS']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">SV+ENF Seg–Sex</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|SV_ENF|UTIL']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">SV+ENF Sáb–Dom</div><div class="preco-v">${fmtMoeda(VALORES['GENERALISTA|SV_ENF|FDS']||0)}/h</div></div>
+      <div style="font-size:6.5px;font-weight:800;color:#1a3a5c;margin:3px 0 2px">PEDIATRA RQE</div>
+      <div class="preco-item"><div class="preco-l">Porta Seg–Sex</div><div class="preco-v">${fmtMoeda(VALORES['PEDIATRA_RQE|CM_PED_APOIO|UTIL']||0)}/h</div></div>
+      <div class="preco-item"><div class="preco-l">Porta Sáb–Dom</div><div class="preco-v">${fmtMoeda(VALORES['PEDIATRA_RQE|CM_PED_APOIO|FDS']||0)}/h</div></div>
     </div>
   </div>
   <table>
@@ -5107,7 +5836,7 @@ function pdfRelatorio(){
       <th style="min-width:130px">Profissional</th><th>CRM</th><th>Áreas no Mês</th>
       <th class="c">H.DDS<br>Porta</th><th class="c">H.FDS<br>Porta</th>
       <th class="c">H.DDS<br>SV+ENF</th><th class="c">H.FDS<br>SV+ENF</th>
-      <th class="c">Total<br>Horas</th><th style="text-align:right">Valor Est.</th>
+      <th class="c">Total<br>Horas</th><th style="text-align:right">Valor Est. (bruto)</th>
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr>
@@ -5492,18 +6221,27 @@ async function restaurarSessao(){
 initLogins();
 populaLogin();
 async function bootApp(){
-  initSidebar();
-  await carregarSupabase();
-  const restaurou=await restaurarSessao();
-  // Esconder spinner após carregar tudo
-  const boot=document.getElementById('screen-boot');
-  if(boot)boot.style.display='none';
-  if(restaurou){
-    renderAll();
-    aplicarPerfil(curUser.c);
-  } else {
-    // Não havia sessão — mostrar login
-    document.getElementById('screen-login').style.display='flex';
+  try {
+    initSidebar();
+    await carregarSupabase();
+    const restaurou=await restaurarSessao();
+    // Esconder spinner após carregar tudo (sempre)
+    const boot=document.getElementById('screen-boot');
+    if(boot)boot.style.display='none';
+    if(restaurou){
+      try{renderAll();}catch(e){console.error('renderAll falhou:',e);}
+      try{aplicarPerfil(curUser.c);}catch(e){console.error('aplicarPerfil falhou:',e);}
+    } else {
+      // Não havia sessão — mostrar login
+      document.getElementById('screen-login').style.display='flex';
+    }
+  } catch(e) {
+    // Mesmo com erro fatal, esconde o spinner e mostra mensagem
+    console.error('bootApp ERRO FATAL:',e);
+    const boot=document.getElementById('screen-boot');
+    if(boot){
+      boot.innerHTML='<div style="text-align:center;padding:30px"><div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:14px;color:#b91c1c;font-weight:700">Erro ao iniciar o app</div><div style="font-size:11px;color:#6b7280;margin-top:6px;max-width:380px;line-height:1.5">'+(e.message||e)+'</div><button onclick="location.reload()" style="margin-top:14px;padding:8px 16px;background:#2563d4;color:#fff;border:0;border-radius:6px;font-size:12px;cursor:pointer">Recarregar</button></div>';
+    }
   }
 }
 document.addEventListener('DOMContentLoaded',bootApp);
