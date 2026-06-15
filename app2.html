@@ -502,26 +502,14 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="sg" style="margin-bottom:12px">
           <div class="sc"><div class="sl">Plantões no Mês</div><div class="sv" id="d-plant">—</div><div class="ss" id="d-plant-s"></div></div>
           <div class="sc"><div class="sl">Total de Horas</div><div class="sv" id="d-horas">—</div><div class="ss" id="d-horas-s"></div></div>
-          <div class="sc"><div class="sl">Cobertura</div><div class="sv" id="d-cob" style="color:var(--green)">—</div><div class="ss" id="d-cob-s"></div></div>
           <div class="sc"><div class="sl">Profissionais Escalados</div><div class="sv" id="d-prof-esc">—</div><div class="ss" id="d-prof-esc-s"></div></div>
+          <div class="sc"><div class="sl">Vagas em Aberto</div><div class="sv" id="d-vagas" style="color:var(--amber)">—</div><div class="ss">Plantões sem profissional</div></div>
         </div>
 
         <!-- LINHA 3: Financeiro -->
         <div class="card" style="margin-bottom:12px">
           <div class="ct">💰 Financeiro do Mês</div>
           <div id="d-fin" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px"></div>
-        </div>
-
-        <!-- LINHA 4: Hoje e próximos dias -->
-        <div class="two-col" style="margin-bottom:12px">
-          <div class="card">
-            <div class="ct">📅 Hoje (<span id="d-hoje-data" style="font-weight:400;color:var(--text2)"></span>)</div>
-            <div id="d-hoje"></div>
-          </div>
-          <div class="card">
-            <div class="ct">🔜 Próximos 7 dias</div>
-            <div id="d-prox7"></div>
-          </div>
         </div>
 
         <!-- LINHA 5: Visão de equipe -->
@@ -1275,6 +1263,9 @@ const APP_VERSION='2026.06.10.01';
 const MP=['','JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
 const MA=['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 const DA=['SEG','TER','QUA','QUI','SEX','SAB','DOM'];
+// Mapa global de classes CSS de chip por área (usado em vários renders)
+const aCC={'SV+ENF':'ch-sv','CM':'ch-cm','PED':'ch-ped','APOIO':'ch-apo'};
+const ac=aCC;// alias para compatibilidade
 const DN=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO','DOMINGO'];
 const JTC={0:6,1:0,2:1,3:2,4:3,5:4,6:5};
 const REF=new Date(2024,0,1);
@@ -4167,7 +4158,7 @@ function _renderDashboardImpl(){
       if(!v||v.trim()==='')vagasVazias++;
     }
   }
-  const cobPct=vagasTotais>0?Math.round(((vagasTotais-vagasVazias)/vagasTotais)*100):0;
+  const cobPct=0;// removido do dashboard a pedido do usuário (era % cobertura)
 
   // Declarações pendentes
   const externosNoMes=coletarExternosMes(mesMes,mesAno);
@@ -4222,13 +4213,14 @@ function _renderDashboardImpl(){
   document.getElementById('d-plant-s').textContent=`${todosPts.filter(p=>!p.fds).length} dias úteis · ${todosPts.filter(p=>p.fds).length} FDS`;
   document.getElementById('d-horas').textContent=totalH+'h';
   document.getElementById('d-horas-s').textContent=`${todosPts.filter(p=>!p.not).reduce((s,p)=>s+p.h,0)}h diurnas · ${todosPts.filter(p=>p.not).reduce((s,p)=>s+p.h,0)}h noturnas`;
-  const corCob=cobPct>=95?'var(--green)':cobPct>=80?'var(--amber)':'var(--red)';
-  document.getElementById('d-cob').textContent=cobPct+'%';
-  document.getElementById('d-cob').style.color=corCob;
-  document.getElementById('d-cob-s').textContent=vagasVazias>0?`${vagasVazias} vagas em aberto`:'Escala completa';
   const crmsEscalados=new Set(todosPts.map(p=>p.crm));
   document.getElementById('d-prof-esc').textContent=crmsEscalados.size;
   document.getElementById('d-prof-esc-s').textContent=`${internos.length} no quadro`;
+  const elVagas=document.getElementById('d-vagas');
+  if(elVagas){
+    elVagas.textContent=vagasVazias;
+    elVagas.style.color=vagasVazias===0?'var(--green)':(vagasVazias<10?'var(--amber)':'var(--red)');
+  }
 
   // ─── LINHA 3: FINANCEIRO ───
   let custoTotal=0,custoGen=0,custoPed=0,custoExt=0,custoEF=0,hEF=0;
@@ -4266,38 +4258,6 @@ function _renderDashboardImpl(){
       <div style="font-size:18px;font-weight:800;font-family:var(--mono);color:${c.cor};margin-top:2px">${c.val}</div>
       <div style="font-size:10px;color:var(--text3);margin-top:2px">${c.sub}</div>
     </div>`).join('');
-
-  // ─── LINHA 4: HOJE E PRÓXIMOS 7 DIAS ───
-  const hj=hoje();
-  document.getElementById('d-hoje-data').textContent=fmtData(hj);
-  const ptsHoje=todosPts.filter(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d.getTime()===hj.getTime();});
-  document.getElementById('d-hoje').innerHTML=ptsHoje.length?
-    ptsHoje.map(p=>{
-      const med=MEDICOS.find(m=>m.c===p.crm);
-      return `<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--bg3);border-radius:6px;margin-bottom:5px">
-        <div style="font-size:18px">${p.not?'🌙':'🌅'}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${med?nomeCurto(med.n):'?'}</div>
-          <div style="font-size:10.5px;color:var(--text2)">${p.turno}</div>
-        </div>
-        <span class="${aCC[p.area]||'ch-apo'}" style="font-size:10px">${p.area}</span>
-      </div>`;
-    }).join(''):
-    '<div style="color:var(--text3);font-size:12px;padding:8px 0;text-align:center">Sem plantões hoje</div>';
-
-  // Próximos 7 dias
-  const prox7=todosPts.filter(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);const diff=(d-hj)/86400000;return diff>0&&diff<=7;}).sort((a,b)=>a.dt-b.dt);
-  const prox7ByDay={};
-  prox7.forEach(p=>{const k=p.dia;if(!prox7ByDay[k])prox7ByDay[k]=[];prox7ByDay[k].push(p);});
-  document.getElementById('d-prox7').innerHTML=Object.keys(prox7ByDay).length?
-    Object.entries(prox7ByDay).slice(0,4).map(([dia,plts])=>{
-      const d=new Date(plts[0].dt);
-      return `<div style="padding:6px 10px;background:var(--bg3);border-radius:6px;margin-bottom:5px">
-        <div style="font-size:11px;font-weight:700;color:var(--blue)">${diaS(d)} ${dia.toString().padStart(2,'0')}/${mesMes.toString().padStart(2,'0')} — ${plts.length} plantão(ões)</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:2px">${plts.length>3?plts.slice(0,3).map(p=>nomeCurto((MEDICOS.find(m=>m.c===p.crm)||{}).n||'?')).join(', ')+'...':plts.map(p=>nomeCurto((MEDICOS.find(m=>m.c===p.crm)||{}).n||'?')).join(', ')}</div>
-      </div>`;
-    }).join(''):
-    '<div style="color:var(--text3);font-size:12px;padding:8px 0;text-align:center">Sem plantões nos próximos 7 dias</div>';
 
   // ─── LINHA 5: VISÃO DE EQUIPE ───
   // Stats por área
