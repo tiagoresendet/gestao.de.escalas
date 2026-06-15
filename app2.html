@@ -433,7 +433,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div class="tb-sep"></div>
     <span class="tb-month" id="tb-month"></span>
     <span class="tb-date" id="tb-date"></span>
-    <span class="tb-date" id="db-status" style="font-size:10px;margin-left:4px"></span>
+    <button id="db-status" type="button" onclick="if(!dbCarregando)recarregarTudo();" title="Sincronizar com o servidor agora"
+      style="background:transparent;border:1px solid transparent;cursor:pointer;font-size:10px;margin-left:4px;padding:4px 9px;border-radius:6px;color:var(--text2);font-weight:600;display:inline-flex;align-items:center;gap:4px;min-height:28px;transition:all .15s"
+      onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--border2)'"
+      onmouseout="this.style.background='transparent';this.style.borderColor='transparent'"></button>
     <div class="tb-r">
       <div style="display:flex;align-items:center;gap:7px">
         <div style="position:relative;display:flex;align-items:center;gap:6px">
@@ -797,7 +800,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
               <span class="mc-l" id="mc-meu"></span>
               <button class="mc-b" onclick="mudarMeuMes(1)">›</button>
             </div>
-            <button class="btn btn-a btn-sm" onclick="pdfPlantonista(curUser.c,meuMes,meuAno)">📄 Meu PDF</button>
+            <button class="btn btn-a btn-sm" onclick="pdfPlantonista(curUser.c,meuMes,meuAno)">📄 Relatório Mensal</button>
             <button class="btn btn-p btn-sm" onclick="abrirMoTroca()">⇄ Trocar</button>
           </div>
         </div>
@@ -1456,13 +1459,10 @@ function mostrarStatusDB(ok,msg){
   if(!el)return;
   if(ok){
     ultimaSync=Date.now();
-    el.textContent='🟢 '+msg;
+    el.innerHTML='🟢 '+msg+' <span style="opacity:.7">⟳</span>';
     el.style.color='var(--green)';
-    el.style.cursor='pointer';
-    el.title='Clique para sincronizar agora';
-    el.onclick=()=>{if(!dbCarregando)recarregarTudo();};
   } else {
-    el.textContent='🔴 '+msg;
+    el.innerHTML='🔴 '+msg+' <span style="opacity:.7">⟳</span>';
     el.style.color='var(--red)';
   }
 }
@@ -1477,7 +1477,7 @@ function atualizarTextoSync(){
   else if(seg<120){txt=`🟢 Sincronizado há ${seg}s`;cor='var(--green)';}
   else if(seg<300){txt=`🟡 Há ${Math.floor(seg/60)}min`;cor='var(--amber)';}
   else {txt=`🔴 Há ${Math.floor(seg/60)}min`;cor='var(--red)';}
-  el.textContent=txt;
+  el.innerHTML=txt+' <span style="opacity:.7">⟳</span>';
   el.style.color=cor;
 }
 setInterval(atualizarTextoSync,15000);
@@ -4024,18 +4024,26 @@ function renderMeusPlantoes(){
     '<div class="tipo-c" style="grid-column:1/-1;text-align:center"><div class="tipo-l">Sem plantões</div></div>';
 
   // FINANCEIRO
-  const f=st.fin;const cats=[
-    {key:'CM_DU',label:'PORTA (CM/PED)',sub:'Seg–Sex',cls:'fin-cm',cor:'var(--blue)'},
-    {key:'CM_FDS',label:'PORTA (CM/PED)',sub:'Sáb–Dom',cls:'fin-cm',cor:'var(--blue)'},
-    {key:'SV_DU',label:'SV+ENF',sub:'Seg–Sex',cls:'fin-sv',cor:'var(--red)'},
-    {key:'SV_FDS',label:'SV+ENF',sub:'Sáb–Dom',cls:'fin-sv',cor:'var(--red)'},
+  const f=st.fin;
+  // Categoria do plantonista para mostrar taxas corretas
+  const medDash=MEDICOS.find(m=>m.c===crm);
+  const catDash=medDash?(medDash.categoria||'GENERALISTA'):'GENERALISTA';
+  const taxaPortaUtil=VALORES[`${catDash}|CM_PED_APOIO|UTIL`]||0;
+  const taxaPortaFds=VALORES[`${catDash}|CM_PED_APOIO|FDS`]||0;
+  const taxaSvUtil=catDash==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|UTIL']||0):0;
+  const taxaSvFds=catDash==='GENERALISTA'?(VALORES['GENERALISTA|SV_ENF|FDS']||0):0;
+  const cats=[
+    {key:'CM_DU',label:'PORTA (CM/PED)',sub:'Seg–Sex',cls:'fin-cm',cor:'var(--blue)',rate:taxaPortaUtil,rateLabel:fmtMoeda(taxaPortaUtil)+'/hora'},
+    {key:'CM_FDS',label:'PORTA (CM/PED)',sub:'Sáb–Dom',cls:'fin-cm',cor:'var(--blue)',rate:taxaPortaFds,rateLabel:fmtMoeda(taxaPortaFds)+'/hora'},
+    {key:'SV_DU',label:'SV+ENF',sub:'Seg–Sex',cls:'fin-sv',cor:'var(--red)',rate:taxaSvUtil,rateLabel:catDash==='GENERALISTA'?(fmtMoeda(taxaSvUtil)+'/hora'):'n/a'},
+    {key:'SV_FDS',label:'SV+ENF',sub:'Sáb–Dom',cls:'fin-sv',cor:'var(--red)',rate:taxaSvFds,rateLabel:catDash==='GENERALISTA'?(fmtMoeda(taxaSvFds)+'/hora'):'n/a'},
   ];
   document.getElementById('fin-grid').innerHTML=cats.map(cat=>`
     <div class="fin-c ${cat.cls}">
       <div class="fin-label" style="color:${cat.cor}">${cat.label}<br><span style="font-weight:400;font-size:9px;color:var(--text2)">${cat.sub}</span></div>
       <div class="fin-horas" style="color:${cat.cor}">${f[cat.key].h}h</div>
       <div class="fin-valor" style="color:${cat.cor}">${f[cat.key].v>0?fmtMoeda(f[cat.key].v):'R$ 0,00'}</div>
-      <div class="fin-det">${fmtMoeda(getPreco(cat.key.startsWith('SV')?'SV+ENF':'CM',cat.key.endsWith('FDS')))}/hora</div>
+      <div class="fin-det">${cat.rateLabel}</div>
     </div>`).join('')+
     `<div class="fin-c" style="background:var(--green-bg);border:1px solid rgba(45,201,122,.2);grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div>
@@ -4057,7 +4065,7 @@ function renderMeusPlantoes(){
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
         <span class="${aCC[p.area]||'ch-apo'}">${p.area}</span>
         <span class="${p.not?'ch-not':'ch-dia'}">${p.not?'NOT':'DIA'}</span>
-        <div style="font-size:10px;color:var(--green);font-weight:600">${p.area!=='APOIO'?fmtMoeda(p.h*getPreco(p.area,p.fds)):''}</div>
+        <div style="font-size:10px;color:var(--green);font-weight:600">${(()=>{const v=valorDoPlantao(p);return v>0?fmtMoeda(v):'';})()}</div>
       </div>
       ${tipo==='prox'?`<button class="btn btn-g btn-xs" onclick='abrirMoTrocaEsp(${p.dia},"${p.turno}","${p.area}")'>Trocar</button>`:''}
     </div>`;
@@ -5110,6 +5118,10 @@ function pdfPlantonista(crm,mes,ano){
   const hDuSV=f.SV_DU.h;const hFdsSV=f.SV_FDS.h;
   const vDuPorta=f.CM_DU.v;const vFdsPorta=f.CM_FDS.v;
   const vDuSV=f.SV_DU.v;const vFdsSV=f.SV_FDS.v;
+  // Buscar o GESTOR real do sistema (não o usuário logado, que pode ser plantonista)
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:'Tiago Resende Telles',c:28691};
+  const nomeGestorPdf=gestorLogin.n||'Gestor de Escala';
+  const crmGestorPdf=gestorLogin.c||'';
   const ptsRows=pts.map(p=>{
     const v=valorDoPlantao(p);
     return `
@@ -5234,8 +5246,8 @@ function pdfPlantonista(crm,mes,ano){
       <div class="sign-sub">CRM ${med.c} · ${vinc}</div>
       <div class="sign-sub">Data: ___/___/______</div></div>
     <div class="sign-box"><div class="sign-line"></div>
-      <div class="sign-label">${curUser.n}</div>
-      <div class="sign-sub">Gestor de Escala · CRM ${curUser.c}</div>
+      <div class="sign-label">${nomeGestorPdf}</div>
+      <div class="sign-sub">Gestor de Escala${crmGestorPdf?' · CRM '+crmGestorPdf:''}</div>
       <div class="sign-sub">Data: ___/___/______</div></div>
   </div>
   <div class="footer">
