@@ -2,6 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Kos App — Gestão de Plantões</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -437,6 +440,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       style="background:transparent;border:1px solid transparent;cursor:pointer;font-size:10px;margin-left:4px;padding:4px 9px;border-radius:6px;color:var(--text2);font-weight:600;display:inline-flex;align-items:center;gap:4px;min-height:28px;transition:all .15s"
       onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--border2)'"
       onmouseout="this.style.background='transparent';this.style.borderColor='transparent'"></button>
+    <span id="app-version-tag" style="font-size:9px;color:var(--text3);margin-left:6px;font-family:var(--mono);opacity:.7" title="Versão do app"></span>
     <div class="tb-r">
       <div style="display:flex;align-items:center;gap:7px">
         <div style="position:relative;display:flex;align-items:center;gap:6px">
@@ -1238,20 +1242,34 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.10.01';
+const APP_VERSION='2026.06.17.01';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
     const v=localStorage.getItem(KEY);
+
+    // 1. Garantir que a URL tem ?v=VERSAO para forçar bypass de cache
+    // (assim toda navegação interna no app traz a versão certa)
+    const urlVer=new URLSearchParams(location.search).get('v');
+    if(urlVer!==APP_VERSION){
+      const url=new URL(location.href);
+      url.searchParams.set('v',APP_VERSION);
+      // Substitui SEM reload se o navegador puder
+      try{history.replaceState(null,'',url.toString());}catch(_){}
+    }
+
+    // 2. Se a versão local guardada está velha, limpa tudo e força reload limpo
     if(v&&v!==APP_VERSION){
       console.log('[Versão] Local:',v,'→ Nova:',APP_VERSION,'— atualizando...');
-      // Preserva apenas a sessão (login) — limpa o resto
       const sess=localStorage.getItem('cais_session_v1');
       localStorage.clear();
       if(sess)localStorage.setItem('cais_session_v1',sess);
       localStorage.setItem(KEY,APP_VERSION);
-      // Força reload sem cache
-      location.reload();
+      // Reload com query param garante bypass de cache
+      const url=new URL(location.href);
+      url.searchParams.set('v',APP_VERSION);
+      url.searchParams.set('t',Date.now());// timestamp único também
+      location.replace(url.toString());
       return;
     }
     localStorage.setItem(KEY,APP_VERSION);
@@ -6222,6 +6240,9 @@ initLogins();
 populaLogin();
 async function bootApp(){
   try {
+    // Mostrar versão visível
+    const vTag=document.getElementById('app-version-tag');
+    if(vTag)vTag.textContent='v'+APP_VERSION;
     initSidebar();
     await carregarSupabase();
     const restaurou=await restaurarSessao();
