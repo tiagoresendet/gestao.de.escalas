@@ -492,7 +492,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ph">
           <div><div class="pt">Dashboard</div><div class="ps" id="dash-sub"></div></div>
           <div class="ph-r">
-            <button class="btn btn-g btn-sm" onclick="gerarRelProfModal()">📋 Relatório por Profissional</button>
+            <button class="btn btn-p btn-sm" onclick="abrirModalRelMensal()">📋 Relatório Mensal</button>
           </div>
         </div>
 
@@ -521,22 +521,19 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="d-area-stats"></div>
         <div class="two-col" style="margin-bottom:12px">
           <div class="card"><div class="ct">🏆 Top Plantonistas (horas)</div><div id="d-top"></div></div>
-          <div class="card"><div class="ct">⚠️ Sem plantões no mês</div><div id="d-sem"></div></div>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div class="ct" style="margin:0">⏳ Trocas Pendentes</div>
+              <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
+            </div>
+            <div id="d-tr-list"></div>
+          </div>
         </div>
 
         <!-- Externos -->
         <div class="card" style="margin-bottom:12px">
           <div class="ct">🔄 Plantonistas Externos no Mês</div>
           <div id="d-externos"></div>
-        </div>
-
-        <!-- Trocas pendentes -->
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div class="ct" style="margin:0">⏳ Trocas Pendentes</div>
-            <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
-          </div>
-          <div id="d-tr-list"></div>
         </div>
       </div>
 
@@ -777,7 +774,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <!-- Abas: Internos / Externos -->
         <div class="filtros" style="margin-bottom:10px">
           <button class="f-b active" id="btn-rel-int" onclick="mudarAbaRel('int',this)">🏥 Internos</button>
-          <button class="f-b" id="btn-rel-ext" onclick="mudarAbaRel('ext',this)">🔄 Externos no Campinas</button>
+          <button class="f-b" id="btn-rel-ext" onclick="mudarAbaRel('ext',this)">🔄 Externos</button>
         </div>
         <!-- Painel internos -->
         <div id="rel-painel-int">
@@ -1070,6 +1067,57 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 </div>
 
 <!-- Modal: Relatório por profissional (gestor) -->
+<div class="mo" id="mo-rel-mensal">
+  <div class="m-box" style="max-width:480px">
+    <div class="m-t">📋 Relatório Mensal</div>
+    <div class="m-s">Selecione o que deseja incluir no relatório</div>
+
+    <div class="fg"><label class="fl">Mês</label>
+      <select class="fs" id="rm-mes">
+        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+        <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+        <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Ano</label><input type="number" class="fi" id="rm-ano" min="2024" max="2030"></div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Categorias a incluir</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-cr" checked style="width:15px;height:15px"> Internos Credenciados (CR Generalistas)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-rqe" checked style="width:15px;height:15px"> Pediatras RQE
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-ext" checked style="width:15px;height:15px"> Plantonistas Externos
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-ef" checked style="width:15px;height:15px"> Efetivos (EF — via folha)
+      </label>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Opções de exibição</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-somente" checked style="width:15px;height:15px"> Apenas profissionais com plantões no mês
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-valores" checked style="width:15px;height:15px"> Incluir valores financeiros (R$)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-detalhe" style="width:15px;height:15px"> Incluir detalhamento dos plantões (data, turno)
+      </label>
+    </div>
+
+    <div class="m-bt">
+      <button class="btn btn-g" onclick="fecharMo('mo-rel-mensal')">Cancelar</button>
+      <button class="btn btn-p" onclick="gerarRelMensalFiltrado()">📄 Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mo-rel-prof">
   <div class="m-box">
     <div class="m-t">📋 Relatório por Profissional</div>
@@ -1242,7 +1290,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.17.01';
+const APP_VERSION='2026.06.18.01';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -4187,34 +4235,98 @@ function _renderDashboardImpl(){
   });
 
   // ─── LINHA 1: ALERTAS ───
+  // Coletar aniversariantes do mês (precisa do campo data_nascimento — vai vir vazio até cadastrarem)
+  const aniversariantes=MEDICOS
+    .filter(m=>m.a!=='GESTOR'&&m.data_nascimento)
+    .map(m=>{
+      const partes=String(m.data_nascimento).split('-');// formato YYYY-MM-DD
+      if(partes.length!==3)return null;
+      const mn=parseInt(partes[1]),dn=parseInt(partes[2]);
+      if(mn!==mesMes)return null;
+      return {n:m.n,dia:dn,med:m};
+    })
+    .filter(Boolean)
+    .sort((a,b)=>a.dia-b.dia);
+
+  // Escala de hoje
+  const hj0=hoje();
+  const ptsHoje=todosPts.filter(p=>{
+    const d=new Date(p.dt);d.setHours(0,0,0,0);
+    return d.getTime()===hj0.getTime();
+  });
+  // Escala de amanhã
+  const amanha=new Date(hj0);amanha.setDate(amanha.getDate()+1);
+  const ptsAmanha=todosPts.filter(p=>{
+    const d=new Date(p.dt);d.setHours(0,0,0,0);
+    return d.getTime()===amanha.getTime();
+  });
+
   const alertas=[];
+
+  // Cards numéricos compactos primeiro
   if(pendList.length>0){
-    alertas.push({icon:'⏳',cor:'#92400e',bg:'#fef3c7',label:'Trocas pendentes',val:pendList.length,
+    alertas.push({tipo:'num',icon:'⏳',cor:'#92400e',bg:'#fef3c7',label:'Trocas pendentes',val:pendList.length,
       sub:'Aguardando aprovação',action:()=>nav(document.querySelector('[data-p=trocas]'))});
   }
-  if(vagasVazias>0){
-    alertas.push({icon:'🕳️',cor:'#991b1b',bg:'#fee2e2',label:'Vagas em branco',val:vagasVazias,
-      sub:'Plantões sem profissional',action:()=>nav(document.querySelector('[data-p=escala]'))});
-  }
   if(decsPend.length>0){
-    alertas.push({icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
+    alertas.push({tipo:'num',icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
       sub:'Externos sem declaração',action:null});
   }
   if(!escPub){
-    alertas.push({icon:'🔒',cor:'#92400e',bg:'#fef3c7',label:'Escala atual',val:'Bloqueada',
+    alertas.push({tipo:'num',icon:'🔒',cor:'#92400e',bg:'#fef3c7',label:'Escala atual',val:'Bloqueada',
       sub:'Ainda não publicada',action:()=>nav(document.querySelector('[data-p=gestao-escalas]'))});
   }
   if(!nMesTemEsc){
-    alertas.push({icon:'📅',cor:'#7c2d12',bg:'#fed7aa',label:`Escala de ${MA[nMes]}/${nAno}`,val:'Não gerada',
+    alertas.push({tipo:'num',icon:'📅',cor:'#7c2d12',bg:'#fed7aa',label:`Escala de ${MA[nMes]}/${nAno}`,val:'Não gerada',
       sub:'Próximo mês ainda vazio',action:()=>nav(document.querySelector('[data-p=gestao-escalas]'))});
   }
+
+  // Cards expansíveis (lista): Aniversariantes / Hoje / Amanhã
+  if(aniversariantes.length>0){
+    alertas.push({tipo:'lista',icon:'🎂',cor:'#9333ea',bg:'#faf5ff',label:`Aniversariantes de ${MA[mesMes]}`,
+      itens:aniversariantes.map(a=>`<div style="padding:3px 0;font-size:11.5px;color:#581c87"><span style="font-weight:700">${nomeCurto(a.n)}</span> <span style="color:#a78bfa;margin-left:6px">${String(a.dia).padStart(2,'0')}/${String(mesMes).padStart(2,'0')}</span></div>`),
+      idExpand:'exp-anive'});
+  }
+  const formatarPlantao=p=>{
+    const med=MEDICOS.find(m=>m.c===p.crm);
+    const nome=med?nomeCurto(med.n):'(vago)';
+    const corA=aCC[p.area]||'ch-apo';
+    return `<div style="padding:3px 0;font-size:11.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="${corA}" style="font-size:9px">${p.area}</span><span style="color:var(--text)">${nome}</span><span style="color:var(--text3);font-size:10px">${p.turno}</span></div>`;
+  };
+  if(ptsHoje.length>0){
+    alertas.push({tipo:'lista',icon:'📅',cor:'#0369a1',bg:'#e0f2fe',label:`Escala de hoje (${fmtData(hj0)})`,
+      itens:ptsHoje.map(formatarPlantao),idExpand:'exp-hoje'});
+  }
+  if(ptsAmanha.length>0){
+    alertas.push({tipo:'lista',icon:'📅',cor:'#0284c7',bg:'#f0f9ff',label:`Escala de amanhã (${fmtData(amanha)})`,
+      itens:ptsAmanha.map(formatarPlantao),idExpand:'exp-amanha'});
+  }
+
   if(alertas.length===0){
-    alertas.push({icon:'✅',cor:'#166534',bg:'#dcfce7',label:'Tudo em ordem',val:'OK',
+    alertas.push({tipo:'num',icon:'✅',cor:'#166534',bg:'#dcfce7',label:'Tudo em ordem',val:'OK',
       sub:'Nenhuma pendência crítica',action:null});
   }
+
   // Guardar ações em variável global temporária para event listener
-  window._dashAlertActions=alertas.map(a=>a.action);
+  window._dashAlertActions=alertas.map(a=>a.action||null);
+  window._dashAlertExp=window._dashAlertExp||{};
   document.getElementById('d-alertas').innerHTML=alertas.map((a,i)=>{
+    if(a.tipo==='lista'){
+      const exp=window._dashAlertExp[a.idExpand]===true;
+      const visivel=exp?a.itens:a.itens.slice(0,5);
+      const sobra=a.itens.length-5;
+      const botao=sobra>0?`<button onclick="window._dashAlertExp['${a.idExpand}']=${!exp};renderDashboard()" style="background:transparent;border:1px solid ${a.cor}55;color:${a.cor};font-size:10px;font-weight:600;padding:4px 9px;border-radius:5px;cursor:pointer;margin-top:6px;width:100%">${exp?'▲ Recolher':`▼ Mostrar todos (${a.itens.length})`}</button>`:'';
+      return `<div style="background:${a.bg};border:1px solid ${a.cor}33;border-radius:8px;padding:10px 12px;grid-column:span 2;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="font-size:20px">${a.icon}</div>
+          <div style="font-size:11px;color:${a.cor};font-weight:700;text-transform:uppercase;letter-spacing:.04em">${a.label}</div>
+          <div style="margin-left:auto;font-size:11px;color:${a.cor}aa;font-weight:600">${a.itens.length}</div>
+        </div>
+        <div>${visivel.join('')}</div>
+        ${botao}
+      </div>`;
+    }
+    // tipo num
     const click=a.action?'cursor:pointer':'';
     const onclick=a.action?`onclick="window._dashAlertActions[${i}]&&window._dashAlertActions[${i}]()"`:'';
     return `<div ${onclick} style="background:${a.bg};border:1px solid ${a.cor}33;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;${click}">
@@ -4324,19 +4436,7 @@ function _renderDashboardImpl(){
     </div>`).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px 0">Nenhum plantão no mês</div>';
 
-  // Sem plantões
-  const semPts=internos.filter(m=>statsProf(m.c,mesMes,mesAno).total===0);
-  const semExpandido=window._semExpandido===true;
-  const semVisible=semExpandido?semPts:semPts.slice(0,5);
-  document.getElementById('d-sem').innerHTML=semPts.length?
-    semVisible.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;margin-bottom:4px">
-      <span style="color:#92400e">⚠️</span>
-      <div style="font-size:12px;color:#78350f;flex:1">${nomeCurto(m.n)}</div>
-      <div style="font-size:10px;color:#92400eaa">CRM ${m.c}</div>
-    </div>`).join('')+(semPts.length>5?`<div style="text-align:center;margin-top:6px"><button onclick="window._semExpandido=${!semExpandido};renderDashboard()" style="background:transparent;border:1px solid var(--border2);color:var(--blue);font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer">${semExpandido?'▲ Recolher':`▼ Mostrar todos (${semPts.length})`}</button></div>`:''):
-    '<div class="al ok"><span>✓</span><div style="font-size:12px;color:var(--text2)">Todos os profissionais têm plantões</div></div>';
-
-  // Trocas pendentes no fim da página
+  // Trocas pendentes
   document.getElementById('d-tr-list').innerHTML=pendList.length?
     pendList.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r2);margin-bottom:5px;flex-wrap:wrap">
       <div class="tr-dot pendente"></div>
@@ -4421,7 +4521,14 @@ async function toggleDeclaracao(crm,mes,ano){
 }
 
 // ══ RELATÓRIO GESTOR ══
-function mudarMesRel(d){relMes+=d;if(relMes>12){relMes=1;relAno++}if(relMes<1){relMes=12;relAno--}document.getElementById('mc-rel').textContent=MP[relMes]+' '+relAno;renderRelatorio(relFiltroAtual)}
+function mudarMesRel(d){
+  relMes+=d;if(relMes>12){relMes=1;relAno++}if(relMes<1){relMes=12;relAno--}
+  document.getElementById('mc-rel').textContent=MP[relMes]+' '+relAno;
+  renderRelatorio(relFiltroAtual);
+  // Se a aba Externos está ativa, recarregar também
+  const btnExt=document.getElementById('btn-rel-ext');
+  if(btnExt&&btnExt.classList.contains('active'))renderRelExterno();
+}
 
 function calcRel(mes,ano){
   return MEDICOS.filter(m=>!m.ext).map(m=>{
@@ -4631,7 +4738,7 @@ function renderRelExterno(){
           <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(totalGeralValor)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-a btn-sm" onclick="pdfExternosGeral()" title="PDF consolidado de todos os externos">📄 PDF Geral</button>
+          <button class="btn btn-p btn-sm" onclick="pdfExternosGeral()" title="Gerar relatório consolidado dos externos">📄 Gerar Relatório</button>
           <button class="btn btn-s btn-sm" onclick="exportXLSXExternos()" title="Excel com os externos do mês">📊 Excel</button>
         </div>
       </div>
@@ -4671,6 +4778,32 @@ function renderRelExterno(){
 }
 
 // Placeholder — função antiga removida (substituída por coletarExternosMes + renderRelExterno acima)
+
+// ══ MODAL RELATÓRIO MENSAL (com filtros) ══
+function abrirModalRelMensal(){
+  document.getElementById('rm-mes').value=mesMes;
+  document.getElementById('rm-ano').value=mesAno;
+  abrirMo('mo-rel-mensal');
+}
+
+function gerarRelMensalFiltrado(){
+  const mes=parseInt(document.getElementById('rm-mes').value);
+  const ano=parseInt(document.getElementById('rm-ano').value);
+  const filtros={
+    cr:document.getElementById('rm-cr').checked,
+    rqe:document.getElementById('rm-rqe').checked,
+    ext:document.getElementById('rm-ext').checked,
+    ef:document.getElementById('rm-ef').checked,
+    somente:document.getElementById('rm-somente').checked,
+    valores:document.getElementById('rm-valores').checked,
+    detalhe:document.getElementById('rm-detalhe').checked
+  };
+  if(!filtros.cr&&!filtros.rqe&&!filtros.ext&&!filtros.ef){
+    showToast('Selecione pelo menos uma categoria',true);return;
+  }
+  fecharMo('mo-rel-mensal');
+  pdfRelMensal(mes,ano,filtros);
+}
 
 // ══ MODAL RELATÓRIO POR PROFISSIONAL ══
 function gerarRelProfModal(){
@@ -5442,26 +5575,26 @@ function pdfFichaExterno(crm){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff}
     @page{size:A4 portrait;margin:8mm}
-    .h{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
+    .h{background:linear-gradient(135deg,#1a3a5c 0%,#2563d4 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
     .h-left{display:flex;align-items:center;gap:8px}
     .h-title{font-size:14px;font-weight:800;letter-spacing:-.01em}
     .h-sub{font-size:9px;opacity:.9;margin-top:1px}
     .h-right{font-size:8px;text-align:right;opacity:.95}
-    .ext-badge{background:#fff;color:#7c3aed;padding:3px 8px;border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.05em}
-    .info-bar{background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;padding:7px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+    .ext-badge{background:#fff;color:#2563d4;padding:3px 8px;border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.05em}
+    .info-bar{background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:7px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
     .info-item{font-size:7.5px}
-    .info-l{color:#6b21a8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:6.5px}
+    .info-l{color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:6.5px}
     .info-v{color:#1a1a2e;font-weight:700;font-size:9px;margin-top:1px}
-    .sec{background:#1f0a4d;color:#fff;padding:4px 9px;font-size:9px;font-weight:700;border-radius:3px;margin:8px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+    .sec{background:#1a3a5c;color:#fff;padding:4px 9px;font-size:9px;font-weight:700;border-radius:3px;margin:8px 0 5px;text-transform:uppercase;letter-spacing:.04em}
     .total-box{background:linear-gradient(135deg,#166534 0%,#15803d 100%);color:#fff;padding:9px 12px;border-radius:5px;display:flex;justify-content:space-between;align-items:center;margin:6px 0}
     .total-label{font-size:8px;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
     .total-v{font-size:18px;font-weight:800;font-family:'Consolas',monospace}
     table{width:100%;border-collapse:collapse;font-size:8px}
-    th{background:#1f0a4d;color:#fff;padding:5px 6px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #1f0a4d}
+    th{background:#1a3a5c;color:#fff;padding:5px 6px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #1a3a5c}
     td{padding:4px 6px;border:1px solid #e5e7eb;background:#fff}
     .c{text-align:center}
-    tr:nth-child(even) td{background:#faf5ff}
-    tfoot td{background:#1f0a4d!important;color:#fff!important;font-weight:800;font-size:8.5px}
+    tr:nth-child(even) td{background:#f0f9ff}
+    tfoot td{background:#1a3a5c!important;color:#fff!important;font-weight:800;font-size:8.5px}
     .sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:18px}
     .sign-box{text-align:center}
     .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:32px}
@@ -5554,19 +5687,19 @@ function pdfExternosGeral(){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff}
     @page{size:A4 landscape;margin:8mm}
-    .h{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
+    .h{background:linear-gradient(135deg,#1a3a5c 0%,#2563d4 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
     .h-title{font-size:14px;font-weight:800}
     .h-sub{font-size:9px;opacity:.9;margin-top:1px}
     .h-right{font-size:8px;text-align:right}
-    .res-bar{background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:9px}
+    .res-bar{background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:9px}
     .res-item{font-size:8px}
-    .res-l{color:#6b21a8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
+    .res-l{color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
     .res-v{color:#1a1a2e;font-weight:800;font-size:14px;margin-top:2px;font-family:'Consolas',monospace}
     table{width:100%;border-collapse:collapse;font-size:8.5px}
-    th{background:#1f0a4d;color:#fff;padding:5px 7px;text-align:left;font-weight:700;font-size:8px;border:1px solid #1f0a4d}
+    th{background:#1a3a5c;color:#fff;padding:5px 7px;text-align:left;font-weight:700;font-size:8px;border:1px solid #1a3a5c}
     td{padding:4px 7px;border:1px solid #e5e7eb;background:#fff}
-    tr:nth-child(even) td{background:#faf5ff}
-    tfoot td{background:#1f0a4d!important;color:#fff!important;font-weight:800;font-size:9px}
+    tr:nth-child(even) td{background:#f0f9ff}
+    tfoot td{background:#1a3a5c!important;color:#fff!important;font-weight:800;font-size:9px}
     .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:18px}
     .sign-box{text-align:center}
     .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:30px}
@@ -5662,32 +5795,56 @@ function exportXLSXExternos(){
 // ══ PDF ESCALA DO MÊS — A4 PAISAGEM ══
 function pdfEscala(){
   const sems=gerarSemanas(mesMes,mesAno);
-  // Nome do gestor logado
-  const nomeGestor=curUser.n||'Gestor de Escala';
-  const crmGestor=curUser.c||'';
-  let tabelasHtml='';
-  sems.forEach((sem,si)=>{
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:curUser.n||'Gestor de Escala',c:curUser.c||''};
+  const nomeGestor=gestorLogin.n;
+  const crmGestor=gestorLogin.c||'';
+  const dataGeracao=new Date().toLocaleString('pt-BR');
+
+  // Cabeçalho que se repete em cada página
+  const headerHtml=(letra)=>`
+    <div class="header">
+      <div>
+        <div class="h-title">🏥 CAIS Campinas — Escala de Plantão</div>
+        <div class="h-sub">${MP[mesMes]} ${mesAno} · <span style="background:${letra==='A'?'#16a34a':'#2563d4'};color:#fff;padding:2px 7px;border-radius:3px;font-weight:700">SEMANA ${letra}</span></div>
+      </div>
+      <div class="h-right">Gerado por: ${nomeGestor}<br>${dataGeracao}</div>
+    </div>
+    <div class="leg">
+      <strong style="font-size:7.5px">LEGENDA:</strong>
+      <div class="leg-item"><div class="leg-dot" style="background:#dc2626"></div>SV+ENF Diurno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#b91c1c"></div>SV+ENF Noturno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#2563eb"></div>CM Diurno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1d4ed8"></div>CM Noturno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#d97706"></div>PED Diurno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#c2410c"></div>PED Noturno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#059669"></div>APOIO</div>
+    </div>
+  `;
+
+  // Tabela de UMA semana
+  const tabelaSemana=(sem,si)=>{
     const cor=sem.letra==='A'?'#166534':'#1d4ed8';
     const mn=Math.min(...Object.values(sem.dias)),mx=Math.max(...Object.values(sem.dias));
-    tabelasHtml+=`<div style="margin-bottom:8px">
-      <div style="font-size:8.5px;font-weight:700;color:${cor};margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em">
-        ● Semana ${si+1} — Ciclo ${sem.letra} · Dias ${mn} a ${mx} de ${MP[mesMes].charAt(0)+MP[mesMes].slice(1).toLowerCase()}
+    let html=`<div style="text-align:center;margin-bottom:8px">
+      <div style="display:inline-block;font-size:11px;font-weight:700;color:${cor};letter-spacing:.05em">
+        ● SEMANA ${si+1} — CICLO ${sem.letra} · DIAS ${mn} A ${mx} DE ${MP[mesMes]}
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:7px">
-        <thead><tr style="background:#1a3a5c">
-          <th style="color:#fff;padding:4px 5px;text-align:left;width:110px;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">HORÁRIO / FUNÇÃO</th>`;
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:7.5px;margin:0 auto">
+      <thead><tr style="background:#1a3a5c">
+        <th style="color:#fff;padding:5px 6px;text-align:left;width:120px;font-size:8px;border-right:1px solid rgba(255,255,255,.2)">HORÁRIO / FUNÇÃO</th>`;
     DA.forEach((ab,i)=>{
       const n=sem.dias[ab];
-      tabelasHtml+=`<th style="color:#fff;padding:4px 3px;text-align:center;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">${DN[i]}<br><span style="font-size:7px;opacity:.7">${n!==undefined?n:''}</span></th>`;
+      html+=`<th style="color:#fff;padding:5px 4px;text-align:center;font-size:8px;border-right:1px solid rgba(255,255,255,.2)">${DN[i]}<br><span style="font-size:7.5px;opacity:.7">${n!==undefined?n:''}</span></th>`;
     });
-    tabelasHtml+=`</tr></thead><tbody>`;
+    html+=`</tr></thead><tbody>`;
     TURNOS.forEach((t,ti)=>{
       const bgRow={'sv-d':'#ffd5d5','sv-n':'#ffc9cc','cm-d':'#e8f0fe','cm-n':'#dbeafe','ped-d':'#fef3c7','ped-n':'#fed7aa','apo-d':'#d1fae5','apo-n':'#bbf7d0'}[t.cls]||'#fff';
       const clrT={'sv-d':'#dc2626','sv-n':'#b91c1c','cm-d':'#2563eb','cm-n':'#1d4ed8','ped-d':'#d97706','ped-n':'#c2410c','apo-d':'#059669','apo-n':'#047857'}[t.cls]||'#374151';
-      tabelasHtml+=`<tr style="background:${bgRow};border-bottom:1px solid #ddd">
-        <td style="padding:3px 5px;font-size:7px;font-weight:700;color:${clrT};border-right:1px solid #ddd;white-space:nowrap">${t.l}</td>`;
+      html+=`<tr style="background:${bgRow};border-bottom:1px solid #ddd">
+        <td style="padding:4px 6px;font-size:7.5px;font-weight:700;color:${clrT};border-right:1px solid #ddd;white-space:nowrap">${t.l}</td>`;
       DA.forEach(ab=>{
-        if(sem.dias[ab]===undefined){tabelasHtml+=`<td style="background:#f0f0f0;border-right:1px solid #ddd"></td>`;return}
+        if(sem.dias[ab]===undefined){html+=`<td style="background:#f0f0f0;border-right:1px solid #ddd"></td>`;return}
         const arr=EB[sem.letra][ab]||[];const val=ti<arr.length?arr[ti]:'';
         let nome='',crm='',vinc='';
         if(val){
@@ -5697,17 +5854,49 @@ function pdfEscala(){
           else{nome=val.replace(/\s*(CR|EF)$/,'').trim();}
         }
         const sub=val?(crm+(vinc?' '+vinc:'')):'';
-        tabelasHtml+=`<td style="padding:2px 3px;text-align:center;border-right:1px solid #ddd;vertical-align:middle">
+        html+=`<td style="padding:3px 4px;text-align:center;border-right:1px solid #ddd;vertical-align:middle">
           ${val
-            ?`<div style="font-size:7px;font-weight:700;color:#1a1f36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin:0 auto">${nome}</div>
-              <div style="font-size:6px;color:#5a6485;white-space:nowrap">${sub}</div>`
-            :`<div style="font-size:7px;color:#ccc">—</div>`}
+            ?`<div style="font-size:7.5px;font-weight:700;color:#1a1f36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;margin:0 auto">${nome}</div>
+              <div style="font-size:6.5px;color:#5a6485;white-space:nowrap">${sub}</div>`
+            :`<div style="font-size:7.5px;color:#ccc">—</div>`}
         </td>`;
       });
-      tabelasHtml+=`</tr>`;
+      html+=`</tr>`;
     });
-    tabelasHtml+=`</tbody></table></div>`;
-  });
+    html+=`</tbody></table>`;
+    return html;
+  };
+
+  // Bloco de uma página (semana inteira centralizada + cabeçalho + rodapé)
+  const paginaSemana=(sem,si,total)=>`
+    <div class="pagina-semana">
+      ${headerHtml(sem.letra)}
+      <div style="display:flex;flex-direction:column;justify-content:center;min-height:140mm">
+        ${tabelaSemana(sem,si)}
+      </div>
+      <div class="sign-wrap">
+        <div class="sign">
+          <div class="sign-box">
+            <div class="sign-line"></div>
+            <div class="sign-label">${nomeGestor}</div>
+            <div class="sign-sub">Gestor de Escala${crmGestor?' · CRM '+crmGestor:''}</div>
+            <div class="sign-sub">CAIS Campinas · Data: ___/___/______</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-line"></div>
+            <div class="sign-label">Aprovado por</div>
+            <div class="sign-sub">Coordenação de Saúde · Data: ___/___/______</div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>CAIS Campinas · Escala · ${MP[mesMes]} ${mesAno} · Semana ${sem.letra} (${si+1}/${total})</span>
+          <span>Gerado em ${dataGeracao}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const paginasHtml=sems.map((sem,si)=>paginaSemana(sem,si,sems.length)).join('');
 
   const w=window.open('','_blank');
   if(!w){showToast('Permita pop-ups',true);return}
@@ -5717,61 +5906,27 @@ function pdfEscala(){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111}
     @page{size:A4 landscape;margin:8mm}
-    .header{background:#1a3a5c;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:5px}
+    /* Cada bloco .pagina-semana ocupa uma página A4 separada */
+    .pagina-semana{page-break-after:always;break-after:page;min-height:195mm;display:flex;flex-direction:column}
+    .pagina-semana:last-child{page-break-after:auto;break-after:auto}
+    .header{background:#1a3a5c;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:5px;flex-shrink:0}
     .h-title{font-size:15px;font-weight:800}
-    .h-sub{font-size:8px;opacity:.7;margin-top:2px}
-    .h-right{text-align:right;font-size:7.5px;opacity:.65;line-height:1.7}
-    .leg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:7px;font-size:7.5px;align-items:center;padding:5px 10px;background:#f8f9fc;border-radius:4px}
+    .h-sub{font-size:9px;opacity:.95;margin-top:3px}
+    .h-right{text-align:right;font-size:7.5px;opacity:.85;line-height:1.7}
+    .leg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:7px;font-size:7.5px;align-items:center;padding:5px 10px;background:#f8f9fc;border-radius:4px;flex-shrink:0}
     .leg-item{display:flex;align-items:center;gap:3px}
     .leg-dot{width:7px;height:7px;border-radius:50%}
-    /* Assinatura — nunca quebra de página, cola no final do conteúdo */
-    .sign-wrap{page-break-inside:avoid;break-inside:avoid;margin-top:10px;padding-top:8px;border-top:2px solid #1a3a5c}
-    .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .sign-wrap{margin-top:auto;padding-top:8px;border-top:2px solid #1a3a5c;flex-shrink:0}
+    .sign{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:520px;margin:0 auto}
     .sign-box{text-align:center}
-    .sign-line{border-bottom:1.5px solid #333;height:28px;margin-bottom:4px}
-    .sign-label{font-size:7.5px;color:#444;line-height:1.5;font-weight:600}
-    .sign-sub{font-size:6.5px;color:#888;margin-top:1px}
+    .sign-line{border-bottom:1.5px solid #333;height:30px;margin-bottom:4px}
+    .sign-label{font-size:8px;color:#222;line-height:1.5;font-weight:700}
+    .sign-sub{font-size:7px;color:#888;margin-top:1px}
     .footer{margin-top:6px;display:flex;justify-content:space-between;font-size:6.5px;color:#bbb;padding-top:5px;border-top:1px solid #eee}
   </style></head><body>
-  <div class="header">
-    <div>
-      <div class="h-title">🏥 CAIS Campinas — Escala de Plantão</div>
-      <div class="h-sub">${MP[mesMes]} ${mesAno} · Gestão de Escalas v16</div>
-    </div>
-    <div class="h-right">Gerado por: ${nomeGestor}<br>${new Date().toLocaleString('pt-BR')}</div>
-  </div>
-  <div class="leg">
-    <strong style="font-size:7.5px">LEGENDA:</strong>
-    <div class="leg-item"><div class="leg-dot" style="background:#dc2626"></div>SV+ENF Diurno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#b91c1c"></div>SV+ENF Noturno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#2563eb"></div>CM Diurno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#1d4ed8"></div>CM Noturno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#d97706"></div>PED Diurno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#c2410c"></div>PED Noturno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#059669"></div>APOIO</div>
-  </div>
-  ${tabelasHtml}
-  <div class="sign-wrap">
-    <div class="sign" style="grid-template-columns:1fr 1fr;max-width:420px">
-      <div class="sign-box">
-        <div class="sign-line"></div>
-        <div class="sign-label">${nomeGestor}</div>
-        <div class="sign-sub">Gestor de Escala · CRM ${crmGestor}</div>
-        <div class="sign-sub">CAIS Campinas · Data: ___/___/______</div>
-      </div>
-      <div class="sign-box">
-        <div class="sign-line"></div>
-        <div class="sign-label">Aprovado por</div>
-        <div class="sign-sub">Coordenação de Saúde · Data: ___/___/______</div>
-      </div>
-    </div>
-    <div class="footer">
-      <span>CAIS Campinas · Escala de Plantão · ${MP[mesMes]} ${mesAno}</span>
-      <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
-    </div>
-  </div>
+  ${paginasHtml}
   </body></html>`);
-  w.document.close();setTimeout(()=>w.print(),600);
+  w.document.close();setTimeout(()=>w.print(),500);
 }
 
 // ══ PDF RELATÓRIO GERAL — A4 PAISAGEM OTIMIZADO (Fix 10/11) ══
@@ -5881,7 +6036,253 @@ function pdfRelatorio(){
   w.document.close();setTimeout(()=>w.print(),500);
 }
 
-// ══ XLSX ══
+// ══ PDF RELATÓRIO MENSAL (com filtros, 4 seções) ══
+function pdfRelMensal(mes,ano,filtros){
+  // Coletar dados de todos os profissionais com plantões no mês
+  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext);
+  const externosMap={};
+  // 1. Plantonistas internos: separar CR Generalista, RQE, e EF
+  const linhasCR=[],linhasRQE=[],linhasEF=[];
+  internos.forEach(m=>{
+    const st=statsProf(m.c,mes,ano);
+    if(filtros.somente&&st.total===0)return;
+    const vinc=getVinc(m.n);
+    const cat=m.categoria||'GENERALISTA';
+    const linha={med:m,st,vinc,cat};
+    if(vinc==='EF')linhasEF.push(linha);
+    else if(cat==='PEDIATRA_RQE')linhasRQE.push(linha);
+    else linhasCR.push(linha);
+  });
+  // 2. Externos
+  const externosList=coletarExternosMes(mes,ano);
+  // 3. Filtragem por seleção
+  const incluirCR=filtros.cr&&linhasCR.length>0;
+  const incluirRQE=filtros.rqe&&linhasRQE.length>0;
+  const incluirExt=filtros.ext&&externosList.length>0;
+  const incluirEF=filtros.ef&&linhasEF.length>0;
+
+  if(!incluirCR&&!incluirRQE&&!incluirExt&&!incluirEF){
+    showToast('Sem dados para gerar — nenhum profissional encontrado com os filtros',true);
+    return;
+  }
+
+  // Ordenar por nome dentro de cada seção
+  linhasCR.sort((a,b)=>a.med.n.localeCompare(b.med.n));
+  linhasRQE.sort((a,b)=>a.med.n.localeCompare(b.med.n));
+  linhasEF.sort((a,b)=>a.med.n.localeCompare(b.med.n));
+
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:'Tiago Resende Telles',c:28691};
+  const nomeGestorPdf=gestorLogin.n||'Gestor de Escala';
+  const crmGestorPdf=gestorLogin.c||'';
+
+  // Função helper para linha de profissional (com ou sem valores)
+  const linhaPlant=(d,idxBg)=>{
+    const colVal=filtros.valores?`<td style="text-align:right;font-weight:700;color:#166534">${d.st.totalFin>0?fmtMoeda(d.st.totalFin):(d.st.viaFolha?'<span style="color:#888;font-style:italic;font-size:7px">via folha</span>':'—')}</td>`:'';
+    const detalhe=filtros.detalhe?`
+      <tr style="background:#fafafa">
+        <td colspan="${filtros.valores?9:8}" style="padding:4px 8px;font-size:7px;color:#444;border-top:1px dashed #ccc">
+          ${d.st.pts.map(p=>`${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${mes.toString().padStart(2,'0')} ${p.turno}`).join(' · ')}
+        </td>
+      </tr>`:'';
+    return `<tr style="${idxBg%2===0?'':'background:#f5f7fc'}">
+      <td style="font-size:7.5px;font-weight:600">${d.med.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${d.med.c}</td>
+      <td style="font-size:7.5px">${d.st.pts.map(p=>p.area).filter((v,i,a)=>a.indexOf(v)===i).map(a=>`<span style="color:${a==='SV+ENF'?'#dc2626':a==='PED'?'#b45309':a==='APOIO'?'#166534':'#1d4ed8'};font-weight:700">${a}</span>`).join(', ')||'—'}</td>
+      <td style="text-align:center">${d.st.fin.CM_DU.h?d.st.fin.CM_DU.h+'h':'—'}</td>
+      <td style="text-align:center">${d.st.fin.CM_FDS.h?d.st.fin.CM_FDS.h+'h':'—'}</td>
+      <td style="text-align:center">${d.st.fin.SV_DU.h?d.st.fin.SV_DU.h+'h':'—'}</td>
+      <td style="text-align:center">${d.st.fin.SV_FDS.h?d.st.fin.SV_FDS.h+'h':'—'}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${d.st.hTotal?d.st.hTotal+'h':'—'}</td>
+      ${colVal}
+    </tr>${detalhe}`;
+  };
+
+  // Linha para externos
+  const linhaExt=(x,idxBg)=>{
+    const colVal=filtros.valores?`<td style="text-align:right;font-weight:700;color:#166534">${fmtMoeda(x.totalValor)}</td>`:'';
+    const cat=(x.med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+    const detalhe=filtros.detalhe?`
+      <tr style="background:#fafafa">
+        <td colspan="${filtros.valores?6:5}" style="padding:4px 8px;font-size:7px;color:#444;border-top:1px dashed #ccc">
+          ${x.plantoes.map(p=>`${p.data} ${p.turno}`).join(' · ')}
+        </td>
+      </tr>`:'';
+    return `<tr style="${idxBg%2===0?'':'background:#f5f7fc'}">
+      <td style="font-size:7.5px;font-weight:600">${x.med.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${x.med.c}</td>
+      <td style="font-size:7.5px">${x.med.unidade||'—'}</td>
+      <td style="text-align:center;font-size:7.5px">${cat}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${x.totalH}h</td>
+      ${colVal}
+    </tr>${detalhe}`;
+  };
+
+  // Linha para EF
+  const linhaEF=(d,idxBg)=>{
+    return `<tr style="${idxBg%2===0?'':'background:#f5f7fc'}">
+      <td style="font-size:7.5px;font-weight:600">${d.med.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${d.med.c}</td>
+      <td style="font-size:7.5px">${d.st.pts.map(p=>p.area).filter((v,i,a)=>a.indexOf(v)===i).join(', ')||'—'}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${d.st.hTotal?d.st.hTotal+'h':'—'}</td>
+      <td style="text-align:right;color:#888;font-size:7.5px;font-style:italic">via folha</td>
+    </tr>`;
+  };
+
+  // Totais por seção
+  const totH_CR=linhasCR.reduce((s,d)=>s+d.st.hTotal,0);
+  const totV_CR=linhasCR.reduce((s,d)=>s+d.st.totalFin,0);
+  const totH_RQE=linhasRQE.reduce((s,d)=>s+d.st.hTotal,0);
+  const totV_RQE=linhasRQE.reduce((s,d)=>s+d.st.totalFin,0);
+  const totH_Ext=externosList.reduce((s,x)=>s+x.totalH,0);
+  const totV_Ext=externosList.reduce((s,x)=>s+x.totalValor,0);
+  const totH_EF=linhasEF.reduce((s,d)=>s+d.st.hTotal,0);
+
+  // Colunas do header para internos
+  const colsInt=`<tr>
+    <th style="text-align:left">Profissional</th>
+    <th style="text-align:left">CRM</th>
+    <th style="text-align:left">Áreas</th>
+    <th>H.DDS<br>Porta</th>
+    <th>H.FDS<br>Porta</th>
+    <th>H.DDS<br>SV+ENF</th>
+    <th>H.FDS<br>SV+ENF</th>
+    <th>Total</th>
+    ${filtros.valores?'<th style="text-align:right">Valor (bruto)</th>':''}
+  </tr>`;
+  const colsExt=`<tr>
+    <th style="text-align:left">Profissional</th>
+    <th style="text-align:left">CRM</th>
+    <th style="text-align:left">Unidade de Origem</th>
+    <th>Categoria</th>
+    <th>Total</th>
+    ${filtros.valores?'<th style="text-align:right">Valor (bruto)</th>':''}
+  </tr>`;
+  const colsEF=`<tr>
+    <th style="text-align:left">Profissional</th>
+    <th style="text-align:left">CRM</th>
+    <th style="text-align:left">Áreas</th>
+    <th>Total</th>
+    <th style="text-align:right">Observação</th>
+  </tr>`;
+
+  const secao=(titulo,cor,bg,colspan,header,rows,totalRow)=>`
+    <div class="sec-h" style="background:${cor};color:#fff;padding:6px 10px;font-size:11px;font-weight:800;border-radius:4px;margin-top:10px;margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase">${titulo}</div>
+    <table>
+      <thead style="background:${bg}">${header}</thead>
+      <tbody>${rows}</tbody>
+      ${totalRow}
+    </table>
+  `;
+
+  const totalRowInt=(totH,totV)=>`<tfoot><tr style="background:#1a3a5c;color:#fff;font-weight:800">
+    <td colspan="7" style="text-align:right;padding:5px 8px">TOTAL</td>
+    <td style="text-align:center;font-family:monospace">${totH}h</td>
+    ${filtros.valores?`<td style="text-align:right;font-family:monospace">${fmtMoeda(totV)}</td>`:''}
+  </tr></tfoot>`;
+  const totalRowExt=(totH,totV)=>`<tfoot><tr style="background:#1a3a5c;color:#fff;font-weight:800">
+    <td colspan="4" style="text-align:right;padding:5px 8px">TOTAL</td>
+    <td style="text-align:center;font-family:monospace">${totH}h</td>
+    ${filtros.valores?`<td style="text-align:right;font-family:monospace">${fmtMoeda(totV)}</td>`:''}
+  </tr></tfoot>`;
+  const totalRowEF=(totH)=>`<tfoot><tr style="background:#6b7280;color:#fff;font-weight:800">
+    <td colspan="3" style="text-align:right;padding:5px 8px">TOTAL</td>
+    <td style="text-align:center;font-family:monospace">${totH}h</td>
+    <td style="text-align:right;font-style:italic">via folha</td>
+  </tr></tfoot>`;
+
+  // Totais gerais
+  const totGeralH=totH_CR+totH_RQE+totH_Ext+totH_EF;
+  const totGeralV=(filtros.cr?totV_CR:0)+(filtros.rqe?totV_RQE:0)+(filtros.ext?totV_Ext:0);
+
+  const w=window.open('','_blank');
+  if(!w){showToast('Permita pop-ups',true);return}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Relatório Mensal CAIS — ${MP[mes]} ${ano}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:8.5px;color:#1a1a2e;background:#fff}
+    @page{size:A4 landscape;margin:7mm}
+    .header{background:#1a3a5c;color:#fff;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;border-radius:4px}
+    .h-title{font-size:14px;font-weight:800}.h-sub{font-size:9px;opacity:.8;margin-top:1px}
+    .h-right{text-align:right;font-size:7.5px;opacity:.85;line-height:1.6}
+    .resumo-bar{background:#e0f2fe;border:1px solid #93c5fd;border-radius:6px;padding:7px 11px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:9px}
+    .resumo-item{font-size:8px}
+    .resumo-l{color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
+    .resumo-v{color:#0f172a;font-weight:800;font-size:13px;font-family:'Consolas',monospace;margin-top:1px}
+    table{width:100%;border-collapse:collapse;font-size:8px;margin-bottom:8px}
+    th{background:#dbeafe;color:#1e3a8a;padding:5px 7px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #93c5fd}
+    th[style*="text-align:center"]{text-align:center !important}
+    th[style*="text-align:right"]{text-align:right !important}
+    td{padding:4px 7px;border:1px solid #e5e7eb;background:#fff}
+    .sec-h{page-break-after:avoid}
+    table{page-break-inside:avoid}
+    .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:16px;page-break-before:avoid}
+    .sign-box{text-align:center}
+    .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:30px}
+    .sign-label{font-weight:700;font-size:9px}
+    .sign-sub{font-size:7.5px;color:#6b7280;margin-top:1px}
+    .footer{margin-top:10px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;color:#6b7280;font-size:7.5px}
+  </style></head><body>
+  <div class="header">
+    <div><div class="h-title">🏥 CAIS Campinas — Relatório Mensal</div>
+      <div class="h-sub">${MP[mes]} ${ano}</div></div>
+    <div class="h-right">Gerado: ${new Date().toLocaleString('pt-BR')}<br>v${typeof APP_VERSION!=='undefined'?APP_VERSION:'16'}</div>
+  </div>
+  <div class="resumo-bar">
+    ${incluirCR?`<div class="resumo-item"><div class="resumo-l">Credenciados (CR)</div><div class="resumo-v">${linhasCR.length}</div></div>`:''}
+    ${incluirRQE?`<div class="resumo-item"><div class="resumo-l">Pediatras RQE</div><div class="resumo-v">${linhasRQE.length}</div></div>`:''}
+    ${incluirExt?`<div class="resumo-item"><div class="resumo-l">Externos</div><div class="resumo-v">${externosList.length}</div></div>`:''}
+    ${incluirEF?`<div class="resumo-item"><div class="resumo-l">Efetivos (EF)</div><div class="resumo-v">${linhasEF.length}</div></div>`:''}
+    <div class="resumo-item"><div class="resumo-l">Total de Horas</div><div class="resumo-v">${totGeralH}h</div></div>
+    ${filtros.valores?`<div class="resumo-item" style="background:#dcfce7;border:1px solid #86efac;border-radius:4px;padding:4px 6px;margin:-4px"><div class="resumo-l" style="color:#166534">Total (BRUTO)</div><div class="resumo-v" style="color:#166534">${fmtMoeda(totGeralV)}</div></div>`:''}
+  </div>
+
+  ${incluirCR?secao(
+    `1. Internos Credenciados (CR Generalistas) — ${linhasCR.length}`,
+    '#1d4ed8','#dbeafe',9,colsInt,
+    linhasCR.map((d,i)=>linhaPlant(d,i)).join(''),
+    totalRowInt(totH_CR,totV_CR)
+  ):''}
+
+  ${incluirRQE?secao(
+    `2. Pediatras RQE — ${linhasRQE.length}`,
+    '#7c3aed','#ede9fe',9,colsInt,
+    linhasRQE.map((d,i)=>linhaPlant(d,i)).join(''),
+    totalRowInt(totH_RQE,totV_RQE)
+  ):''}
+
+  ${incluirExt?secao(
+    `3. Plantonistas Externos — ${externosList.length}`,
+    '#0369a1','#e0f2fe',6,colsExt,
+    externosList.map((x,i)=>linhaExt(x,i)).join(''),
+    totalRowExt(totH_Ext,totV_Ext)
+  ):''}
+
+  ${incluirEF?secao(
+    `4. Efetivos (EF — via folha) — ${linhasEF.length}`,
+    '#6b7280','#f3f4f6',5,colsEF,
+    linhasEF.map((d,i)=>linhaEF(d,i)).join(''),
+    totalRowEF(totH_EF)
+  ):''}
+
+  <div class="sign">
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">${nomeGestorPdf}</div>
+      <div class="sign-sub">Gestor de Escala${crmGestorPdf?' · CRM '+crmGestorPdf:''} · CAIS Campinas</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">Coordenador de Saúde</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+  </div>
+  <div class="footer">
+    <span>CAIS Campinas · Relatório Mensal · ${MP[mes]} ${ano}</span>
+    <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+  </body></html>`);
+  w.document.close();setTimeout(()=>w.print(),500);
+}
+
+// ══ XLSX ESCALA DO MÊS ══
 function exportXLSX(){
   const sems=gerarSemanas(mesMes,mesAno);
   const wb=XLSX.utils.book_new();
