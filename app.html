@@ -1389,7 +1389,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.20.02';
+const APP_VERSION='2026.06.20.03';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -1662,7 +1662,6 @@ const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{
 // Estado de conexão
 let dbOk=false;
 let dbCarregando=false;
-let edicaoEmCurso=false;// quando true, auto-sync não roda (evita conflitos durante edição)
 let ultimaSync=null;// timestamp da última sincronização bem-sucedida
 
 function mostrarStatusDB(ok,msg){
@@ -1697,7 +1696,6 @@ setInterval(atualizarTextoSync,15000);
 async function sincronizarAutomatico(){
   if(document.hidden)return;// economiza quando aba não está visível
   if(dbCarregando)return;
-  if(edicaoEmCurso)return;// não interfere em edição em curso
   if(!sb)return;
   console.log('[Auto-sync] Recarregando trocas e escala...');
   try{
@@ -3279,7 +3277,6 @@ async function criarSnapshotMes(mes,ano){
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
 async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
-  edicaoEmCurso=true;// bloqueia auto-sync durante a edição
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
   // Atualizar estado local primeiro
@@ -3294,7 +3291,6 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
   console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor:(valor||'').slice(0,40),diaMes});
 
   // VALIDAÇÃO CRÍTICA: edição de um dia específico DEVE ter diaMes definido
-  // Se chegou sem diaMes, é um bug — não deixa virar snapshot indevidamente
   if(diaMes===undefined||diaMes===null){
     console.error('[salvarSlotMes] CHAMADA SEM diaMes — abortando para evitar sobrescrever snapshot');
     showToast('Erro interno: dia do mês não foi identificado',true);
@@ -3310,7 +3306,6 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
       .eq('turno_idx',ti)
       .eq('dia_mes',diaMes);
     if(eDel){
-      // Se a coluna dia_mes não existir, o erro será claro
       const msg=(eDel.message||'').toLowerCase();
       if(msg.includes('dia_mes')||msg.includes('column')){
         console.error('[salvarSlotMes] Coluna dia_mes não existe no banco — execute SQL para criá-la');
@@ -3329,7 +3324,7 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
       origem:'manual',
       dia_mes:diaMes
     };
-    const {error:eIns}=await sb.from('escala_mensal').insert(payload);
+    const {error:eIns,data:insData}=await sb.from('escala_mensal').insert(payload).select();
     if(eIns){
       console.error('[salvarSlotMes] INSERT falhou:',eIns);
       const msg=(eIns.message||'').toLowerCase();
@@ -3340,25 +3335,12 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
       }
       return false;
     }
-    // 3. VERIFICAÇÃO PÓS-SAVE: ler de volta para confirmar
-    const {data:verifData,error:eVer}=await sb.from('escala_mensal')
-      .select('valor,origem,dia_mes')
-      .eq('mes',mes).eq('ano',ano)
-      .eq('semana_letra',semLetra).eq('dia_semana',ab)
-      .eq('turno_idx',ti).eq('dia_mes',diaMes);
-    if(!eVer&&verifData&&verifData.length>0){
-      console.log('[salvarSlotMes] ✓ VERIFICADO no banco:',verifData[0]);
-    }else{
-      console.warn('[salvarSlotMes] ⚠ Pós-save: não encontrou o registro!',eVer);
-    }
+    console.log('[salvarSlotMes] ✓ INSERT confirmado:',insData);
     return true;
   }catch(e){
     console.error('[salvarSlotMes] FALHOU:',e);
     showToast('Erro ao salvar: '+(e.message||'').slice(0,60),true);
     return false;
-  }finally{
-    // Libera auto-sync após 2s para garantir que o banco propagou
-    setTimeout(()=>{edicaoEmCurso=false;},2000);
   }
 }
 
