@@ -843,6 +843,32 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
           <div class="tipo-g" id="meu-tipo-g"></div>
         </div>
 
+        <!-- CARDS DE DESTAQUE: Plantão de Hoje + Próximo Plantão -->
+        <div class="two-col" style="margin-bottom:14px">
+          <div class="card" id="meu-hoje-card" style="border:2px solid #2563d4;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)">
+            <div style="font-size:10px;font-weight:800;color:#1e3a8a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">📅 Plantão de Hoje</div>
+            <div id="meu-hoje-content"></div>
+          </div>
+          <div class="card" id="meu-prox-card" style="border:2px solid #22a35a;background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)">
+            <div style="font-size:10px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🔜 Próximo Plantão</div>
+            <div id="meu-prox-content"></div>
+          </div>
+        </div>
+
+        <!-- COMPARATIVO DE HORAS -->
+        <div class="card" style="margin-bottom:14px;padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Total de horas no mês</div>
+              <div style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--blue);margin-top:2px" id="meu-comp-h">—</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--text2)">vs <span id="meu-comp-mes-ant"></span></div>
+              <div id="meu-comp-delta" style="font-size:14px;font-weight:700;margin-top:2px">—</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Financeiro -->
         <div style="margin-bottom:14px">
           <div class="stitle">💰 Estimativa de Ganhos — <span id="fin-mes-lbl"></span></div>
@@ -852,6 +878,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="two-col">
           <div><div class="stitle">✅ Realizados</div><div id="meu-real"></div></div>
           <div><div class="stitle">🔜 Próximos</div><div id="meu-prox"></div></div>
+        </div>
+
+        <!-- Trocas Enviadas -->
+        <div class="card" style="margin-top:12px">
+          <div class="ct">🔄 Minhas Trocas Enviadas</div>
+          <div id="meu-trocas-list"></div>
         </div>
 
         <!-- Declarações (só aparece para externos) -->
@@ -1357,7 +1389,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.18.03';
+const APP_VERSION='2026.06.20.01';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -1679,7 +1711,7 @@ setInterval(sincronizarAutomatico,60000);// 60 segundos
 // Recarrega TUDO do banco (clicar no status ou pressionar F5 lógico)
 async function recarregarTudo(){
   if(dbCarregando)return;
-  showToast('Sincronizando com servidor...');
+  // Não mostra toast — o status já indica sincronização no header
   await carregarSupabase();
   renderAll();
   ultimaSync=Date.now();
@@ -2982,30 +3014,56 @@ async function salvarEditMed(){
   const novoCRM=parseInt(document.getElementById('em-crm').value)||m.c;
   if(!nn){showToast('Nome obrigatório',true);return}
   if(!novoCRM){showToast('CRM inválido',true);return}
+  if(novoCRM!==crmAntigo&&MEDICOS.find(mm=>mm.c===novoCRM)){
+    showToast('Já existe profissional com este CRM',true);return;
+  }
   // PERSISTIR NO BANCO PRIMEIRO
   try{
-    const payload={nome:nn,crm:novoCRM,vinculo:vc,areas,categoria:cat,cpf:cpf||null,data_nascimento:dataN||null};
-    let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
-    // Fallback: se cpf/data_nascimento não existirem ainda no schema
-    if(error&&error.message&&(error.message.toLowerCase().includes('cpf')||error.message.toLowerCase().includes('data_nascimento'))){
-      delete payload.cpf;delete payload.data_nascimento;
-      const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
-      error=r.error;
-      console.warn('Colunas cpf/data_nascimento ainda não existem — execute SQL v25');
+    // Construir payload sem campos null/vazios para evitar problemas de tipo
+    const payload={nome:nn,vinculo:vc,areas,categoria:cat};
+    if(cpf)payload.cpf=cpf;else payload.cpf=null;
+    if(dataN)payload.data_nascimento=dataN;else payload.data_nascimento=null;
+    // Se CRM mudou, fazer em transação manual: atualizar tabelas filhas ANTES (sem FK garantida, mas pelo CRM ref)
+    if(novoCRM!==crmAntigo){
+      payload.crm=novoCRM;
+      // Tentar atualizar logins ANTES (porque o app usa logins.crm como referência)
+      const {error:eL}=await sb.from('logins').update({nome:nn,crm:novoCRM}).eq('crm',crmAntigo);
+      if(eL&&!(eL.code==='PGRST116'||(eL.message||'').includes('No rows'))){
+        console.warn('Aviso ao atualizar logins:',eL);
+      }
+      // Atualizar perfis se houver
+      try{await sb.from('perfis').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(_){}
     }
-    // Se a coluna categoria não existir ainda, tenta sem ela
-    if(error&&error.message&&error.message.toLowerCase().includes('categoria')){
-      delete payload.categoria;
-      const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
-      error=r.error;
+    // Função interna: tentar update e fazer fallback removendo campos problemáticos
+    const tentarUpdate=async(p)=>{
+      const {error}=await sb.from('profissionais').update(p).eq('crm',crmAntigo);
+      return error;
+    };
+    let error=await tentarUpdate(payload);
+    // Fallback 1: cpf/data_nascimento não existem
+    if(error&&(/cpf|data_nascimento/i).test(error.message||'')){
+      const p2={...payload};delete p2.cpf;delete p2.data_nascimento;
+      error=await tentarUpdate(p2);
+      console.warn('Colunas cpf/data_nascimento ausentes — execute SQL v25');
     }
-    if(error)throw error;
-    if(nn!==m.n||novoCRM!==crmAntigo){
-      await sb.from('logins').update({nome:nn,crm:novoCRM}).eq('crm',crmAntigo);
+    // Fallback 2: categoria não existe
+    if(error&&(/categoria/i).test(error.message||'')){
+      const p3={nome:nn,vinculo:vc,areas};
+      if(novoCRM!==crmAntigo)p3.crm=novoCRM;
+      error=await tentarUpdate(p3);
+    }
+    if(error){
+      // Mostrar mensagem real do erro para diagnóstico
+      const msg=error.message||error.details||error.hint||JSON.stringify(error);
+      console.error('Erro ao atualizar profissional:',error);
+      showToast('Erro: '+msg.slice(0,80),true);
+      return;
     }
   }catch(e){
+    const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
     console.error('Erro ao atualizar:',e);
-    showToast('Erro ao salvar — tente novamente',true);return;
+    showToast('Erro: '+msg.slice(0,80),true);
+    return;
   }
   // Estado local após confirmação do banco
   m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;m.categoria=cat;
@@ -3184,6 +3242,7 @@ async function criarSnapshotMes(mes,ano){
 }
 
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
+// Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
 async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
@@ -3196,44 +3255,66 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
     if(!ESCMES[k][semLetra][ab])ESCMES[k][semLetra][ab]=Array(16).fill(undefined);
     ESCMES[k][semLetra][ab][ti]=valor;
   }
-  console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor,diaMes});
-  // ESTRATÉGIA: DELETE primeiro (limpa qualquer registro existente), depois INSERT
-  // Isso evita problemas com ON CONFLICT que dependem de índices únicos
+  console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor:(valor||'').slice(0,40),diaMes});
+
+  // VALIDAÇÃO CRÍTICA: edição de um dia específico DEVE ter diaMes definido
+  // Se chegou sem diaMes, é um bug — não deixa virar snapshot indevidamente
+  if(diaMes===undefined||diaMes===null){
+    console.error('[salvarSlotMes] CHAMADA SEM diaMes — abortando para evitar sobrescrever snapshot');
+    showToast('Erro interno: dia do mês não foi identificado',true);
+    return false;
+  }
+
   try{
-    // 1. DELETE: remover registros existentes para este slot+dia
-    let qDel=sb.from('escala_mensal').delete()
+    // 1. DELETE: remover qualquer registro existente para este slot+dia
+    const {error:eDel}=await sb.from('escala_mensal').delete()
       .eq('mes',mes).eq('ano',ano)
       .eq('semana_letra',semLetra)
       .eq('dia_semana',ab)
-      .eq('turno_idx',ti);
-    if(diaMes){
-      qDel=qDel.eq('dia_mes',diaMes);
-    } else {
-      qDel=qDel.is('dia_mes',null);
-    }
-    const {error:eDel}=await qDel;
+      .eq('turno_idx',ti)
+      .eq('dia_mes',diaMes);
     if(eDel){
-      console.warn('DELETE falhou (talvez coluna dia_mes não exista):',eDel.message);
-      // Fallback: deletar sem filtro de dia_mes
-      await sb.from('escala_mensal').delete()
-        .eq('mes',mes).eq('ano',ano)
-        .eq('semana_letra',semLetra)
-        .eq('dia_semana',ab)
-        .eq('turno_idx',ti);
+      // Se a coluna dia_mes não existir, o erro será claro
+      const msg=(eDel.message||'').toLowerCase();
+      if(msg.includes('dia_mes')||msg.includes('column')){
+        console.error('[salvarSlotMes] Coluna dia_mes não existe no banco — execute SQL para criá-la');
+        showToast('Erro: coluna dia_mes não existe — contate o admin',true);
+        return false;
+      }
+      throw eDel;
     }
-    // 2. INSERT: criar novo registro
-    const payload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
-      valor:valor||'',origem:diaMes?'manual':'snapshot'};
-    if(diaMes)payload.dia_mes=diaMes;
+    // 2. INSERT: criar novo registro com origem='manual' explícita
+    const payload={
+      mes,ano,
+      semana_letra:semLetra,
+      dia_semana:ab,
+      turno_idx:ti,
+      valor:valor||'',
+      origem:'manual',
+      dia_mes:diaMes
+    };
     const {error:eIns}=await sb.from('escala_mensal').insert(payload);
     if(eIns){
-      // Se falhar com dia_mes, tenta sem
-      console.warn('INSERT com dia_mes falhou:',eIns.message);
-      delete payload.dia_mes;
-      const {error:eIns2}=await sb.from('escala_mensal').insert(payload);
-      if(eIns2)throw eIns2;
+      console.error('[salvarSlotMes] INSERT falhou:',eIns);
+      const msg=(eIns.message||'').toLowerCase();
+      if(msg.includes('dia_mes')||msg.includes('column')){
+        showToast('Erro: coluna dia_mes não existe no banco — contate o admin',true);
+      }else{
+        showToast('Erro ao salvar: '+(eIns.message||'').slice(0,60),true);
+      }
+      return false;
     }
-    console.log('[salvarSlotMes] SUCESSO — gravado no banco');
+    // 3. VERIFICAÇÃO PÓS-SAVE: ler de volta para confirmar
+    const {data:verifData,error:eVer}=await sb.from('escala_mensal')
+      .select('valor,origem,dia_mes')
+      .eq('mes',mes).eq('ano',ano)
+      .eq('semana_letra',semLetra).eq('dia_semana',ab)
+      .eq('turno_idx',ti).eq('dia_mes',diaMes);
+    if(!eVer&&verifData&&verifData.length>0){
+      console.log('[salvarSlotMes] ✓ VERIFICADO no banco:',verifData[0]);
+    }else{
+      console.warn('[salvarSlotMes] ⚠ Pós-save: não encontrou o registro!',eVer);
+    }
     return true;
   }catch(e){
     console.error('[salvarSlotMes] FALHOU:',e);
@@ -3626,7 +3707,7 @@ function filtrarTr(f,btn){document.querySelectorAll('#tr-wrap .f-b').forEach(b=>
 // Recarrega APENAS as trocas do banco (botão ⟳ Atualizar)
 async function recarregarTrocas(){
   if(!sb){showToast('Sem conexão com servidor',true);return}
-  showToast('Atualizando trocas...');
+  // Não mostra toast — sincronização silenciosa
   try{
     const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
     if(eT)throw eT;
@@ -3649,10 +3730,10 @@ async function recarregarTrocas(){
       });
     });
     renderTrocas();
-    showToast(`${trs.length} trocas carregadas.`);
+    // Não mostra contagem — o status no header já indica sincronização
   }catch(e){
     console.error('Erro ao recarregar trocas:',e);
-    showToast('Erro ao atualizar — '+(e.message||'verifique conexão'),true);
+    showToast('Erro ao atualizar trocas',true);
   }
 }
 
@@ -4201,6 +4282,12 @@ function renderMeusPlantoes(){
     document.getElementById('fin-grid').innerHTML='<div style="color:var(--text3);font-size:12px;grid-column:1/-1">Aguardando publicação da escala</div>';
     document.getElementById('meu-real').innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">Aguardando publicação</div>';
     document.getElementById('meu-prox').innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">Aguardando publicação</div>';
+    // Limpar cards novos também
+    const _eH=document.getElementById('meu-hoje-content');if(_eH)_eH.innerHTML='<div style="padding:6px 0;font-size:12px;color:#64748b">Aguardando publicação da escala</div>';
+    const _eP=document.getElementById('meu-prox-content');if(_eP)_eP.innerHTML='<div style="padding:6px 0;font-size:12px;color:#64748b">Aguardando publicação da escala</div>';
+    const _eCh=document.getElementById('meu-comp-h');if(_eCh)_eCh.textContent='—';
+    const _eCd=document.getElementById('meu-comp-delta');if(_eCd)_eCd.innerHTML='<span style="color:var(--text3);font-size:12px">Aguardando</span>';
+    const _eTl=document.getElementById('meu-trocas-list');if(_eTl)_eTl.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:10px">Aguardando publicação</div>';
     return;
   }
 
@@ -4279,6 +4366,99 @@ function renderMeusPlantoes(){
   };
   document.getElementById('meu-real').innerHTML=realizados.length?realizados.map(p=>renderPc(p,'real')).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum realizado ainda</div>';
   document.getElementById('meu-prox').innerHTML=proximos.length?proximos.map(p=>renderPc(p,'prox')).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum plantão futuro</div>';
+
+  // ─── CARDS DESTAQUE: PLANTÃO DE HOJE + PRÓXIMO PLANTÃO ───
+  const hj2=hoje();
+  const ptHoje=pts.find(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d.getTime()===hj2.getTime();});
+  const ptProx=proximos.find(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d.getTime()>hj2.getTime();});
+  const elH=document.getElementById('meu-hoje-content');
+  const elP=document.getElementById('meu-prox-content');
+  if(elH){
+    if(ptHoje){
+      elH.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span style="font-size:28px">${ptHoje.not?'🌙':'🌅'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:800;color:#1e3a8a;font-family:var(--mono)">${ptHoje.turno.replace(/\s*\(.+/,'')}</div>
+            <div style="font-size:11px;color:#475569;margin-top:2px"><span class="${aCC[ptHoje.area]||'ch-apo'}" style="font-size:9px">${ptHoje.area}</span> · ${ptHoje.h}h · ${ptHoje.fds?'FDS':'DDS'}</div>
+          </div>
+        </div>`;
+    }else{
+      elH.innerHTML=`<div style="padding:6px 0;font-size:12px;color:#64748b">Você não tem plantão hoje. <span style="font-weight:600">Aproveite o descanso!</span> ☕</div>`;
+    }
+  }
+  if(elP){
+    if(ptProx){
+      const diasAteProx=Math.round((new Date(ptProx.dt).setHours(0,0,0,0)-hj2.getTime())/86400000);
+      const labelDias=diasAteProx===1?'amanhã':`em ${diasAteProx} dias`;
+      elP.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span style="font-size:28px">${ptProx.not?'🌙':'🌅'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:800;color:#166534;font-family:var(--mono)">${diaS(new Date(ptProx.dt))} ${String(ptProx.dia).padStart(2,'0')}/${String(mes).padStart(2,'0')} <span style="font-size:10px;font-weight:600;color:#15803daa;text-transform:lowercase">(${labelDias})</span></div>
+            <div style="font-size:11px;color:#166534;margin-top:2px"><span class="${aCC[ptProx.area]||'ch-apo'}" style="font-size:9px">${ptProx.area}</span> · ${ptProx.turno.replace(/\s*\(.+/,'')} · ${ptProx.h}h</div>
+          </div>
+        </div>`;
+    }else{
+      elP.innerHTML=`<div style="padding:6px 0;font-size:12px;color:#64748b">Nenhum plantão futuro programado neste mês.</div>`;
+    }
+  }
+
+  // ─── COMPARATIVO DE HORAS vs MÊS ANTERIOR ───
+  const elCh=document.getElementById('meu-comp-h');
+  const elCd=document.getElementById('meu-comp-delta');
+  const elCma=document.getElementById('meu-comp-mes-ant');
+  if(elCh){
+    const mAnt=mes===1?12:mes-1;
+    const aAnt=mes===1?ano-1:ano;
+    const stAnt=statsProf(crm,mAnt,aAnt);
+    const hAtual=st.hTotal||0;
+    const hAnt=stAnt.hTotal||0;
+    elCh.textContent=hAtual+'h';
+    if(elCma)elCma.textContent=MA[mAnt]+'/'+aAnt;
+    if(hAnt===0&&hAtual===0){
+      elCd.innerHTML=`<span style="color:var(--text3);font-size:12px">Sem comparação</span>`;
+    }else if(hAnt===0){
+      elCd.innerHTML=`<span style="color:var(--green)">▲ Primeiro mês com plantões</span>`;
+    }else{
+      const delta=hAtual-hAnt;
+      const pct=Math.round((delta/hAnt)*100);
+      const sinal=delta>0?'▲':(delta<0?'▼':'=');
+      const cor=delta>0?'var(--green)':(delta<0?'var(--red)':'var(--text3)');
+      elCd.innerHTML=`<span style="color:${cor}">${sinal} ${Math.abs(pct)}% (${delta>0?'+':''}${delta}h)</span><div style="font-size:10px;color:var(--text3);margin-top:1px">${hAnt}h em ${MA[mAnt]}</div>`;
+    }
+  }
+
+  // ─── TROCAS ENVIADAS POR MIM ───
+  const elTl=document.getElementById('meu-trocas-list');
+  if(elTl){
+    const minhasTrocas=TROCAS.filter(t=>t.sCRM===crm).sort((a,b)=>{
+      const dA=a.dt instanceof Date?a.dt:new Date(a.dt);
+      const dB=b.dt instanceof Date?b.dt:new Date(b.dt);
+      return dB-dA;
+    }).slice(0,10);
+    if(minhasTrocas.length===0){
+      elTl.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:10px">Nenhuma troca enviada ainda</div>';
+    }else{
+      const statusBadge={
+        'pendente':{txt:'⏳ Pendente',bg:'#fef3c7',cor:'#92400e',bd:'#fde68a'},
+        'aprovado':{txt:'✓ Aprovada',bg:'#dcfce7',cor:'#166534',bd:'#86efac'},
+        'rejeitado':{txt:'✗ Rejeitada',bg:'#fee2e2',cor:'#991b1b',bd:'#fca5a5'},
+        'cancelado':{txt:'⊘ Cancelada',bg:'#f3f4f6',cor:'#374151',bd:'#d1d5db'}
+      };
+      elTl.innerHTML=minhasTrocas.map(t=>{
+        const s=statusBadge[t.status]||statusBadge.pendente;
+        const turnoCurto=String(t.turno||'').replace(/\s*\(.+/,'');
+        return `<div style="display:flex;align-items:center;gap:9px;padding:8px 11px;background:${s.bg};border:1px solid ${s.bd};border-radius:6px;margin-bottom:5px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:12px;font-weight:700;color:${s.cor}">${t.data} · ${turnoCurto}</div>
+            <div style="font-size:10px;color:${s.cor};opacity:.8">Substituto: ${nomeCurto(t.sub||'?')}</div>
+          </div>
+          <span style="font-size:10.5px;font-weight:800;color:${s.cor};letter-spacing:.04em;padding:4px 10px;background:#fff;border-radius:5px;white-space:nowrap">${s.txt}</span>
+        </div>`;
+      }).join('');
+    }
+  }
 
   // ─── DECLARAÇÕES (só para externos) ───
   const medAtual=MEDICOS.find(m=>m.c===crm);
