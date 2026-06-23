@@ -1389,7 +1389,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.20.01';
+const APP_VERSION='2026.06.20.02';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -1662,6 +1662,7 @@ const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{
 // Estado de conexão
 let dbOk=false;
 let dbCarregando=false;
+let edicaoEmCurso=false;// quando true, auto-sync não roda (evita conflitos durante edição)
 let ultimaSync=null;// timestamp da última sincronização bem-sucedida
 
 function mostrarStatusDB(ok,msg){
@@ -1696,6 +1697,7 @@ setInterval(atualizarTextoSync,15000);
 async function sincronizarAutomatico(){
   if(document.hidden)return;// economiza quando aba não está visível
   if(dbCarregando)return;
+  if(edicaoEmCurso)return;// não interfere em edição em curso
   if(!sb)return;
   console.log('[Auto-sync] Recarregando trocas e escala...');
   try{
@@ -3017,54 +3019,87 @@ async function salvarEditMed(){
   if(novoCRM!==crmAntigo&&MEDICOS.find(mm=>mm.c===novoCRM)){
     showToast('Já existe profissional com este CRM',true);return;
   }
-  // PERSISTIR NO BANCO PRIMEIRO
+  console.log('[salvarEditMed] Iniciando:',{crmAntigo,novoCRM,nome:nn});
+
   try{
-    // Construir payload sem campos null/vazios para evitar problemas de tipo
-    const payload={nome:nn,vinculo:vc,areas,categoria:cat};
-    if(cpf)payload.cpf=cpf;else payload.cpf=null;
-    if(dataN)payload.data_nascimento=dataN;else payload.data_nascimento=null;
-    // Se CRM mudou, fazer em transação manual: atualizar tabelas filhas ANTES (sem FK garantida, mas pelo CRM ref)
-    if(novoCRM!==crmAntigo){
-      payload.crm=novoCRM;
-      // Tentar atualizar logins ANTES (porque o app usa logins.crm como referência)
-      const {error:eL}=await sb.from('logins').update({nome:nn,crm:novoCRM}).eq('crm',crmAntigo);
-      if(eL&&!(eL.code==='PGRST116'||(eL.message||'').includes('No rows'))){
-        console.warn('Aviso ao atualizar logins:',eL);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // CASO 1: CRM NÃO MUDOU → simples update
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if(novoCRM===crmAntigo){
+      const payload={nome:nn,vinculo:vc,areas,categoria:cat};
+      if(cpf)payload.cpf=cpf;else payload.cpf=null;
+      if(dataN)payload.data_nascimento=dataN;else payload.data_nascimento=null;
+      let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+      // Fallback campos novos
+      if(error&&(/cpf|data_nascimento/i).test(error.message||'')){
+        delete payload.cpf;delete payload.data_nascimento;
+        const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+        error=r.error;
       }
-      // Atualizar perfis se houver
-      try{await sb.from('perfis').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(_){}
+      if(error&&(/categoria/i).test(error.message||'')){
+        delete payload.categoria;
+        const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+        error=r.error;
+      }
+      if(error)throw error;
+      // Atualizar nome em logins também (se existir)
+      if(nn!==m.n){
+        await sb.from('logins').update({nome:nn}).eq('crm',crmAntigo);
+      }
     }
-    // Função interna: tentar update e fazer fallback removendo campos problemáticos
-    const tentarUpdate=async(p)=>{
-      const {error}=await sb.from('profissionais').update(p).eq('crm',crmAntigo);
-      return error;
-    };
-    let error=await tentarUpdate(payload);
-    // Fallback 1: cpf/data_nascimento não existem
-    if(error&&(/cpf|data_nascimento/i).test(error.message||'')){
-      const p2={...payload};delete p2.cpf;delete p2.data_nascimento;
-      error=await tentarUpdate(p2);
-      console.warn('Colunas cpf/data_nascimento ausentes — execute SQL v25');
-    }
-    // Fallback 2: categoria não existe
-    if(error&&(/categoria/i).test(error.message||'')){
-      const p3={nome:nn,vinculo:vc,areas};
-      if(novoCRM!==crmAntigo)p3.crm=novoCRM;
-      error=await tentarUpdate(p3);
-    }
-    if(error){
-      // Mostrar mensagem real do erro para diagnóstico
-      const msg=error.message||error.details||error.hint||JSON.stringify(error);
-      console.error('Erro ao atualizar profissional:',error);
-      showToast('Erro: '+msg.slice(0,80),true);
-      return;
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // CASO 2: CRM MUDOU → INSERT novo, UPDATE filhas, DELETE antigo
+    // (Estratégia segura contra FK constraints)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    else {
+      // Capturar dados existentes do profissional antigo (para criar o novo igual)
+      const {data:profAntigo,error:eGet}=await sb.from('profissionais').select('*').eq('crm',crmAntigo).maybeSingle();
+      if(eGet||!profAntigo)throw eGet||new Error('Profissional original não encontrado');
+
+      // 1) INSERIR novo profissional com novo CRM
+      const novoPayload={
+        ...profAntigo,
+        crm:novoCRM,
+        nome:nn,vinculo:vc,areas,categoria:cat
+      };
+      if(cpf)novoPayload.cpf=cpf;else novoPayload.cpf=null;
+      if(dataN)novoPayload.data_nascimento=dataN;else novoPayload.data_nascimento=null;
+      delete novoPayload.id;// se houver coluna id, deixar o banco gerar
+      let {error:eIns}=await sb.from('profissionais').insert(novoPayload);
+      if(eIns&&(/cpf|data_nascimento/i).test(eIns.message||'')){
+        delete novoPayload.cpf;delete novoPayload.data_nascimento;
+        const r=await sb.from('profissionais').insert(novoPayload);eIns=r.error;
+      }
+      if(eIns&&(/categoria/i).test(eIns.message||'')){
+        delete novoPayload.categoria;
+        const r=await sb.from('profissionais').insert(novoPayload);eIns=r.error;
+      }
+      if(eIns)throw eIns;
+
+      // 2) Atualizar tabelas filhas para apontar para o novo CRM
+      // (perfis, logins, declaracoes_externos, declaracoes_plantoes, escala_mensal não tem FK direta)
+      try{await sb.from('perfis').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(e){console.warn('perfis update:',e);}
+      try{await sb.from('logins').update({crm:novoCRM,nome:nn}).eq('crm',crmAntigo);}catch(e){console.warn('logins update:',e);}
+      try{await sb.from('declaracoes_externos').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(e){console.warn('declaracoes_externos:',e);}
+      try{await sb.from('declaracoes_plantoes').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(e){console.warn('declaracoes_plantoes:',e);}
+
+      // 3) Por fim, DELETAR o profissional antigo
+      const {error:eDel}=await sb.from('profissionais').delete().eq('crm',crmAntigo);
+      if(eDel){
+        // Se não conseguir deletar (FK ainda existente em alguma tabela não tratada)
+        console.error('Falha ao deletar antigo:',eDel);
+        // Reverter: deletar o que acabei de inserir
+        await sb.from('profissionais').delete().eq('crm',novoCRM);
+        throw new Error('Falha ao migrar CRM: '+(eDel.message||'verifique tabelas relacionadas'));
+      }
     }
   }catch(e){
     const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
-    console.error('Erro ao atualizar:',e);
-    showToast('Erro: '+msg.slice(0,80),true);
+    console.error('[salvarEditMed] Erro:',e);
+    showToast('Erro: '+String(msg).slice(0,100),true);
     return;
   }
+
   // Estado local após confirmação do banco
   m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;m.categoria=cat;
   m.cpf=cpf;m.data_nascimento=dataN;
@@ -3244,6 +3279,7 @@ async function criarSnapshotMes(mes,ano){
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
 async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
+  edicaoEmCurso=true;// bloqueia auto-sync durante a edição
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
   // Atualizar estado local primeiro
@@ -3320,6 +3356,9 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
     console.error('[salvarSlotMes] FALHOU:',e);
     showToast('Erro ao salvar: '+(e.message||'').slice(0,60),true);
     return false;
+  }finally{
+    // Libera auto-sync após 2s para garantir que o banco propagou
+    setTimeout(()=>{edicaoEmCurso=false;},2000);
   }
 }
 
@@ -3430,22 +3469,29 @@ async function carregarESCMES(){
     const {data,error}=await sb.from('escala_mensal').select('*');
     if(error)throw error;
     Object.keys(ESCMES).forEach(k=>delete ESCMES[k]);
+    let manualCount=0,snapCount=0,trocaCount=0;
     (data||[]).forEach(r=>{
       const k=keyMes(r.mes,r.ano);
       if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
-      // Se o registro tem dia_mes, é uma alteração pontual de um dia específico
-      if(r.dia_mes&&r.origem==='manual'){
-        const dk='DIA_'+r.dia_mes;
+      // Se o registro tem dia_mes E origem='manual', é uma alteração pontual de um dia específico
+      // (Aceita tanto número quanto string para dia_mes)
+      const dm=r.dia_mes!=null?parseInt(r.dia_mes):null;
+      if(dm&&r.origem==='manual'){
+        const dk='DIA_'+dm;
         if(!ESCMES[k][dk])ESCMES[k][dk]=Array(16).fill(undefined);
         ESCMES[k][dk][r.turno_idx]=r.valor||'';
+        manualCount++;
       } else {
         // Snapshot por semana (origem='snapshot' ou 'troca')
         if(!ESCMES[k][r.semana_letra])ESCMES[k][r.semana_letra]={};
         if(!ESCMES[k][r.semana_letra][r.dia_semana])
           ESCMES[k][r.semana_letra][r.dia_semana]=Array(16).fill(undefined);
         ESCMES[k][r.semana_letra][r.dia_semana][r.turno_idx]=r.valor||'';
+        if(r.origem==='snapshot')snapCount++;
+        else if(r.origem==='troca')trocaCount++;
       }
     });
+    console.log(`[carregarESCMES] ${data?.length||0} registros: ${snapCount} snapshot · ${manualCount} manual · ${trocaCount} troca`);
   }catch(e){console.error('carregarESCMES:',e)}
 }
 
@@ -7008,6 +7054,7 @@ async function sincronizarLoginsExternos(){
   }
   if(!confirm(`Criar acesso para ${externosSemLogin.length} externo(s) sem login?\n\nSenha padrão = CRM. Os externos poderão usar todas as funções de plantonista.`))return;
   let ok=0,err=0;
+  const errosDetalhe=[];
   for(const m of externosSemLogin){
     try{
       const {error}=await sb.from('logins').upsert({
@@ -7015,17 +7062,41 @@ async function sincronizarLoginsExternos(){
         is_gestor:false,is_plantonista:true,is_clinico:true
       },{onConflict:'crm'});
       if(error)throw error;
-      LOGINS.push({id:'L'+Date.now()+'-'+m.c,loginId:null,n:m.n,c:m.c,role:'plantonista',pw:String(m.c),
-        isGestor:false,isPlantonista:true,isClinico:true,ativo:true});
       ok++;
     }catch(e){
-      console.error('Falha sincronizar externo CRM',m.c,e);
+      console.error('Falha sincronizar externo CRM',m.c,m.n,e);
+      errosDetalhe.push({crm:m.c,nome:m.n,msg:(e.message||'').slice(0,60)});
       err++;
     }
   }
+  // Recarregar lista de logins do banco para garantir estado correto
+  try{
+    const {data:lgs,error:eLg}=await sb.from('logins').select('*');
+    if(!eLg&&lgs){
+      LOGINS.length=0;
+      lgs.forEach(l=>{
+        LOGINS.push({
+          id:'L'+(l.id||l.crm||l.cpf),
+          loginId:l.id,
+          n:l.nome,c:l.crm||null,cpf:l.cpf||null,
+          isGestor:l.is_gestor===true,
+          isPlantonista:l.is_plantonista!==false,
+          isClinico:l.is_clinico!==false,
+          role:l.perfil||(l.is_gestor?'gestor':'plantonista'),
+          pw:l.senha,
+          primeiroAcesso:l.primeiro_acesso!==false,
+          ativo:l.ativo!==false
+        });
+      });
+    }
+  }catch(e){console.warn('Recarregar logins falhou:',e);}
   renderLogins();populaLogin();
-  if(err===0)showToast(`✓ ${ok} externo(s) sincronizados — senha padrão = CRM`);
-  else showToast(`${ok} sincronizados, ${err} falhas — veja console`,true);
+  if(err===0){
+    showToast(`✓ ${ok} externo(s) sincronizados — senha padrão = CRM`);
+  }else{
+    console.error('Erros na sincronização:',errosDetalhe);
+    showToast(`${ok} sincronizados, ${err} falhas — veja console (F12)`,true);
+  }
 }
 
 function aplicarPerfil(crm){
