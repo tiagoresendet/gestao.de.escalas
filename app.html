@@ -1389,7 +1389,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.20.05';
+const APP_VERSION='2026.06.20.06';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -3718,6 +3718,7 @@ function renderTrocas(filtro=trFiltro){
     // Gestor: aprovar/rejeitar/reverter — passa ID (não índice instável)
     const acoesGestor=isG?`
       ${t.status==='pendente'?`<button class="btn btn-s btn-xs" onclick="aprovarTr('${idSafe}')" title="Aprovar">✓ Aprovar</button><button class="btn btn-d btn-xs" onclick="rejeitarTr('${idSafe}')" title="Rejeitar">✕ Rejeitar</button>`:''}
+      ${t.status==='aprovado'?`<button class="btn btn-p btn-xs" title="Reaplicar esta troca na escala (caso não tenha sido efetivada)" onclick="reaplicarTrocaNaEscala('${idSafe}')" style="background:#f59e0b;border-color:#d97706">🔧 Reaplicar</button>`:''}
       ${(t.status==='aprovado'||t.status==='rejeitado')?`<button class="btn btn-g btn-xs" title="Reverter para pendente" onclick="reverterTr('${idSafe}')">↩ Reverter</button>`:''}
     `:'';
     // Solicitante: cancelar a própria solicitação pendente
@@ -3950,7 +3951,32 @@ async function aprovarTr(idOuIdx){
   try{ok=await aplicarTrocaEscala(t);}
   catch(e){console.error('[aprovarTr] Erro ao aplicar na escala:',e);}
   renderAll();
-  showToast(ok?'✓ Aprovada e aplicada na escala!':'✓ Aprovada (atenção: verifique a escala manualmente).');
+  if(ok){
+    showToast('✓ Aprovada e aplicada na escala!');
+  }else{
+    // Alerta visível, não só toast
+    alert(`⚠ TROCA APROVADA, MAS NÃO FOI APLICADA NA ESCALA\n\nO.S.: ${t.id}\n${t.sol} → ${t.sub}\nData: ${t.data} · ${t.turno}\n\nCausa provável: a célula da escala foi editada manualmente antes da aprovação, então o solicitante não está mais ali.\n\nUse o botão "🔧 Reaplicar" para tentar de novo, ou edite a célula manualmente.`);
+  }
+}
+
+// Reaplica uma troca aprovada que pode não ter ficado na escala
+async function reaplicarTrocaNaEscala(idOuIdx){
+  const t=resolverTroca(idOuIdx);
+  if(!t){showToast('Troca não encontrada',true);return}
+  if(t.status!=='aprovado'){showToast('Só posso reaplicar trocas aprovadas',true);return}
+  if(!confirm(`Reaplicar esta troca na escala?\n\nO.S.: ${t.id}\n${t.sol} → ${t.sub}\nData: ${t.data} · ${t.turno}\n\nIsso vai colocar ${nomeCurto(t.sub)} no lugar de ${nomeCurto(t.sol)} naquele plantão.`))return;
+  try{
+    const ok=await aplicarTrocaEscala(t);
+    if(ok){
+      renderAll();
+      showToast('✓ Troca reaplicada na escala!');
+    }else{
+      alert(`Não consegui reaplicar a troca.\n\nO solicitante ${nomeCurto(t.sol)} (CRM ${t.sCRM}) não foi encontrado em nenhum slot daquele dia (${t.data} · ${t.turno}).\n\nProvavelmente a célula foi alterada manualmente. Você precisa editar a célula direto na escala.`);
+    }
+  }catch(e){
+    console.error('[reaplicarTrocaNaEscala] Erro:',e);
+    alert('Erro ao reaplicar: '+(e.message||'desconhecido'));
+  }
 }
 
 async function rejeitarTr(idOuIdx){
