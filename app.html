@@ -539,19 +539,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="d-area-stats"></div>
         <div class="two-col" style="margin-bottom:12px">
           <div class="card"><div class="ct">🏆 Top Plantonistas (horas)</div><div id="d-top"></div></div>
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-              <div class="ct" style="margin:0">⏳ Trocas Pendentes</div>
-              <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
-            </div>
-            <div id="d-tr-list"></div>
+          <div class="card" id="d-externos-card">
+            <div class="ct">🔄 Plantonistas Externos no Mês</div>
+            <div id="d-externos"></div>
           </div>
-        </div>
-
-        <!-- Externos -->
-        <div class="card" style="margin-bottom:12px">
-          <div class="ct">🔄 Plantonistas Externos no Mês</div>
-          <div id="d-externos"></div>
         </div>
       </div>
 
@@ -698,7 +689,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <div class="page" id="page-logins">
         <div class="ph">
           <div><div class="pt">Gestão de Acessos e Cadastros</div></div>
-          <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
+          <div class="ph-r" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-g btn-sm" onclick="sincronizarLoginsExternos()" title="Cria login para externos cadastrados sem acesso">🔄 Sincronizar Externos</button><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
         </div>
         <div class="filtros" style="margin-bottom:10px">
           <button class="f-b active" id="btn-aba-acessos" onclick="mudarAbaLogin('acessos',this)">🔑 Acessos e Permissões</button>
@@ -862,6 +853,13 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
           <div><div class="stitle">✅ Realizados</div><div id="meu-real"></div></div>
           <div><div class="stitle">🔜 Próximos</div><div id="meu-prox"></div></div>
         </div>
+
+        <!-- Declarações (só aparece para externos) -->
+        <div id="meu-decls-card" class="card" style="margin-top:12px;display:none">
+          <div class="ct">📋 Declarações de Plantões Realizados</div>
+          <div class="ps" style="margin-bottom:8px">Quando o gestor confirmar o envio da declaração via WhatsApp à sua unidade, o status mudará aqui.</div>
+          <div id="meu-decls-lista"></div>
+        </div>
       </div>
 
     </div><!-- /main -->
@@ -912,6 +910,45 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   </div>
 </div>
 
+<!-- ══ MODAL TEXTO DA DECLARAÇÃO ══ -->
+<div class="mo" id="mo-decl-texto">
+  <div class="m-box" style="max-width:640px">
+    <div class="m-t" id="decl-texto-titulo">Declaração</div>
+    <div class="m-s">Texto pronto para copiar e enviar via WhatsApp</div>
+    <textarea id="decl-texto-area" style="width:100%;min-height:340px;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:10px;line-height:1.6;color:#1a1a2e;background:#fafafa" readonly></textarea>
+    <div class="m-act" style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="btn btn-g" onclick="fecharMo('mo-decl-texto')">Fechar</button>
+      <button class="btn btn-p" onclick="copiarTextoDeclaracao()">📋 Copiar Texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL BLOQUEANTE: COMPLETAR CADASTRO (CPF + Data Nascimento) ══ -->
+<div class="mo" id="mo-completar-cadastro" style="background:rgba(15,23,42,.85)">
+  <div class="m-box" style="max-width:480px">
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-size:42px">📋</div>
+      <div class="m-t" style="margin-top:6px">Complete seu cadastro</div>
+      <div class="m-s">Precisamos de algumas informações antes de continuar</div>
+    </div>
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:9px 12px;font-size:11.5px;color:#78350f;margin-bottom:10px">
+      ⚠️ Estes dados são obrigatórios. Por motivos administrativos, você não conseguirá usar o aplicativo até preencher.
+    </div>
+    <div class="fg"><label class="fl">CPF <span style="color:var(--red)">*</span></label>
+      <input type="text" class="fi" id="cc-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+    <div class="fg"><label class="fl">Data de Nascimento <span style="color:var(--red)">*</span></label>
+      <input type="date" class="fi" id="cc-data-nasc" max="2008-12-31" min="1940-01-01">
+    </div>
+    <div class="m-act" style="margin-top:14px">
+      <button class="btn btn-p" onclick="salvarCompletarCadastro()" style="width:100%;padding:11px;font-weight:700">✓ Salvar e Continuar</button>
+    </div>
+    <div style="text-align:center;font-size:10.5px;color:var(--text3);margin-top:8px">
+      Em caso de dúvidas, contate o gestor.
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mo-add-med">
   <div class="m-box">
     <div class="m-t">Adicionar Profissional</div>
@@ -934,6 +971,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option value="GENERALISTA">Generalista</option>
         <option value="PEDIATRA_RQE">Pediatra RQE</option>
       </select>
+    </div>
+    <div class="fg"><label class="fl">CPF</label>
+      <input type="text" class="fi" id="add-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+    <div class="fg"><label class="fl">Data de Nascimento</label>
+      <input type="date" class="fi" id="add-data-nasc" max="2008-12-31" min="1940-01-01">
     </div>
     <div class="fg" id="add-ext-uni-wrap" style="display:none">
       <label class="fl">Unidade de Lotação <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
@@ -985,6 +1028,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option value="GENERALISTA">Generalista</option>
         <option value="PEDIATRA_RQE">Pediatra RQE</option>
       </select>
+    </div>
+    <div class="fg"><label class="fl">CPF</label>
+      <input type="text" class="fi" id="em-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+    <div class="fg"><label class="fl">Data de Nascimento</label>
+      <input type="date" class="fi" id="em-data-nasc" max="2008-12-31" min="1940-01-01">
     </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-edit-med')">Cancelar</button>
@@ -1308,7 +1357,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.18.02';
+const APP_VERSION='2026.06.18.03';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -1384,6 +1433,28 @@ function ini2(n){return n.split(' ').slice(0,2).map(p=>p[0]).join('')}
 function fmtData(dt){return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`}
 function diaS(dt){return['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dt.getDay()]}
 function fmtMoeda(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+// ══ FORMATAÇÃO DE CPF ══
+function formatarCPF(input){
+  let v=input.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>9)v=v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2}).*/,'$1.$2.$3-$4');
+  else if(v.length>6)v=v.replace(/(\d{3})(\d{3})(\d{1,3}).*/,'$1.$2.$3');
+  else if(v.length>3)v=v.replace(/(\d{3})(\d{1,3}).*/,'$1.$2');
+  input.value=v;
+}
+function validarCPF(cpf){
+  const s=String(cpf).replace(/\D/g,'');
+  if(s.length!==11)return false;
+  if(/^(\d)\1+$/.test(s))return false;// todos iguais
+  let soma=0;
+  for(let i=0;i<9;i++)soma+=parseInt(s[i])*(10-i);
+  let dig=11-(soma%11);if(dig>=10)dig=0;
+  if(dig!==parseInt(s[9]))return false;
+  soma=0;
+  for(let i=0;i<10;i++)soma+=parseInt(s[i])*(11-i);
+  dig=11-(soma%11);if(dig>=10)dig=0;
+  return dig===parseInt(s[10]);
+}
 
 // ══ CÓDIGO O.S. DA TROCA ══
 // Formato: DDMMAA-HHHH-FUNCAO-CRMSOL>CRMSUB[-Mn]
@@ -1629,7 +1700,8 @@ async function carregarSupabase(){
       n:p.nome,c:p.crm,a:(p.areas||[]).join('/'),areas:p.areas||[],
       cor:p.cor||'#22a35a',vinculo:p.vinculo||'CR',
       ext:p.externo||false,unidade:p.unidade||'',
-      categoria:p.categoria||'GENERALISTA'
+      categoria:p.categoria||'GENERALISTA',
+      cpf:p.cpf||'',data_nascimento:p.data_nascimento||''
     }));
 
     // Escala base
@@ -1693,6 +1765,7 @@ async function carregarSupabase(){
     // Snapshots de escala mensal (CRUCIAL — preserva escalas publicadas)
     await carregarESCMES();
     await carregarDeclaracoes();
+    await carregarDeclaracoesPlantoes();
     await carregarValoresPlantao();
 
     // Trocas
@@ -2888,6 +2961,8 @@ function abrirEditMed(idx){
   document.getElementById('em-nome').value=m.n;document.getElementById('em-crm').value=m.c;
   document.getElementById('em-vinc').value=getVinc(m.n);
   document.getElementById('em-categoria').value=m.categoria||'GENERALISTA';
+  document.getElementById('em-cpf').value=m.cpf||'';
+  document.getElementById('em-data-nasc').value=m.data_nascimento||'';
   const areasAtivas=m.areas||([m.a]||[]).filter(Boolean);
   document.querySelectorAll('#em-areas-check input').forEach(cb=>{
     cb.checked=areasAtivas.includes(cb.value);
@@ -2901,20 +2976,28 @@ async function salvarEditMed(){
   const nn=document.getElementById('em-nome').value.trim().toUpperCase();
   const vc=document.getElementById('em-vinc').value;
   const cat=document.getElementById('em-categoria').value||'GENERALISTA';
+  const cpf=document.getElementById('em-cpf').value.trim();
+  const dataN=document.getElementById('em-data-nasc').value;
   const areas=[...document.querySelectorAll('#em-areas-check input:checked')].map(cb=>cb.value);
   const novoCRM=parseInt(document.getElementById('em-crm').value)||m.c;
   if(!nn){showToast('Nome obrigatório',true);return}
   if(!novoCRM){showToast('CRM inválido',true);return}
   // PERSISTIR NO BANCO PRIMEIRO
   try{
-    const payload={nome:nn,crm:novoCRM,vinculo:vc,areas,categoria:cat};
+    const payload={nome:nn,crm:novoCRM,vinculo:vc,areas,categoria:cat,cpf:cpf||null,data_nascimento:dataN||null};
     let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+    // Fallback: se cpf/data_nascimento não existirem ainda no schema
+    if(error&&error.message&&(error.message.toLowerCase().includes('cpf')||error.message.toLowerCase().includes('data_nascimento'))){
+      delete payload.cpf;delete payload.data_nascimento;
+      const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+      error=r.error;
+      console.warn('Colunas cpf/data_nascimento ainda não existem — execute SQL v25');
+    }
     // Se a coluna categoria não existir ainda, tenta sem ela
     if(error&&error.message&&error.message.toLowerCase().includes('categoria')){
       delete payload.categoria;
       const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
       error=r.error;
-      console.warn('Coluna categoria não existe — execute SQL v24');
     }
     if(error)throw error;
     if(nn!==m.n||novoCRM!==crmAntigo){
@@ -2926,6 +3009,7 @@ async function salvarEditMed(){
   }
   // Estado local após confirmação do banco
   m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;m.categoria=cat;
+  m.cpf=cpf;m.data_nascimento=dataN;
   if(vc==='EF')EFETIVOS.add(nn);else EFETIVOS.delete(nn);
   // Sincronizar LOGINS local
   const li=LOGINS.findIndex(l=>l.c==crmAntigo);
@@ -2961,6 +3045,8 @@ async function addMedico(){
   const c=parseInt(document.getElementById('add-crm').value);
   const v=document.getElementById('add-vinc').value;
   const cat=document.getElementById('add-categoria').value||'GENERALISTA';
+  const cpf=document.getElementById('add-cpf').value.trim();
+  const dataN=document.getElementById('add-data-nasc').value;
   const isExt=document.getElementById('add-is-ext').checked;
   if(!n||!c){showToast('Nome e CRM obrigatórios',true);return}
   if(MEDICOS.find(m=>m.c===c)){showToast('CRM já cadastrado',true);return}
@@ -2972,29 +3058,33 @@ async function addMedico(){
     if(!wppExt){showToast('WhatsApp do externo é obrigatório',true);return}
   }
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
-  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v,categoria:cat};
+  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v,categoria:cat,cpf,data_nascimento:dataN};
   if(v==='EF')EFETIVOS.add(n);
   try{
-    const payload={nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,externo:isExt,unidade:isExt?uni:null,categoria:cat};
+    const payload={nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,externo:isExt,unidade:isExt?uni:null,categoria:cat,cpf:cpf||null,data_nascimento:dataN||null};
     let {error:eP}=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
+    if(eP&&eP.message&&(eP.message.toLowerCase().includes('cpf')||eP.message.toLowerCase().includes('data_nascimento'))){
+      delete payload.cpf;delete payload.data_nascimento;
+      const r=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
+      eP=r.error;
+      console.warn('Colunas cpf/data_nascimento ainda não existem — execute SQL v25');
+    }
     if(eP&&eP.message&&eP.message.toLowerCase().includes('categoria')){
       delete payload.categoria;
       const r=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
       eP=r.error;
-      console.warn('Coluna categoria não existe — execute SQL v24');
     }
     if(eP)throw eP;
-    // INTERNOS: criar login automático com permissão plantonista
-    if(!isExt){
-      const {error:eL}=await sb.from('logins').upsert({
-        crm:c,nome:n,senha:String(c),perfil:'plantonista',
-        is_gestor:false,is_plantonista:true,is_clinico:true
-      },{onConflict:'crm'});
-      if(eL)throw eL;
-    } else {
+    // TODOS (internos E externos) ganham login plantonista — diferencial: externo tem ext=true
+    const {error:eL}=await sb.from('logins').upsert({
+      crm:c,nome:n,senha:String(c),perfil:'plantonista',
+      is_gestor:false,is_plantonista:true,is_clinico:true
+    },{onConflict:'crm'});
+    if(eL)throw eL;
+    if(isExt){
       // EXTERNOS: salvar WhatsApp em perfis
       await sb.from('perfis').upsert({
-        crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:'',primeiro_acesso:true
+        crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:cpf||'',primeiro_acesso:true
       },{onConflict:'crm'});
     }
   }catch(e){
@@ -3002,15 +3092,14 @@ async function addMedico(){
     showToast('Erro ao salvar — tente novamente',true);return;
   }
   MEDICOS.push(novoMed);
-  if(!isExt){
-    const novoLogin={id:'L'+Date.now(),loginId:null,n,c,role:'plantonista',pw:String(c),
-      isGestor:false,isPlantonista:true,isClinico:true,ativo:true};
-    LOGINS.push(novoLogin);
-  }
+  const novoLogin={id:'L'+Date.now(),loginId:null,n,c,role:'plantonista',pw:String(c),
+    isGestor:false,isPlantonista:true,isClinico:true,ativo:true};
+  LOGINS.push(novoLogin);
   fecharMo('mo-add-med');
   renderAll();preencherSelects();populaLogin();
-  showToast(isExt?'Externo cadastrado com WhatsApp!':'Interno + acesso plantonista criados!');
+  showToast(isExt?'Externo cadastrado + acesso criado (senha = CRM)':'Interno cadastrado + acesso criado (senha = CRM)');
   document.getElementById('add-nome').value='';document.getElementById('add-crm').value='';
+  document.getElementById('add-cpf').value='';document.getElementById('add-data-nasc').value='';
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
   document.getElementById('add-is-ext').checked=false;
   document.getElementById('add-ext-uni-wrap').style.display='none';
@@ -4190,6 +4279,40 @@ function renderMeusPlantoes(){
   };
   document.getElementById('meu-real').innerHTML=realizados.length?realizados.map(p=>renderPc(p,'real')).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum realizado ainda</div>';
   document.getElementById('meu-prox').innerHTML=proximos.length?proximos.map(p=>renderPc(p,'prox')).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum plantão futuro</div>';
+
+  // ─── DECLARAÇÕES (só para externos) ───
+  const medAtual=MEDICOS.find(m=>m.c===crm);
+  const cardDecls=document.getElementById('meu-decls-card');
+  if(cardDecls){
+    if(medAtual&&medAtual.ext){
+      cardDecls.style.display='block';
+      const externoNoMes=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+      const listaEl=document.getElementById('meu-decls-lista');
+      if(!externoNoMes||externoNoMes.plantoes.length===0){
+        listaEl.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum plantão registrado neste mês</div>';
+      }else{
+        listaEl.innerHTML=externoNoMes.plantoes.map(p=>{
+          const pk=plantaoKey(mes,ano,p.dia,p.turnoIdx);
+          const decKey=crm+'|'+pk;
+          const enviada=DECLARACOES_PLANTOES[decKey]&&DECLARACOES_PLANTOES[decKey].enviada;
+          const corBg=enviada?'#dcfce7':'#fee2e2';
+          const corBd=enviada?'#22a35a':'#dc2626';
+          const corTxt=enviada?'#166534':'#991b1b';
+          const txt=enviada?'✓ ENVIADA':'⚠ PENDENTE';
+          const dataEnvio=enviada&&DECLARACOES_PLANTOES[decKey].data_envio?` · enviada em ${new Date(DECLARACOES_PLANTOES[decKey].data_envio).toLocaleDateString('pt-BR')}`:'';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:${corBg};border:1px solid ${corBd}66;border-radius:6px;margin-bottom:5px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:${corTxt}">${p.data} · ${p.turno}</div>
+              <div style="font-size:10px;color:${corTxt};opacity:.75">${p.area} · ${p.h}h${dataEnvio}</div>
+            </div>
+            <span style="font-size:10.5px;font-weight:800;color:${corTxt};letter-spacing:.04em;padding:4px 10px;background:#fff;border-radius:5px;white-space:nowrap">${txt}</span>
+          </div>`;
+        }).join('');
+      }
+    }else{
+      cardDecls.style.display='none';
+    }
+  }
 }
 function mudarMeuMes(d){meuMes+=d;if(meuMes>12){meuMes=1;meuAno++}if(meuMes<1){meuMes=12;meuAno--}renderMeusPlantoes()}
 function abrirMoTrocaEsp(dia,turno,area){
@@ -4245,11 +4368,11 @@ function _renderDashboardImpl(){
   }
   const cobPct=0;// removido do dashboard a pedido do usuário (era % cobertura)
 
-  // Declarações pendentes
+  // Declarações pendentes (sistema novo: pelo menos um plantão pendente)
   const externosNoMes=coletarExternosMes(mesMes,mesAno);
   const decsPend=externosNoMes.filter(x=>{
-    const k=x.med.c+'-'+mesMes+'-'+mesAno;
-    return !(DECLARACOES[k]&&DECLARACOES[k].enviada);
+    const st=decsPendentesExterno(x.med.c,mesMes,mesAno);
+    return st.pendentes>0;
   });
 
   // ─── LINHA 1: ALERTAS ───
@@ -4314,7 +4437,10 @@ function _renderDashboardImpl(){
   }
   if(decsPend.length>0){
     alertas.push({tipo:'num',icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
-      sub:'Externos sem declaração',action:null});
+      sub:'Externos sem declaração — clique para ver',action:()=>{
+        const alvo=document.getElementById('d-externos-card');
+        if(alvo)alvo.scrollIntoView({behavior:'smooth',block:'start'});
+      }});
   }
   if(!escPub){
     alertas.push({tipo:'num',icon:'🔒',cor:'#92400e',bg:'#fef3c7',label:'Escala atual',val:'Bloqueada',
@@ -4466,33 +4592,56 @@ function _renderDashboardImpl(){
     </div>`).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px 0">Nenhum plantão no mês</div>';
 
-  // Trocas pendentes
-  document.getElementById('d-tr-list').innerHTML=pendList.length?
-    pendList.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r2);margin-bottom:5px;flex-wrap:wrap">
-      <div class="tr-dot pendente"></div>
-      <div style="flex:1;font-size:12px;font-weight:600;min-width:80px">${nomeCurto(t.sol)} → ${nomeCurto(t.sub)}</div>
-      <span style="font-size:11px;color:var(--text2)">${t.data}</span>
-      <span class="badge b-amber">Pendente</span></div>`).join('')+(pendList.length>5?`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px">... e mais ${pendList.length-5}</div>`:''):
-    '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhuma troca pendente ✓</div>';
-
-  // ─── EXTERNOS NO MÊS (caixa de baixo) ───
+  // ─── EXTERNOS NO MÊS (Linha 5, lado direito) ───
+  // Para cada externo: linha resumida + (se expandido) checkboxes por plantão + botões de ação
+  window._extExpandido=window._extExpandido||{};
   const el=document.getElementById('d-externos');
   el.innerHTML=externosNoMes.length?
     externosNoMes.map(x=>{
-      const dec=DECLARACOES[x.med.c+'-'+mesMes+'-'+mesAno]&&DECLARACOES[x.med.c+'-'+mesMes+'-'+mesAno].enviada;
-      const btnDec=dec
-        ?`<button onclick="toggleDeclaracao(${x.med.c},${mesMes},${mesAno})" style="background:#e8f7ee;border:1px solid #22a35a;color:#22a35a;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Declaração enviada — clique para desmarcar">✓ Enviada</button>`
-        :`<button onclick="toggleDeclaracao(${x.med.c},${mesMes},${mesAno})" style="background:#fff;border:1px dashed var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Clique para marcar declaração como enviada">📄 Marcar</button>`;
-      return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg3);border-radius:6px;margin-bottom:4px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:12px;font-weight:700">${x.med.n}</div>
-          <div style="font-size:10px;color:var(--text2)">CRM ${x.med.c} · ${x.med.unidade||'—'}</div>
+      const crm=x.med.c;
+      const status=decsPendentesExterno(crm,mesMes,mesAno);
+      const todasOk=status.pendentes===0&&status.total>0;
+      const corStatus=todasOk?'var(--green)':'var(--red)';
+      const labelStatus=todasOk?`✓ Todas enviadas (${status.total})`:`${status.pendentes} pendente${status.pendentes>1?'s':''} de ${status.total}`;
+      const expandido=window._extExpandido[crm]===true;
+      const detalhe=expandido?`
+        <div style="background:#fff;border-top:1px solid var(--border);padding:8px 10px;border-radius:0 0 6px 6px">
+          ${x.plantoes.map(p=>{
+            const pk=plantaoKey(mesMes,mesAno,p.dia,p.turnoIdx);
+            const decKey=crm+'|'+pk;
+            const enviada=DECLARACOES_PLANTOES[decKey]&&DECLARACOES_PLANTOES[decKey].enviada;
+            const corPlantao=enviada?'#dcfce7':'#fee2e2';
+            const corBorda=enviada?'#22a35a':'#dc2626';
+            const corTxt=enviada?'#166534':'#991b1b';
+            const txtStatus=enviada?'✓ ENVIADA':'⚠ PENDENTE';
+            return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:${corPlantao};border:1px solid ${corBorda}66;border-radius:6px;margin-bottom:4px;flex-wrap:wrap">
+              <input type="checkbox" ${enviada?'checked':''} onchange="toggleDecPlantao(${crm},${mesMes},${mesAno},'${pk}',this.checked).then(ok=>{if(ok)renderDashboard();else this.checked=!this.checked;})" style="width:17px;height:17px;cursor:pointer;accent-color:${corBorda}">
+              <div style="flex:1;min-width:0;font-size:11.5px;color:${corTxt}">
+                <strong>${p.data}</strong> · ${p.turno}
+              </div>
+              <span style="font-size:10px;font-weight:800;color:${corTxt};letter-spacing:.04em">${txtStatus}</span>
+            </div>`;
+          }).join('')}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+            <button onclick="marcarTodasDecExterno(${crm},${mesMes},${mesAno})" style="background:#dcfce7;border:1px solid #22a35a;color:#166534;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">✓ Confirmar Todas Enviadas</button>
+            <button onclick="gerarTextoDeclaracao(${crm},${mesMes},${mesAno})" style="background:#dbeafe;border:1px solid #2563d4;color:#1e40af;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">📄 Gerar Declaração</button>
+          </div>
         </div>
-        <div style="font-size:11px;color:var(--text2);text-align:right">
-          <div>${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
-          <div style="color:var(--green);font-weight:700">${fmtMoeda(x.totalValor)}</div>
+      `:'';
+      return `<div style="background:var(--bg3);border-radius:6px;margin-bottom:5px;overflow:hidden">
+        <div onclick="window._extExpandido[${crm}]=${!expandido};renderDashboard()" style="display:flex;align-items:center;gap:9px;padding:8px 10px;cursor:pointer;flex-wrap:wrap" title="${expandido?'Recolher':'Expandir'}">
+          <span style="font-size:14px;color:var(--text3);transition:transform .2s;display:inline-block;${expandido?'transform:rotate(90deg)':''}">▶</span>
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:12px;font-weight:700">${x.med.n}</div>
+            <div style="font-size:10px;color:var(--text2)">CRM ${crm} · ${x.med.unidade||'—'}</div>
+          </div>
+          <div style="font-size:11px;color:var(--text2);text-align:right">
+            <div>${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
+            <div style="color:var(--green);font-weight:700">${fmtMoeda(x.totalValor)}</div>
+          </div>
+          <span style="font-size:10px;color:${corStatus};font-weight:700;padding:3px 8px;background:${todasOk?'#dcfce7':'#fee2e2'};border-radius:4px;white-space:nowrap">${labelStatus}</span>
         </div>
-        ${btnDec}
+        ${detalhe}
       </div>`;
     }).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum externo neste mês</div>';
@@ -4504,6 +4653,158 @@ function _renderDashboardImpl(){
 // DECLARAÇÕES DE PLANTÃO (externos) — controle de envio
 // ═══════════════════════════════════════════════════════
 const DECLARACOES={};
+// Declarações por plantão individual: chave = `${crm}|${plantao_key}`
+// plantao_key = `YYYYMM-DIA-TURNOIDX`
+const DECLARACOES_PLANTOES={};
+
+function plantaoKey(mes,ano,dia,turnoIdx){
+  return `${ano}${String(mes).padStart(2,'0')}-${dia}-${turnoIdx!=null?turnoIdx:'X'}`;
+}
+
+async function carregarDeclaracoesPlantoes(){
+  try{
+    const {data,error}=await sb.from('declaracoes_plantoes').select('*');
+    if(error){
+      if(error.code==='42P01'||(error.message||'').includes('relation')){
+        console.warn('Tabela declaracoes_plantoes ainda não existe — execute SQL v25');
+        return;
+      }
+      throw error;
+    }
+    Object.keys(DECLARACOES_PLANTOES).forEach(k=>delete DECLARACOES_PLANTOES[k]);
+    (data||[]).forEach(d=>{
+      const k=d.crm+'|'+d.plantao_key;
+      DECLARACOES_PLANTOES[k]={crm:d.crm,mes:d.mes,ano:d.ano,plantao_key:d.plantao_key,
+        enviada:d.enviada===true,data_envio:d.data_envio};
+    });
+  }catch(e){console.error('carregarDeclaracoesPlantoes:',e);}
+}
+
+// Marca/desmarca declaração de UM plantão
+async function toggleDecPlantao(crm,mes,ano,pkey,novoStatus){
+  const k=crm+'|'+pkey;
+  const atual=DECLARACOES_PLANTOES[k];
+  const dataEnvio=novoStatus?new Date().toISOString().split('T')[0]:null;
+  DECLARACOES_PLANTOES[k]={crm,mes,ano,plantao_key:pkey,enviada:novoStatus,data_envio:dataEnvio};
+  try{
+    const {error}=await sb.from('declaracoes_plantoes').upsert({
+      crm,mes,ano,plantao_key:pkey,enviada:novoStatus,data_envio:dataEnvio,atualizada_em:new Date().toISOString()
+    },{onConflict:'crm,plantao_key'});
+    if(error)throw error;
+    return true;
+  }catch(e){
+    console.error('toggleDecPlantao:',e);
+    showToast('Erro ao salvar declaração — execute SQL v25',true);
+    if(atual)DECLARACOES_PLANTOES[k]=atual;else delete DECLARACOES_PLANTOES[k];
+    return false;
+  }
+}
+
+// Marca TODAS as declarações de um externo no mês como enviadas (batch)
+async function marcarTodasDecExterno(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista){showToast('Externo sem plantões',true);return;}
+  if(!confirm(`Confirmar envio de TODAS as ${lista.plantoes.length} declarações do(a) ${lista.med.n}?`))return;
+  let ok=0;
+  const dataEnvio=new Date().toISOString().split('T')[0];
+  const payload=lista.plantoes.map(p=>({
+    crm,mes,ano,
+    plantao_key:plantaoKey(mes,ano,p.dia,p.turnoIdx),
+    enviada:true,data_envio:dataEnvio,
+    atualizada_em:new Date().toISOString()
+  }));
+  try{
+    const {error}=await sb.from('declaracoes_plantoes').upsert(payload,{onConflict:'crm,plantao_key'});
+    if(error)throw error;
+    // Atualizar local
+    payload.forEach(p=>{
+      DECLARACOES_PLANTOES[p.crm+'|'+p.plantao_key]={...p,enviada:true};
+      ok++;
+    });
+    showToast(`✓ ${ok} declarações marcadas como enviadas`);
+    renderDashboard();
+  }catch(e){
+    console.error('marcarTodasDecExterno:',e);
+    showToast('Erro ao salvar — execute SQL v25',true);
+  }
+}
+
+// Verifica se TODAS as declarações de um externo estão enviadas
+function todasDecsEnviadas(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista)return false;
+  if(lista.plantoes.length===0)return false;
+  return lista.plantoes.every(p=>{
+    const k=crm+'|'+plantaoKey(mes,ano,p.dia,p.turnoIdx);
+    return DECLARACOES_PLANTOES[k]&&DECLARACOES_PLANTOES[k].enviada;
+  });
+}
+
+// Conta quantas declarações estão pendentes para um externo
+function decsPendentesExterno(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista)return {total:0,pendentes:0};
+  let pend=0;
+  lista.plantoes.forEach(p=>{
+    const k=crm+'|'+plantaoKey(mes,ano,p.dia,p.turnoIdx);
+    if(!(DECLARACOES_PLANTOES[k]&&DECLARACOES_PLANTOES[k].enviada))pend++;
+  });
+  return {total:lista.plantoes.length,pendentes:pend};
+}
+
+// ══ GERAR TEXTO DE DECLARAÇÃO (modelo padrão CAIS) ══
+function gerarTextoDeclaracao(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista){showToast('Externo sem plantões neste mês',true);return;}
+  const med=lista.med;
+  const cpf=med.cpf||'[CPF NÃO CADASTRADO]';
+  const unidade=med.unidade||'[UNIDADE]';
+  const linhasPlantoes=lista.plantoes.map(p=>{
+    // Extrair horários do turno
+    const turnoStr=String(p.turno||'');
+    const m=turnoStr.match(/(\d{1,2})[:h](\d{2})\s*[–\-]\s*(\d{1,2})[:h](\d{2})/);
+    let h1='HH:MM',h2='HH:MM',periodo='diurno';
+    if(m){
+      h1=m[1].padStart(2,'0')+':'+m[2];
+      h2=m[3].padStart(2,'0')+':'+m[4];
+      periodo=p.not?'noturno':'diurno';
+    }
+    const mesNome=MP[mes].toLowerCase();
+    return `${p.dia} de ${mesNome} de ${ano}, no período ${periodo}, das ${h1} às ${h2}`;
+  });
+  const corpoLinhas=linhasPlantoes.map(l=>'• '+l).join('\n');
+  const texto=`DE: CAIS CAMPINAS
+PARA: ${unidade.toUpperCase()}
+
+Declaramos para os devidos fins, que o(a) médico(a) ${med.n.toUpperCase()}, inscrito(a) sob o CRM/GO de número ${med.c} e CPF de número ${cpf}, realizou plantão no CAIS Campinas, na Urgência e Emergência, no(s) seguinte(s) dia(s):
+
+${corpoLinhas}
+
+Por ser a expressão da verdade, firmamos a presente declaração.
+
+Goiânia, ${new Date().toLocaleDateString('pt-BR')}.
+
+Atenciosamente,
+
+____________________________________________
+Gestor de Escala — CAIS Campinas`;
+
+  // Abrir modal com o texto e botão de copiar
+  document.getElementById('decl-texto-titulo').textContent='Declaração — '+med.n;
+  document.getElementById('decl-texto-area').value=texto;
+  abrirMo('mo-decl-texto');
+}
+
+function copiarTextoDeclaracao(){
+  const ta=document.getElementById('decl-texto-area');
+  ta.select();ta.setSelectionRange(0,99999);
+  try{
+    document.execCommand('copy');
+    showToast('✓ Texto copiado!');
+  }catch(e){
+    showToast('Não foi possível copiar — selecione manualmente',true);
+  }
+}
 
 async function carregarDeclaracoes(){
   try{
@@ -4524,30 +4825,8 @@ async function carregarDeclaracoes(){
 }
 
 async function toggleDeclaracao(crm,mes,ano){
-  const k=crm+'-'+mes+'-'+ano;
-  const atual=DECLARACOES[k];
-  const novoStatus=!(atual&&atual.enviada);
-  const dataEnvio=novoStatus?new Date().toISOString():null;
-  // Atualizar local primeiro (UX)
-  DECLARACOES[k]={crm,mes,ano,enviada:novoStatus,data_envio:dataEnvio};
-  renderDashboard();
-  // Persistir no banco
-  try{
-    // DELETE + INSERT (mais seguro que upsert)
-    await sb.from('declaracoes_externos').delete()
-      .eq('crm',crm).eq('mes',mes).eq('ano',ano);
-    const {error}=await sb.from('declaracoes_externos').insert({
-      crm,mes,ano,enviada:novoStatus,data_envio:dataEnvio
-    });
-    if(error)throw error;
-    showToast(novoStatus?'✓ Declaração marcada como enviada':'Declaração desmarcada');
-  }catch(e){
-    console.error('toggleDeclaracao:',e);
-    showToast('Erro ao salvar — execute o SQL v22',true);
-    // Reverter local
-    if(atual)DECLARACOES[k]=atual;else delete DECLARACOES[k];
-    renderDashboard();
-  }
+  // Função antiga (mês inteiro) — mantida para compat mas marca TODAS via novo sistema
+  await marcarTodasDecExterno(crm,mes,ano);
 }
 
 // ══ RELATÓRIO GESTOR ══
@@ -6540,6 +6819,35 @@ async function salvarPerfil(){
   fecharMo('mo-perfil');
   showToast(pwNova?'Perfil e senha salvos!':'Perfil salvo!');
 }
+// ══ SINCRONIZAR LOGINS DE EXTERNOS ══
+// Cria acesso plantonista para externos cadastrados sem login (senha = CRM)
+async function sincronizarLoginsExternos(){
+  const externosSemLogin=MEDICOS.filter(m=>m.ext&&!LOGINS.find(l=>l.c===m.c));
+  if(externosSemLogin.length===0){
+    showToast('Todos os externos já têm acesso ✓');return;
+  }
+  if(!confirm(`Criar acesso para ${externosSemLogin.length} externo(s) sem login?\n\nSenha padrão = CRM. Os externos poderão usar todas as funções de plantonista.`))return;
+  let ok=0,err=0;
+  for(const m of externosSemLogin){
+    try{
+      const {error}=await sb.from('logins').upsert({
+        crm:m.c,nome:m.n,senha:String(m.c),perfil:'plantonista',
+        is_gestor:false,is_plantonista:true,is_clinico:true
+      },{onConflict:'crm'});
+      if(error)throw error;
+      LOGINS.push({id:'L'+Date.now()+'-'+m.c,loginId:null,n:m.n,c:m.c,role:'plantonista',pw:String(m.c),
+        isGestor:false,isPlantonista:true,isClinico:true,ativo:true});
+      ok++;
+    }catch(e){
+      console.error('Falha sincronizar externo CRM',m.c,e);
+      err++;
+    }
+  }
+  renderLogins();populaLogin();
+  if(err===0)showToast(`✓ ${ok} externo(s) sincronizados — senha padrão = CRM`);
+  else showToast(`${ok} sincronizados, ${err} falhas — veja console`,true);
+}
+
 function aplicarPerfil(crm){
   var pf=getPerfil(crm)||{};
   var ne=pf.nomeEscala||'';
@@ -6547,6 +6855,61 @@ function aplicarPerfil(crm){
     document.getElementById('u-nome').textContent=ne.split(' ').slice(0,2).join(' ');
     var init=ne.split(' ').filter(function(p){return p.length>2}).slice(0,2).map(function(p){return p[0]}).join('').toUpperCase();
     document.getElementById('u-ava').textContent=init||ini2(curUser.nU);
+  }
+  // Verificar se cadastro está completo (CPF + Data de Nascimento)
+  verificarCadastroCompleto();
+}
+
+// ══ VERIFICAR CADASTRO COMPLETO (CPF + Data Nascimento) ══
+function verificarCadastroCompleto(){
+  if(!curUser||!curUser.c)return;
+  // Gestor não é obrigado a preencher (já está cadastrado)
+  if(curUser.isGestor)return;
+  const med=MEDICOS.find(m=>m.c===curUser.c);
+  if(!med)return;
+  const semCpf=!med.cpf||String(med.cpf).replace(/\D/g,'').length!==11;
+  const semData=!med.data_nascimento;
+  if(semCpf||semData){
+    // Abre modal bloqueante
+    setTimeout(()=>{
+      document.getElementById('cc-cpf').value=med.cpf||'';
+      document.getElementById('cc-data-nasc').value=med.data_nascimento||'';
+      abrirMo('mo-completar-cadastro');
+    },200);
+  }
+}
+
+async function salvarCompletarCadastro(){
+  const cpf=document.getElementById('cc-cpf').value.trim();
+  const dataN=document.getElementById('cc-data-nasc').value;
+  if(!cpf||cpf.replace(/\D/g,'').length!==11){
+    showToast('CPF inválido — preencha completamente',true);return;
+  }
+  if(!validarCPF(cpf)){
+    showToast('CPF inválido — verifique os dígitos',true);return;
+  }
+  if(!dataN){
+    showToast('Data de nascimento é obrigatória',true);return;
+  }
+  // Verificar idade plausível
+  const dt=new Date(dataN);
+  const idade=Math.floor((new Date()-dt)/(1000*60*60*24*365.25));
+  if(idade<18||idade>90){
+    showToast('Data de nascimento parece inválida',true);return;
+  }
+  try{
+    const {error}=await sb.from('profissionais').update({
+      cpf:cpf,data_nascimento:dataN
+    }).eq('crm',curUser.c);
+    if(error)throw error;
+    // Atualizar local
+    const med=MEDICOS.find(m=>m.c===curUser.c);
+    if(med){med.cpf=cpf;med.data_nascimento=dataN;}
+    fecharMo('mo-completar-cadastro');
+    showToast('✓ Cadastro completo! Obrigado.');
+  }catch(e){
+    console.error('Erro ao completar cadastro:',e);
+    showToast('Erro ao salvar — verifique sua conexão',true);
   }
 }
 async function verificarPrimeiroAcesso(){
