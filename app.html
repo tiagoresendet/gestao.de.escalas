@@ -1389,7 +1389,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.20.03';
+const APP_VERSION='2026.06.20.04';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -3448,15 +3448,35 @@ function valorDoPlantao(p){
 // ══ ESCALA MENSAL — carregar snapshots ══
 async function carregarESCMES(){
   try{
-    const {data,error}=await sb.from('escala_mensal').select('*');
-    if(error)throw error;
+    // IMPORTANTE: Supabase limita .select() a 1000 registros por padrão.
+    // Como uma escala completa do mês tem 224 snapshots + Ns manuais,
+    // facilmente passa de 1000 registros entre múltiplos meses.
+    // Solução: paginar para garantir que TODOS os registros são carregados.
+    const PAGE_SIZE=1000;
+    let allData=[];
+    let from=0;
+    let hasMore=true;
+    while(hasMore){
+      const {data,error}=await sb.from('escala_mensal')
+        .select('*')
+        .range(from,from+PAGE_SIZE-1)
+        .order('id',{ascending:true});
+      if(error)throw error;
+      if(!data||data.length===0){hasMore=false;break;}
+      allData=allData.concat(data);
+      if(data.length<PAGE_SIZE)hasMore=false;
+      else from+=PAGE_SIZE;
+      if(from>20000){
+        console.warn('[carregarESCMES] Mais de 20k registros — interrompendo paginação');
+        break;
+      }
+    }
     Object.keys(ESCMES).forEach(k=>delete ESCMES[k]);
     let manualCount=0,snapCount=0,trocaCount=0;
-    (data||[]).forEach(r=>{
+    allData.forEach(r=>{
       const k=keyMes(r.mes,r.ano);
       if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
       // Se o registro tem dia_mes E origem='manual', é uma alteração pontual de um dia específico
-      // (Aceita tanto número quanto string para dia_mes)
       const dm=r.dia_mes!=null?parseInt(r.dia_mes):null;
       if(dm&&r.origem==='manual'){
         const dk='DIA_'+dm;
@@ -3473,7 +3493,7 @@ async function carregarESCMES(){
         else if(r.origem==='troca')trocaCount++;
       }
     });
-    console.log(`[carregarESCMES] ${data?.length||0} registros: ${snapCount} snapshot · ${manualCount} manual · ${trocaCount} troca`);
+    console.log(`[carregarESCMES] ${allData.length} registros carregados: ${snapCount} snapshot · ${manualCount} manual · ${trocaCount} troca`);
   }catch(e){console.error('carregarESCMES:',e)}
 }
 
