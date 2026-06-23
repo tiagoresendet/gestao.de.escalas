@@ -1389,7 +1389,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.20.04';
+const APP_VERSION='2026.06.20.05';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -2972,16 +2972,20 @@ function renderCC(filtro=''){
     const idx=MEDICOS.indexOf(m);const av=ini2(m.n);const v=getVinc(m.n);
     const ext=m.ext?`<div style="font-size:9px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;display:inline-block;margin-bottom:3px;color:var(--text2)">🏥 ${m.unidade||'Externa'}</div>`:'';
     const migBtn=isG&&m.ext?`<button class="btn btn-s btn-xs" onclick="migrarMed(${idx})">⬇</button>`:'';
+    // Botão de criar acesso para externos sem login
+    const semLogin=m.ext&&!LOGINS.find(l=>l.c===m.c);
+    const accBtn=isG&&semLogin?`<button class="btn btn-p btn-xs" onclick="criarAcessoExternoIndividual(${m.c})" title="Criar acesso plantonista (este externo ainda não tem login)" style="background:#f97316;border-color:#ea580c">🔑</button>`:'';
     // Garantir tag "EXTERNO" no rodapé do card para todo m.ext=true, mesmo
     // se a área "EXTERNO" não estiver nas areas[]
     let areasTxt=m.a||'';
     if(m.ext&&!/EXTERNO/i.test(areasTxt)){
       areasTxt=areasTxt?areasTxt+' · EXTERNO':'EXTERNO';
     }
+    const tagSemAcesso=semLogin?'<div style="font-size:9px;background:#fef3c7;border:1px solid #f59e0b;border-radius:3px;padding:1px 5px;display:inline-block;margin-top:3px;color:#92400e;font-weight:700">⚠ SEM ACESSO</div>':'';
     return `<div class="cc-c" style="align-items:flex-start">
       <div class="cc-av" style="background:${m.cor};margin-top:2px">${av}</div>
-      <div style="flex:1;min-width:0">${ext}<div class="cc-nm" title="${m.n}">${m.n}</div><div class="cc-cr">CRM ${m.c} · ${v} · ${areasTxt}</div></div>
-      ${isG?`<div class="cc-ac">${migBtn}<button class="btn btn-g btn-xs" onclick="abrirEditMed(${idx})">✏</button><button class="btn btn-d btn-xs" onclick="excluirMed(${idx})">✕</button></div>`:''}
+      <div style="flex:1;min-width:0">${ext}<div class="cc-nm" title="${m.n}">${m.n}</div><div class="cc-cr">CRM ${m.c} · ${v} · ${areasTxt}</div>${tagSemAcesso}</div>
+      ${isG?`<div class="cc-ac">${accBtn}${migBtn}<button class="btn btn-g btn-xs" onclick="abrirEditMed(${idx})">✏</button><button class="btn btn-d btn-xs" onclick="excluirMed(${idx})">✕</button></div>`:''}
     </div>`;
   }).join('')||'<div style="color:var(--text3);font-size:12px;grid-column:1/-1;padding:12px 0">Nenhum encontrado.</div>';
 }
@@ -7054,20 +7058,41 @@ async function sincronizarLoginsExternos(){
   if(externosSemLogin.length===0){
     showToast('Todos os externos já têm acesso ✓');return;
   }
-  if(!confirm(`Criar acesso para ${externosSemLogin.length} externo(s) sem login?\n\nSenha padrão = CRM. Os externos poderão usar todas as funções de plantonista.`))return;
+  // Lista detalhada com nomes para confirmação
+  const listaNomes=externosSemLogin.map(m=>`• ${m.n} (CRM ${m.c})`).join('\n');
+  if(!confirm(`Criar acesso para ${externosSemLogin.length} externo(s) sem login?\n\n${listaNomes}\n\nSenha padrão = CRM.`))return;
   let ok=0,err=0;
   const errosDetalhe=[];
+  const okList=[];
   for(const m of externosSemLogin){
+    console.log(`[sync externos] Processando ${m.n} (CRM ${m.c})...`);
     try{
-      const {error}=await sb.from('logins').upsert({
+      // Tentar UPSERT primeiro
+      const {error,data:upData}=await sb.from('logins').upsert({
         crm:m.c,nome:m.n,senha:String(m.c),perfil:'plantonista',
         is_gestor:false,is_plantonista:true,is_clinico:true
-      },{onConflict:'crm'});
-      if(error)throw error;
+      },{onConflict:'crm'}).select();
+      if(error){
+        // Se upsert falhou, tentar INSERT puro
+        console.warn(`[sync] UPSERT falhou para CRM ${m.c}, tentando INSERT:`,error.message);
+        const {error:eIns,data:insData}=await sb.from('logins').insert({
+          crm:m.c,nome:m.n,senha:String(m.c),perfil:'plantonista',
+          is_gestor:false,is_plantonista:true,is_clinico:true
+        }).select();
+        if(eIns){
+          // Se INSERT também falhou, capturar erro
+          throw eIns;
+        }
+        console.log(`[sync] ✓ INSERT puro deu certo para ${m.n}`,insData);
+      }else{
+        console.log(`[sync] ✓ UPSERT deu certo para ${m.n}`,upData);
+      }
       ok++;
+      okList.push(m.n);
     }catch(e){
-      console.error('Falha sincronizar externo CRM',m.c,m.n,e);
-      errosDetalhe.push({crm:m.c,nome:m.n,msg:(e.message||'').slice(0,60)});
+      const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
+      console.error(`[sync] ❌ FALHA para ${m.n} (CRM ${m.c}):`,e);
+      errosDetalhe.push({crm:m.c,nome:m.n,msg:String(msg).slice(0,100)});
       err++;
     }
   }
@@ -7096,8 +7121,61 @@ async function sincronizarLoginsExternos(){
   if(err===0){
     showToast(`✓ ${ok} externo(s) sincronizados — senha padrão = CRM`);
   }else{
+    // Mostrar alerta detalhado com nomes que falharam
+    const listaFalhas=errosDetalhe.map(e=>`• ${e.nome} (CRM ${e.crm}): ${e.msg}`).join('\n');
     console.error('Erros na sincronização:',errosDetalhe);
-    showToast(`${ok} sincronizados, ${err} falhas — veja console (F12)`,true);
+    alert(`Sincronização: ${ok} OK, ${err} FALHAS\n\nFalhas:\n${listaFalhas}\n\nVerifique o console (F12) para detalhes.`);
+  }
+}
+
+// Cria acesso para um único externo (botão na lista de Externos)
+async function criarAcessoExternoIndividual(crm){
+  const m=MEDICOS.find(mm=>mm.c===crm);
+  if(!m){showToast('Profissional não encontrado',true);return;}
+  if(LOGINS.find(l=>l.c===crm)){showToast('Este profissional já tem acesso',true);return;}
+  if(!confirm(`Criar acesso para ${m.n} (CRM ${crm})?\nSenha padrão = ${crm}`))return;
+  try{
+    // INSERT direto (sem upsert) para diagnóstico claro
+    const {error,data}=await sb.from('logins').insert({
+      crm:crm,nome:m.n,senha:String(crm),perfil:'plantonista',
+      is_gestor:false,is_plantonista:true,is_clinico:true
+    }).select();
+    if(error){
+      // Se já existe (conflito), tentar UPDATE
+      if((error.code==='23505')||(error.message||'').includes('duplicate')){
+        console.log('Login já existe, tentando UPDATE...');
+        const {error:eUp}=await sb.from('logins').update({
+          nome:m.n,senha:String(crm),perfil:'plantonista',
+          is_gestor:false,is_plantonista:true,is_clinico:true
+        }).eq('crm',crm);
+        if(eUp)throw eUp;
+      }else{
+        throw error;
+      }
+    }
+    console.log('[criarAcessoExternoIndividual] ✓ Sucesso:',data);
+    // Recarregar lista completa do banco
+    const {data:lgs}=await sb.from('logins').select('*');
+    if(lgs){
+      LOGINS.length=0;
+      lgs.forEach(l=>LOGINS.push({
+        id:'L'+(l.id||l.crm||l.cpf),loginId:l.id,
+        n:l.nome,c:l.crm||null,cpf:l.cpf||null,
+        isGestor:l.is_gestor===true,
+        isPlantonista:l.is_plantonista!==false,
+        isClinico:l.is_clinico!==false,
+        role:l.perfil||(l.is_gestor?'gestor':'plantonista'),
+        pw:l.senha,
+        primeiroAcesso:l.primeiro_acesso!==false,
+        ativo:l.ativo!==false
+      }));
+    }
+    renderLogins();populaLogin();renderCC('');
+    showToast(`✓ Acesso criado para ${m.n.split(' ')[0]}`);
+  }catch(e){
+    const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
+    console.error('[criarAcessoExternoIndividual] FALHA:',e);
+    alert(`Falha ao criar acesso para ${m.n}:\n\n${String(msg).slice(0,200)}\n\nVerifique o console (F12).`);
   }
 }
 
