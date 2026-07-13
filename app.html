@@ -1464,7 +1464,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.07.02.01';
+const APP_VERSION='2026.07.02.02';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -2684,12 +2684,14 @@ function getSlotValDia(mes,ano,semLetra,ab,ti,diaMes){
   if(ESCMES[k]&&ESCMES[k]['DIA_'+diaMes]&&ESCMES[k]['DIA_'+diaMes][ti]!==undefined){
     return ESCMES[k]['DIA_'+diaMes][ti];
   }
+  if(!semLetra)return '';// sem letra da semana, só o override é válido
   // 2. Snapshot da semana
   if(ESCMES[k]&&ESCMES[k][semLetra]&&ESCMES[k][semLetra][ab]){
     const v=ESCMES[k][semLetra][ab][ti];
     if(v!==undefined&&v!==null)return v;
   }
   // 3. Fallback EB
+  if(!EB[semLetra]||!EB[semLetra][ab])return '';
   return (EB[semLetra][ab]||[])[ti]||'';
 }
 
@@ -5835,140 +5837,88 @@ function mudarAbaRel(aba,btn){
 // Coleta TODOS os externos que cobriram plantões num mês — 3 fontes (manual + snapshot + trocas)
 // Retorna array com {med, plantoes:[{dia,dt,turnoIdx,data,turno,area,h,fds,not,valor}], totalH, totalValor}
 function coletarExternosMes(mes,ano){
+  // ══════════════════════════════════════════════════════════════
+  // NOVA ABORDAGEM (v2026.07.02.02):
+  // Fonte única da verdade = valor atual na célula da escala.
+  // Iteramos TODOS os dias do mês × TODOS os turnos, e para cada
+  // célula lemos o valor via getSlotValDia (que respeita a hierarquia
+  // manual > snapshot > EB). Se o CRM lá é de um externo, contabiliza.
+  //
+  // Isso torna impossível contar plantão que não está mais na escala.
+  // ══════════════════════════════════════════════════════════════
   const externosMap={};
-  const k=keyMes(mes,ano);
+  const diasDoMes=new Date(ano,mes,0).getDate();
 
-  // Helper: verifica se um CRM realmente aparece no valor de uma célula da escala hoje
-  // (considerando edições manuais posteriores)
-  function crmEstaNoSlotDoDia(crm,diaMes,turnoIdx){
-    // Prioridade 1: override manual do dia (DIA_X)
-    const dk='DIA_'+diaMes;
-    if(ESCMES[k]&&ESCMES[k][dk]&&ESCMES[k][dk][turnoIdx]!==undefined){
-      const val=ESCMES[k][dk][turnoIdx]||'';
-      const match=val.match(/\((\d+)\)/g);
-      if(!match)return false;
-      return match.some(m=>parseInt(m.replace(/[()]/g,''))===crm);
-    }
-    // Prioridade 2: snapshot da semana correspondente
-    const dt=new Date(ano,mes-1,diaMes,12,0,0);
-    const abIdx=dt.getDay();
-    const ab=['DOM','SEG','TER','QUA','QUI','SEX','SAB'][abIdx];
-    // Determinar semana A/B via calendarioAB
-    const letra=(typeof letraSemanaDoDia==='function')?letraSemanaDoDia(mes,ano,diaMes):null;
-    if(letra&&ESCMES[k]&&ESCMES[k][letra]&&ESCMES[k][letra][ab]&&ESCMES[k][letra][ab][turnoIdx]!==undefined){
-      const val=ESCMES[k][letra][ab][turnoIdx]||'';
-      const match=val.match(/\((\d+)\)/g);
-      if(!match)return false;
-      return match.some(m=>parseInt(m.replace(/[()]/g,''))===crm);
-    }
-    // Prioridade 3: fallback EB
-    if(letra&&EB[letra]&&EB[letra][ab]){
-      const val=EB[letra][ab][turnoIdx]||'';
-      const match=val.match(/\((\d+)\)/g);
-      if(!match)return false;
-      return match.some(m=>parseInt(m.replace(/[()]/g,''))===crm);
-    }
-    return false;
-  }
+  // Iterar cada dia do mês
+  for(let dia=1;dia<=diasDoMes;dia++){
+    const dt=new Date(ano,mes-1,dia,12,0,0);
+    const ds=dt.getDay();
+    const fds=(ds===0||ds===6);
+    const ab=['DOM','SEG','TER','QUA','QUI','SEX','SAB'][ds];
+    const letra=letraSemanaDoDia(mes,ano,dia);
 
-  // FONTE 1: Slots manuais (DIA_X em ESCMES) — alterações pontuais por dia
-  // Este é o mais confiável: sabe exatamente qual valor está na célula
-  if(ESCMES[k]){
-    Object.keys(ESCMES[k]).filter(key=>key.startsWith('DIA_')).forEach(dk=>{
-      const diaMes=parseInt(dk.replace('DIA_',''));
-      const diaArr=ESCMES[k][dk]||[];
-      diaArr.forEach((val,ti)=>{
-        if(!val)return;
-        const match=val.match(/\((\d+)\)/);
-        if(!match)return;
-        const crm=parseInt(match[1]);
-        const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
-        if(!med)return;
-        if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
-        const t=TURNOS[ti];if(!t)return;
-        const dt=new Date(ano,mes-1,diaMes,12,0,0);
-        const ds=dt.getDay();const fds=(ds===0||ds===6);
-        externosMap[crm].plantoes.push({
-          dia:diaMes,dt,turnoIdx:ti,
-          data:String(diaMes).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+ano,
-          turno:t.l,area:t.a,h:t.h,fds,not:t.not
+    // Para cada turno cadastrado, verifica quem está na célula
+    TURNOS.forEach((t,ti)=>{
+      const val=getSlotValDia(mes,ano,letra,ab,ti,dia);
+      if(!val)return;
+
+      // ═══ TRATAR MEIO PLANTÃO (separador "|") ═══
+      // Se turno de 12h com "|", divide em 2 metades de 6h
+      if(val.includes('|')&&t.h===12){
+        const partes=val.split('|').map(p=>p.trim());
+        partes.forEach((parte,idx)=>{
+          const match=parte.match(/\((\d+)\)/);
+          if(!match)return;
+          const crm=parseInt(match[1]);
+          const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
+          if(!med)return;
+          if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
+          // Detectar metade pela tag #1 ou #2; senão usar ordem
+          const metadeTag=parte.match(/#([12])/);
+          const metade=metadeTag?metadeTag[1]:String(idx+1);
+          // Horário da metade
+          let horarioMetade;
+          if(t.not){
+            horarioMetade=metade==='1'?'19:00–01:00':'01:00–07:00';
+          }else{
+            horarioMetade=metade==='1'?'07:00–13:00':'13:00–19:00';
+          }
+          const sufixo=t.l.match(/\(\d+\)/);
+          const turnoLabel=`${horarioMetade}  ${t.a}${sufixo?' '+sufixo[0]:''} (${metade}ª metade)`;
+          // Evitar duplicidade
+          const dataStr=String(dia).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+ano;
+          const jaTem=externosMap[crm].plantoes.find(p=>p.data===dataStr&&p.turno===turnoLabel);
+          if(jaTem)return;
+          externosMap[crm].plantoes.push({
+            dia,dt,turnoIdx:ti,
+            data:dataStr,
+            turno:turnoLabel,area:t.a,h:6,fds,not:t.not,
+            meioPlantao:true,metade
+          });
         });
+        return;
+      }
+
+      // ═══ PLANTÃO INTEIRO ═══
+      const match=val.match(/\((\d+)\)/);
+      if(!match)return;
+      const crm=parseInt(match[1]);
+      const med=MEDICOS.find(m=>m.c===crm&&m.ext===true);
+      if(!med)return;
+      if(!externosMap[crm])externosMap[crm]={prof:med,plantoes:[]};
+      const dataStr=String(dia).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+ano;
+      // Evitar duplicidade (mesma célula pode ser lida se algum bug)
+      const jaTem=externosMap[crm].plantoes.find(p=>p.data===dataStr&&p.turnoIdx===ti);
+      if(jaTem)return;
+      externosMap[crm].plantoes.push({
+        dia,dt,turnoIdx:ti,
+        data:dataStr,
+        turno:t.l,area:t.a,h:t.h,fds,not:t.not
       });
     });
   }
 
-  // FONTE 2: Plantões gerados normalmente (snapshot/EB para externos pré-cadastrados)
-  // gerarPlantoesMes já respeita a hierarquia (DIA_X > snapshot semana > EB), então
-  // se um externo aparece aqui, ele está de fato na escala vigente.
-  const todosPlantoesMes=gerarPlantoesMes(mes,ano);
-  todosPlantoesMes.forEach(p=>{
-    const med=MEDICOS.find(m=>m.c===p.crm);
-    if(med&&med.ext===true){
-      if(!externosMap[med.c])externosMap[med.c]={prof:med,plantoes:[]};
-      const dataStr=p.dt.toLocaleDateString('pt-BR');
-      const jaTem=externosMap[med.c].plantoes.find(x=>x.data===dataStr&&x.turno===p.turno);
-      if(!jaTem){
-        externosMap[med.c].plantoes.push({
-          dia:p.dia,dt:p.dt,turnoIdx:p.turnoIdx,
-          data:dataStr,turno:p.turno,area:p.area,h:p.h,fds:p.fds,not:p.not
-        });
-      }
-    }
-  });
-
-  // FONTE 3: Trocas aprovadas com substituto externo
-  // IMPORTANTE: só contabilizar se o externo AINDA está na célula (checagem crítica)
-  // Isso evita listar plantões que foram tirados dele depois (edição manual ou troca posterior)
-  const trocasMes=TROCAS.filter(t=>{
-    if(t.status!=='aprovado')return false;
-    if(!(t.dt instanceof Date))return false;
-    return t.dt.getMonth()+1===mes&&t.dt.getFullYear()===ano;
-  });
-  trocasMes.forEach(t=>{
-    const ext=MEDICOS.find(m=>m.c===t.bCRM&&m.ext===true);
-    if(!ext)return;
-    // VERIFICAÇÃO: o externo ainda está de fato no slot? Se não, foi tirado depois.
-    const diaMes=t.dt.getDate();
-    // Encontrar turnoIdx a partir do label da troca
-    let turnoIdx=-1;
-    for(let i=0;i<TURNOS.length;i++){
-      const tl=TURNOS[i].l.replace(/\s+/g,' ').trim();
-      const trTurno=String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').replace(/\s+/g,' ').trim();
-      if(tl===trTurno){turnoIdx=i;break;}
-      // Match parcial pela área + horário
-      if(tl.includes(t.area)&&trTurno.includes(t.area)){
-        const horaTurno=tl.match(/^\d{2}:\d{2}[–\-]\d{2}:\d{2}/);
-        const horaTr=trTurno.match(/^\d{2}:\d{2}[–\-]\d{2}:\d{2}/);
-        if(horaTurno&&horaTr&&horaTurno[0]===horaTr[0]){turnoIdx=i;break;}
-      }
-    }
-    if(turnoIdx<0){
-      // Não conseguiu localizar o turno — por segurança NÃO contabiliza
-      console.warn('[coletarExternosMes] Troca aprovada sem turno mapeado, ignorada:',t.id,t.turno);
-      return;
-    }
-    // Verifica se o CRM do externo está no slot atual
-    if(!crmEstaNoSlotDoDia(ext.c,diaMes,turnoIdx)){
-      console.log(`[coletarExternosMes] Externo ${ext.n} (CRM ${ext.c}) não está mais no slot dia ${diaMes} turno ${turnoIdx} — plantão ignorado (foi retirado depois da troca)`);
-      return;
-    }
-    if(!externosMap[ext.c])externosMap[ext.c]={prof:ext,plantoes:[]};
-    const jaTem=externosMap[ext.c].plantoes.find(p=>p.data===t.data&&p.turno===t.turno);
-    if(jaTem)return;
-    let h=12;
-    const turnoStr=String(t.turno||'');
-    if(/\(1ª metade\)|\(2ª metade\)/.test(turnoStr))h=6;
-    if(/13:00.{1,3}19:00|07:00.{1,3}13:00|01:00.{1,3}07:00|19:00.{1,3}01:00/.test(turnoStr))h=6;
-    const ds=t.dt.getDay();const fds=(ds===0||ds===6);
-    externosMap[ext.c].plantoes.push({
-      dia:t.dt.getDate(),dt:t.dt,turnoIdx,
-      data:t.data,turno:t.turno,area:t.area,h,fds,
-      not:/19:00|01:00/.test(turnoStr)&&!/07:00.{1,3}13:00|07:00.{1,3}19:00|13:00.{1,3}19:00/.test(turnoStr)
-    });
-  });
-
-  // FILTRO FINAL: remover externos que ficaram sem plantões
-  // (pode acontecer se todos foram invalidados pela checagem acima)
+  // Remover mapas vazios (segurança)
   Object.keys(externosMap).forEach(crm=>{
     if(!externosMap[crm].plantoes||externosMap[crm].plantoes.length===0){
       delete externosMap[crm];
@@ -5994,6 +5944,7 @@ function coletarExternosMes(mes,ano){
     return {med,plantoes:x.plantoes,totalH,totalValor};
   }).sort((a,b)=>b.totalValor-a.totalValor);
 
+  console.log(`[coletarExternosMes] ${lista.length} externos encontrados em ${MP[mes]}/${ano} — total plantões: ${lista.reduce((s,x)=>s+x.plantoes.length,0)}`);
   return lista;
 }
 
