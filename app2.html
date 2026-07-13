@@ -2,6 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Kos App — Gestão de Plantões</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -437,6 +440,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       style="background:transparent;border:1px solid transparent;cursor:pointer;font-size:10px;margin-left:4px;padding:4px 9px;border-radius:6px;color:var(--text2);font-weight:600;display:inline-flex;align-items:center;gap:4px;min-height:28px;transition:all .15s"
       onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--border2)'"
       onmouseout="this.style.background='transparent';this.style.borderColor='transparent'"></button>
+    <span id="app-version-tag" style="font-size:9px;color:var(--text3);margin-left:6px;font-family:var(--mono);opacity:.7" title="Versão do app"></span>
     <div class="tb-r">
       <div style="display:flex;align-items:center;gap:7px">
         <div style="position:relative;display:flex;align-items:center;gap:6px">
@@ -488,7 +492,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ph">
           <div><div class="pt">Dashboard</div><div class="ps" id="dash-sub"></div></div>
           <div class="ph-r">
-            <button class="btn btn-g btn-sm" onclick="gerarRelProfModal()">📋 Relatório por Profissional</button>
+            <button class="btn btn-p btn-sm" onclick="abrirModalRelMensal()">📋 Relatório Mensal</button>
           </div>
         </div>
 
@@ -496,6 +500,24 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%);border:1px solid #fde68a">
           <div class="ct" style="display:flex;align-items:center;gap:6px;color:#92400e">⚠️ Atenção do Gestor</div>
           <div id="d-alertas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px"></div>
+        </div>
+
+        <!-- ESCALA DO DIA / AMANHÃ (compacto) -->
+        <div class="two-col" style="margin-bottom:12px">
+          <div class="card" style="padding:10px 12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;flex-wrap:wrap">
+              <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">📅 Hoje · <span id="d-hoje-data" style="color:var(--text3);font-weight:600"></span></div>
+              <span id="d-hoje-count" style="font-size:11px;color:var(--text3);font-weight:600"></span>
+            </div>
+            <div id="d-hoje-list"></div>
+          </div>
+          <div class="card" style="padding:10px 12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;flex-wrap:wrap">
+              <div style="font-size:11px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.04em">📅 Amanhã · <span id="d-amanha-data" style="color:var(--text3);font-weight:600"></span></div>
+              <span id="d-amanha-count" style="font-size:11px;color:var(--text3);font-weight:600"></span>
+            </div>
+            <div id="d-amanha-list"></div>
+          </div>
         </div>
 
         <!-- LINHA 2: Mês em números -->
@@ -517,22 +539,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px" id="d-area-stats"></div>
         <div class="two-col" style="margin-bottom:12px">
           <div class="card"><div class="ct">🏆 Top Plantonistas (horas)</div><div id="d-top"></div></div>
-          <div class="card"><div class="ct">⚠️ Sem plantões no mês</div><div id="d-sem"></div></div>
-        </div>
-
-        <!-- Externos -->
-        <div class="card" style="margin-bottom:12px">
-          <div class="ct">🔄 Plantonistas Externos no Mês</div>
-          <div id="d-externos"></div>
-        </div>
-
-        <!-- Trocas pendentes -->
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div class="ct" style="margin:0">⏳ Trocas Pendentes</div>
-            <button class="btn btn-g btn-sm" onclick="nav(document.querySelector('[data-p=trocas]'))">Ver todas →</button>
+          <div class="card" id="d-externos-card">
+            <div class="ct">🔄 Plantonistas Externos no Mês</div>
+            <div id="d-externos"></div>
           </div>
-          <div id="d-tr-list"></div>
         </div>
       </div>
 
@@ -541,6 +551,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ph">
           <div><div class="pt">Escala de Plantão</div><div class="ps" id="escala-sub"></div></div>
           <div class="ph-r" id="escala-ph-r">
+            <button class="btn btn-p btn-sm" id="btn-gerenciar-turnos-mes" onclick="abrirGerenciarTurnos('mes')" title="Adicionar/Remover/Editar turnos só deste mês">⚙ Turnos</button>
             <button class="btn btn-g btn-sm" onclick="pdfEscala()">🖨 PDF</button>
             <button class="btn btn-a btn-sm" onclick="exportXLSX()">📊 Excel</button>
             <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
@@ -646,6 +657,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ph">
           <div><div class="pt">Escala Base</div><div class="ps">Semanas A e B — clique para editar</div></div>
           <div class="ph-r">
+            <button class="btn btn-p btn-sm" onclick="abrirGerenciarTurnos('base')" title="Adicionar/Remover/Editar turnos da escala base">⚙ Gerenciar Turnos</button>
             <button class="btn btn-a btn-sm" onclick="exportXLSXBase()">📊 Excel</button>
             <button class="btn btn-s btn-sm" onclick="salvarLocal()">💾 Salvar</button>
           </div>
@@ -679,7 +691,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <div class="page" id="page-logins">
         <div class="ph">
           <div><div class="pt">Gestão de Acessos e Cadastros</div></div>
-          <div class="ph-r"><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
+          <div class="ph-r" style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-g btn-sm" onclick="sincronizarLoginsExternos()" title="Cria login para externos cadastrados sem acesso">🔄 Sincronizar Externos</button><button class="btn btn-p btn-sm" onclick="abrirMo('mo-add-login')">+ Novo Acesso</button></div>
         </div>
         <div class="filtros" style="margin-bottom:10px">
           <button class="f-b active" id="btn-aba-acessos" onclick="mudarAbaLogin('acessos',this)">🔑 Acessos e Permissões</button>
@@ -773,7 +785,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <!-- Abas: Internos / Externos -->
         <div class="filtros" style="margin-bottom:10px">
           <button class="f-b active" id="btn-rel-int" onclick="mudarAbaRel('int',this)">🏥 Internos</button>
-          <button class="f-b" id="btn-rel-ext" onclick="mudarAbaRel('ext',this)">🔄 Externos no Campinas</button>
+          <button class="f-b" id="btn-rel-ext" onclick="mudarAbaRel('ext',this)">🔄 Externos</button>
         </div>
         <!-- Painel internos -->
         <div id="rel-painel-int">
@@ -833,6 +845,32 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
           <div class="tipo-g" id="meu-tipo-g"></div>
         </div>
 
+        <!-- CARDS DE DESTAQUE: Plantão de Hoje + Próximo Plantão -->
+        <div class="two-col" style="margin-bottom:14px">
+          <div class="card" id="meu-hoje-card" style="border:2px solid #2563d4;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)">
+            <div style="font-size:10px;font-weight:800;color:#1e3a8a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">📅 Plantão de Hoje</div>
+            <div id="meu-hoje-content"></div>
+          </div>
+          <div class="card" id="meu-prox-card" style="border:2px solid #22a35a;background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)">
+            <div style="font-size:10px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🔜 Próximo Plantão</div>
+            <div id="meu-prox-content"></div>
+          </div>
+        </div>
+
+        <!-- COMPARATIVO DE HORAS -->
+        <div class="card" style="margin-bottom:14px;padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Total de horas no mês</div>
+              <div style="font-size:24px;font-weight:800;font-family:var(--mono);color:var(--blue);margin-top:2px" id="meu-comp-h">—</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--text2)">vs <span id="meu-comp-mes-ant"></span></div>
+              <div id="meu-comp-delta" style="font-size:14px;font-weight:700;margin-top:2px">—</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Financeiro -->
         <div style="margin-bottom:14px">
           <div class="stitle">💰 Estimativa de Ganhos — <span id="fin-mes-lbl"></span></div>
@@ -842,6 +880,19 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="two-col">
           <div><div class="stitle">✅ Realizados</div><div id="meu-real"></div></div>
           <div><div class="stitle">🔜 Próximos</div><div id="meu-prox"></div></div>
+        </div>
+
+        <!-- Trocas Enviadas -->
+        <div class="card" style="margin-top:12px">
+          <div class="ct">🔄 Minhas Trocas Enviadas</div>
+          <div id="meu-trocas-list"></div>
+        </div>
+
+        <!-- Declarações (só aparece para externos) -->
+        <div id="meu-decls-card" class="card" style="margin-top:12px;display:none">
+          <div class="ct">📋 Declarações de Plantões Realizados</div>
+          <div class="ps" style="margin-bottom:8px">Quando o gestor confirmar o envio da declaração via WhatsApp à sua unidade, o status mudará aqui.</div>
+          <div id="meu-decls-lista"></div>
         </div>
       </div>
 
@@ -865,9 +916,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div id="ed-vinc-info" style="background:var(--blue-bg);border:1px solid rgba(27,77,111,.2);border-radius:var(--r2);padding:9px 12px;font-size:11px;color:var(--blue);margin-bottom:8px;display:none">
       ℹ️ Vínculo: <strong id="ed-vinc-label">—</strong> · definido pelo cadastro do profissional
     </div>
-    <div class="m-act">
-      <button class="btn btn-g" onclick="fecharMo('mo-editar')">Cancelar</button>
-      <button class="btn btn-p" onclick="salvarEdicao()">Confirmar</button>
+    <div class="m-act" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <button class="btn btn-d" onclick="deixarVagaSlot()" title="Limpa a célula (deixa vaga em branco)" style="background:#fef3c7;border-color:#f59e0b;color:#92400e">🗑 Deixar Vaga</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-g" onclick="fecharMo('mo-editar')">Cancelar</button>
+        <button class="btn btn-p" onclick="salvarEdicao()">Confirmar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -889,6 +943,110 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-gerar')">Cancelar</button>
       <button class="btn btn-p" onclick="gerarEscala()">⚡ Gerar Escala</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL TEXTO DA DECLARAÇÃO ══ -->
+<!-- ══ MODAL: GERENCIAR TURNOS (estrutura da escala) ══ -->
+<div class="mo" id="mo-turnos">
+  <div class="m-box" style="max-width:680px">
+    <div class="m-t" id="mo-turnos-titulo">Gerenciar Turnos</div>
+    <div class="m-s" id="mo-turnos-sub"></div>
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:9px 12px;font-size:11.5px;color:#78350f;margin-bottom:10px" id="mo-turnos-aviso">
+      ⚠️ <span id="mo-turnos-aviso-txt">Alterações aqui afetam apenas escalas FUTURAS que forem geradas.</span>
+    </div>
+    <div id="mo-turnos-lista" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button class="btn btn-s" onclick="abrirAddTurno()" style="flex:1">+ Adicionar Turno</button>
+      <button class="btn btn-g" onclick="fecharMo('mo-turnos')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: ADICIONAR/EDITAR TURNO ══ -->
+<div class="mo" id="mo-turno-edit">
+  <div class="m-box" style="max-width:520px">
+    <div class="m-t" id="mo-tu-titulo">Adicionar Turno</div>
+    <div class="m-s">Defina o horário, área e detalhes do turno</div>
+
+    <div class="fg"><label class="fl">Horário</label>
+      <select class="fs" id="tu-horario-preset" onchange="atualizarHorarioCustom()">
+        <option value="07:00–19:00">07:00–19:00 (12h diurno)</option>
+        <option value="13:00–19:00">13:00–19:00 (6h diurno)</option>
+        <option value="19:00–07:00">19:00–07:00 (12h noturno)</option>
+        <option value="19:00–01:00">19:00–01:00 (6h noturno)</option>
+        <option value="custom">— Personalizar —</option>
+      </select>
+    </div>
+    <div class="fg" id="tu-custom-wrap" style="display:none">
+      <label class="fl">Horário personalizado <span style="color:var(--text3);font-weight:400">(formato HH:MM–HH:MM)</span></label>
+      <input type="text" class="fi" id="tu-horario-custom" placeholder="ex: 22:00–04:00">
+      <div style="display:flex;gap:6px;margin-top:5px;align-items:center">
+        <label style="font-size:11px;color:var(--text2)">Horas: </label>
+        <input type="number" class="fi" id="tu-horas-custom" min="1" max="24" style="width:60px;padding:4px 8px" value="6">
+        <label style="font-size:11px;color:var(--text2);margin-left:8px">Noturno?</label>
+        <input type="checkbox" id="tu-noturno-custom" style="width:16px;height:16px">
+      </div>
+    </div>
+
+    <div class="fg"><label class="fl">Área</label>
+      <select class="fs" id="tu-area" onchange="autoLabelTurno()">
+        <option value="SV+ENF">SV+ENF</option>
+        <option value="CM">CM</option>
+        <option value="PED">PED</option>
+        <option value="APOIO">APOIO</option>
+      </select>
+    </div>
+
+    <div class="fg"><label class="fl">Identificação <span style="color:var(--text3);font-weight:400">(opcional — ex: (1), (2))</span></label>
+      <input type="text" class="fi" id="tu-label-extra" placeholder="Deixe vazio para auto-numerar" maxlength="10">
+    </div>
+
+    <div class="m-act" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <button class="btn btn-d" id="tu-btn-remover" onclick="removerTurnoAtual()" style="display:none">🗑 Remover</button>
+      <div style="display:flex;gap:6px;margin-left:auto">
+        <button class="btn btn-g" onclick="fecharMo('mo-turno-edit')">Cancelar</button>
+        <button class="btn btn-p" onclick="salvarTurno()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mo" id="mo-decl-texto">
+  <div class="m-box" style="max-width:640px">
+    <div class="m-t" id="decl-texto-titulo">Declaração</div>
+    <div class="m-s">Texto pronto para copiar e enviar via WhatsApp</div>
+    <textarea id="decl-texto-area" style="width:100%;min-height:340px;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:10px;line-height:1.6;color:#1a1a2e;background:#fafafa" readonly></textarea>
+    <div class="m-act" style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="btn btn-g" onclick="fecharMo('mo-decl-texto')">Fechar</button>
+      <button class="btn btn-p" onclick="copiarTextoDeclaracao()">📋 Copiar Texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL BLOQUEANTE: COMPLETAR CADASTRO (CPF + Data Nascimento) ══ -->
+<div class="mo" id="mo-completar-cadastro" style="background:rgba(15,23,42,.85)">
+  <div class="m-box" style="max-width:480px">
+    <div style="text-align:center;margin-bottom:12px">
+      <div style="font-size:42px">📋</div>
+      <div class="m-t" style="margin-top:6px">Complete seu cadastro</div>
+      <div class="m-s">Precisamos de algumas informações antes de continuar</div>
+    </div>
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:9px 12px;font-size:11.5px;color:#78350f;margin-bottom:10px">
+      ⚠️ Estes dados são obrigatórios. Por motivos administrativos, você não conseguirá usar o aplicativo até preencher.
+    </div>
+    <div class="fg"><label class="fl">CPF <span style="color:var(--red)">*</span></label>
+      <input type="text" class="fi" id="cc-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+    <div class="fg"><label class="fl">Data de Nascimento <span style="color:var(--red)">*</span></label>
+      <input type="date" class="fi" id="cc-data-nasc" max="2008-12-31" min="1940-01-01">
+    </div>
+    <div class="m-act" style="margin-top:14px">
+      <button class="btn btn-p" onclick="salvarCompletarCadastro()" style="width:100%;padding:11px;font-weight:700">✓ Salvar e Continuar</button>
+    </div>
+    <div style="text-align:center;font-size:10.5px;color:var(--text3);margin-top:8px">
+      Em caso de dúvidas, contate o gestor.
     </div>
   </div>
 </div>
@@ -915,6 +1073,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option value="GENERALISTA">Generalista</option>
         <option value="PEDIATRA_RQE">Pediatra RQE</option>
       </select>
+    </div>
+    <div class="fg"><label class="fl">CPF</label>
+      <input type="text" class="fi" id="add-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+    <div class="fg"><label class="fl">Data de Nascimento</label>
+      <input type="date" class="fi" id="add-data-nasc" max="2008-12-31" min="1940-01-01">
     </div>
     <div class="fg" id="add-ext-uni-wrap" style="display:none">
       <label class="fl">Unidade de Lotação <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
@@ -967,6 +1131,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option value="PEDIATRA_RQE">Pediatra RQE</option>
       </select>
     </div>
+    <div class="fg"><label class="fl">CPF</label>
+      <input type="text" class="fi" id="em-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+    <div class="fg"><label class="fl">Data de Nascimento</label>
+      <input type="date" class="fi" id="em-data-nasc" max="2008-12-31" min="1940-01-01">
+    </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-edit-med')">Cancelar</button>
       <button class="btn btn-p" onclick="salvarEditMed()">Salvar</button>
@@ -1008,14 +1178,19 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     </div>
     <div id="tr-ext-fields" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:12px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em">Dados do Plantonista Externo</div>
-      <div class="fg"><label class="fl">Nome Completo</label><input type="text" class="fi" id="tr-ext-nome"></div>
-      <div class="fg"><label class="fl">CRM <span style="color:var(--red);font-size:10px">*verificado contra duplicidade</span></label><input type="text" class="fi" id="tr-ext-crm" placeholder="Apenas números" oninput="verificarCRMExterno(this)"></div>
+      <div class="fg" style="position:relative">
+        <label class="fl">Nome Completo <span style="color:var(--text3);font-weight:400;font-size:10px">(digite para buscar cadastrados)</span></label>
+        <input type="text" class="fi" id="tr-ext-nome" oninput="filtrarExternoSug(this.value)" onfocus="filtrarExternoSug(this.value)" autocomplete="off">
+        <div id="tr-ext-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:200px;overflow-y:auto;z-index:60;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
+      </div>
+      <div class="fg"><label class="fl">CRM <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="text" class="fi" id="tr-ext-crm" placeholder="Apenas números" oninput="verificarCRMExterno(this)"></div>
       <div id="tr-ext-crm-aviso" style="font-size:11px;margin-top:-4px;margin-bottom:8px"></div>
+      <div class="fg"><label class="fl">CPF <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="text" class="fi" id="tr-ext-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)"></div>
       <div class="fg"><label class="fl">WhatsApp <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="tel" class="fi" id="tr-ext-whatsapp" placeholder="(62) 9 0000-0000"></div>
       <div class="fg"><label class="fl">Vínculo</label>
         <select class="fs" id="tr-ext-vinc"><option value="CR">CR — Credenciado</option><option value="EF">EF — Efetivo</option></select>
       </div>
-      <div class="fg"><label class="fl">Unidade de Origem</label>
+      <div class="fg"><label class="fl">Unidade de Origem <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
         <select class="fs" id="tr-ext-uni">
           <option value="">— Selecione —</option>
           <option>CAIS Bairro Goiá</option><option>CAIS Cândida de Morais</option>
@@ -1066,6 +1241,57 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 </div>
 
 <!-- Modal: Relatório por profissional (gestor) -->
+<div class="mo" id="mo-rel-mensal">
+  <div class="m-box" style="max-width:480px">
+    <div class="m-t">📋 Relatório Mensal</div>
+    <div class="m-s">Selecione o que deseja incluir no relatório</div>
+
+    <div class="fg"><label class="fl">Mês</label>
+      <select class="fs" id="rm-mes">
+        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+        <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+        <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Ano</label><input type="number" class="fi" id="rm-ano" min="2024" max="2030"></div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Categorias a incluir</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-cr" checked style="width:15px;height:15px"> Internos Credenciados (CR Generalistas)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-rqe" checked style="width:15px;height:15px"> Pediatras RQE
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-ext" checked style="width:15px;height:15px"> Plantonistas Externos
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-ef" checked style="width:15px;height:15px"> Efetivos (EF — via folha)
+      </label>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Opções de exibição</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-somente" checked style="width:15px;height:15px"> Apenas profissionais com plantões no mês
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-valores" checked style="width:15px;height:15px"> Incluir valores financeiros (R$)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rm-detalhe" style="width:15px;height:15px"> Incluir detalhamento dos plantões (data, turno)
+      </label>
+    </div>
+
+    <div class="m-bt">
+      <button class="btn btn-g" onclick="fecharMo('mo-rel-mensal')">Cancelar</button>
+      <button class="btn btn-p" onclick="gerarRelMensalFiltrado()">📄 Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mo-rel-prof">
   <div class="m-box">
     <div class="m-t">📋 Relatório por Profissional</div>
@@ -1238,20 +1464,34 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.06.10.01';
+const APP_VERSION='2026.06.25.02';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
     const v=localStorage.getItem(KEY);
+
+    // 1. Garantir que a URL tem ?v=VERSAO para forçar bypass de cache
+    // (assim toda navegação interna no app traz a versão certa)
+    const urlVer=new URLSearchParams(location.search).get('v');
+    if(urlVer!==APP_VERSION){
+      const url=new URL(location.href);
+      url.searchParams.set('v',APP_VERSION);
+      // Substitui SEM reload se o navegador puder
+      try{history.replaceState(null,'',url.toString());}catch(_){}
+    }
+
+    // 2. Se a versão local guardada está velha, limpa tudo e força reload limpo
     if(v&&v!==APP_VERSION){
       console.log('[Versão] Local:',v,'→ Nova:',APP_VERSION,'— atualizando...');
-      // Preserva apenas a sessão (login) — limpa o resto
       const sess=localStorage.getItem('cais_session_v1');
       localStorage.clear();
       if(sess)localStorage.setItem('cais_session_v1',sess);
       localStorage.setItem(KEY,APP_VERSION);
-      // Força reload sem cache
-      location.reload();
+      // Reload com query param garante bypass de cache
+      const url=new URL(location.href);
+      url.searchParams.set('v',APP_VERSION);
+      url.searchParams.set('t',Date.now());// timestamp único também
+      location.replace(url.toString());
       return;
     }
     localStorage.setItem(KEY,APP_VERSION);
@@ -1301,6 +1541,28 @@ function fmtData(dt){return `${dt.getDate().toString().padStart(2,'0')}/${(dt.ge
 function diaS(dt){return['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dt.getDay()]}
 function fmtMoeda(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 
+// ══ FORMATAÇÃO DE CPF ══
+function formatarCPF(input){
+  let v=input.value.replace(/\D/g,'').slice(0,11);
+  if(v.length>9)v=v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2}).*/,'$1.$2.$3-$4');
+  else if(v.length>6)v=v.replace(/(\d{3})(\d{3})(\d{1,3}).*/,'$1.$2.$3');
+  else if(v.length>3)v=v.replace(/(\d{3})(\d{1,3}).*/,'$1.$2');
+  input.value=v;
+}
+function validarCPF(cpf){
+  const s=String(cpf).replace(/\D/g,'');
+  if(s.length!==11)return false;
+  if(/^(\d)\1+$/.test(s))return false;// todos iguais
+  let soma=0;
+  for(let i=0;i<9;i++)soma+=parseInt(s[i])*(10-i);
+  let dig=11-(soma%11);if(dig>=10)dig=0;
+  if(dig!==parseInt(s[9]))return false;
+  soma=0;
+  for(let i=0;i<10;i++)soma+=parseInt(s[i])*(11-i);
+  dig=11-(soma%11);if(dig>=10)dig=0;
+  return dig===parseInt(s[10]);
+}
+
 // ══ CÓDIGO O.S. DA TROCA ══
 // Formato: DDMMAA-HHHH-FUNCAO-CRMSOL>CRMSUB[-Mn]
 // Ex: 040626-1907-CM1-28691>27663      (troca completa)
@@ -1327,7 +1589,9 @@ function gerarCodigoTroca(troca){
 }
 
 // ══ TURNOS ══
-const TURNOS=[
+// TURNOS é dinâmico: começa com defaults e é sobrescrito por turnos_base do banco.
+// Pode também ser modificado por turnos_mes (overrides específicos de cada mês).
+const TURNOS_BASE_DEFAULT=[
   {l:'07:00–19:00  SV+ENF',a:'SV+ENF',h:12,not:false,cls:'sv-d'},
   {l:'07:00–19:00  CM (1)',  a:'CM',h:12,not:false,cls:'cm-d'},
   {l:'07:00–19:00  CM (2)',  a:'CM',h:12,not:false,cls:'cm-d'},
@@ -1345,6 +1609,11 @@ const TURNOS=[
   {l:'19:00–07:00  PED (2)', a:'PED',h:12,not:true, cls:'ped-n'},
   {l:'19:00–01:00  APOIO',  a:'APOIO',h:6, not:true, cls:'apo-n'},
 ];
+let TURNOS=[...TURNOS_BASE_DEFAULT.map(t=>({...t}))];
+// TURNOS_BASE: estrutura padrão do banco (turnos_base) — para gerar escalas novas
+let TURNOS_BASE=[...TURNOS_BASE_DEFAULT.map(t=>({...t}))];
+// TURNOS_MES_OVERRIDES: overrides por mês { 'mes-ano': [{ordem,acao,...}] }
+const TURNOS_MES_OVERRIDES={};
 
 // ══ EFETIVOS & MÉDICOS ══
 const EFETIVOS=new Set(['ANSELMO DE OLIVEIRA FRANCO','CARLA VANESSA DE SOUZA','DEBORAH HELENA KICHESE SILVA SANTOS','DOUGLAS VICENTINI RAFAEL','FERNANDA PIRES MUNIZ','LEONARDO FARIA RIBEIRO','MARIO GOMES GARROTE','SILIO ALVES REGES']);
@@ -1524,7 +1793,7 @@ setInterval(sincronizarAutomatico,60000);// 60 segundos
 // Recarrega TUDO do banco (clicar no status ou pressionar F5 lógico)
 async function recarregarTudo(){
   if(dbCarregando)return;
-  showToast('Sincronizando com servidor...');
+  // Não mostra toast — o status já indica sincronização no header
   await carregarSupabase();
   renderAll();
   ultimaSync=Date.now();
@@ -1537,7 +1806,11 @@ async function carregarSupabase(){
   dbCarregando=true;
   mostrarStatusDB(false,'Conectando...');
   try{
-    // Profissionais
+    // 1. Turnos (estrutura) — PRECISA vir antes de escala_base
+    await carregarTurnosBase();
+    await carregarTurnosMes();
+
+    // 2. Profissionais
     const {data:profs,error:eP}=await sb.from('profissionais').select('*').order('nome');
     if(eP)throw eP;
     MEDICOS.length=0;
@@ -1545,14 +1818,16 @@ async function carregarSupabase(){
       n:p.nome,c:p.crm,a:(p.areas||[]).join('/'),areas:p.areas||[],
       cor:p.cor||'#22a35a',vinculo:p.vinculo||'CR',
       ext:p.externo||false,unidade:p.unidade||'',
-      categoria:p.categoria||'GENERALISTA'
+      categoria:p.categoria||'GENERALISTA',
+      cpf:p.cpf||'',data_nascimento:p.data_nascimento||''
     }));
 
     // Escala base
     const {data:slots,error:eS}=await sb.from('escala_base').select('*');
     if(eS)throw eS;
-    // Zerar EB
-    ['A','B'].forEach(sem=>{DA.forEach(ab=>{EB[sem][ab]=Array(16).fill('');});});
+    // Zerar EB com tamanho baseado em TURNOS_BASE (mínimo 16 para retrocompat)
+    const tamEB=Math.max(16,TURNOS_BASE.length);
+    ['A','B'].forEach(sem=>{DA.forEach(ab=>{EB[sem][ab]=Array(tamEB).fill('');});});
     slots.forEach(s=>{
       if(EB[s.semana]&&EB[s.semana][s.dia_semana]!==undefined)
         EB[s.semana][s.dia_semana][s.turno_idx]=s.valor||'';
@@ -1608,7 +1883,9 @@ async function carregarSupabase(){
 
     // Snapshots de escala mensal (CRUCIAL — preserva escalas publicadas)
     await carregarESCMES();
+    aplicarTurnosDoMes(mesMes,mesAno);
     await carregarDeclaracoes();
+    await carregarDeclaracoesPlantoes();
     await carregarValoresPlantao();
 
     // Trocas
@@ -2218,6 +2495,9 @@ function gerarHtmlSems(sems,canEdit){
 function renderEscala(){
   const canEdit=curRole==='gestor';
   document.getElementById('mc-l').textContent=MP[mesMes]+' '+mesAno;
+  // Esconder botão de gerenciar turnos para plantonista
+  const btnGerTurnos=document.getElementById('btn-gerenciar-turnos-mes');
+  if(btnGerTurnos)btnGerTurnos.style.display=canEdit?'inline-block':'none';
 
   document.getElementById('escala-sub').textContent=canEdit?'Toque em uma célula para editar':'Somente leitura';
   const lock=document.getElementById('escala-lock');const wrap=document.getElementById('escala-wrap');
@@ -2273,21 +2553,24 @@ function mudarMes(d){
   if(!curUser.isGestor&&!plantonistaPodeVer(m,a)){
     showToast('Você só pode visualizar o mês vigente ou meses futuros publicados',true);return;
   }
-  mesMes=m;mesAno=a;renderEscala();
+  mesMes=m;mesAno=a;
+  aplicarTurnosDoMes(mesMes,mesAno);
+  renderEscala();
 }
 
 function voltarMesVigente(){
   const v=getMesVigente();
   mesMes=v.m;mesAno=v.a;
+  aplicarTurnosDoMes(mesMes,mesAno);
   renderEscala();
   showToast('Voltou para '+MP[mesMes]+' '+mesAno);
 }
 function irParaUltimaPublicada(){
   var agora=new Date();var ma=agora.getMonth()+1;var aa=agora.getFullYear();
-  if(ePub(ma,aa)){mesMes=ma;mesAno=aa;renderEscala();return}
+  if(ePub(ma,aa)){mesMes=ma;mesAno=aa;aplicarTurnosDoMes(mesMes,mesAno);renderEscala();return}
   for(var m=ma,a=aa,i=0;i<24;i++){
     m--;if(m<1){m=12;a--}
-    if(ePub(m,a)){mesMes=m;mesAno=a;renderEscala();return}
+    if(ePub(m,a)){mesMes=m;mesAno=a;aplicarTurnosDoMes(mesMes,mesAno);renderEscala();return}
   }
   showToast('Nenhuma escala publicada encontrada','warn');
 }
@@ -2474,6 +2757,24 @@ document.addEventListener('click',function(e){
     const s=document.getElementById('ed-med-sug');if(s)s.style.display='none';
   }
 });
+// Atalho: limpa a célula da escala (deixa vaga)
+async function deixarVagaSlot(){
+  const {letra,ab,ti,diaMes,contexto,mes,ano}=editCtx;
+  const m=mes||mesMes,a=ano||mesAno;
+  if(!diaMes){showToast('Erro: dia do mês não identificado',true);return}
+  if(!confirm('Deixar este plantão como VAGA (em branco)?'))return;
+  const valAntes=getSlotValDia(m,a,letra,ab,ti,diaMes)||'';
+  const ok=await salvarSlotMes(m,a,letra,ab,ti,'',diaMes);
+  if(!ok){showToast('Erro ao salvar vaga',true);return}
+  fecharMo('mo-editar');
+  if(ePub(m,a)){
+    // Se escala publicada, gera troca automática (libera plantão)
+    await gerarTrocaAutoEdicao(valAntes,'',m,a,letra,ab,ti,diaMes);
+  }
+  renderAll();
+  showToast('Plantão liberado (vaga) no dia '+diaMes);
+}
+
 async function salvarEdicao(){
   if(!editCtx)return;
   const{letra,ab,ti,el,contexto,mes,ano}=editCtx;
@@ -2783,16 +3084,20 @@ function renderCC(filtro=''){
     const idx=MEDICOS.indexOf(m);const av=ini2(m.n);const v=getVinc(m.n);
     const ext=m.ext?`<div style="font-size:9px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;display:inline-block;margin-bottom:3px;color:var(--text2)">🏥 ${m.unidade||'Externa'}</div>`:'';
     const migBtn=isG&&m.ext?`<button class="btn btn-s btn-xs" onclick="migrarMed(${idx})">⬇</button>`:'';
+    // Botão de criar acesso para externos sem login
+    const semLogin=m.ext&&!LOGINS.find(l=>l.c===m.c);
+    const accBtn=isG&&semLogin?`<button class="btn btn-p btn-xs" onclick="criarAcessoExternoIndividual(${m.c})" title="Criar acesso plantonista (este externo ainda não tem login)" style="background:#f97316;border-color:#ea580c">🔑</button>`:'';
     // Garantir tag "EXTERNO" no rodapé do card para todo m.ext=true, mesmo
     // se a área "EXTERNO" não estiver nas areas[]
     let areasTxt=m.a||'';
     if(m.ext&&!/EXTERNO/i.test(areasTxt)){
       areasTxt=areasTxt?areasTxt+' · EXTERNO':'EXTERNO';
     }
+    const tagSemAcesso=semLogin?'<div style="font-size:9px;background:#fef3c7;border:1px solid #f59e0b;border-radius:3px;padding:1px 5px;display:inline-block;margin-top:3px;color:#92400e;font-weight:700">⚠ SEM ACESSO</div>':'';
     return `<div class="cc-c" style="align-items:flex-start">
       <div class="cc-av" style="background:${m.cor};margin-top:2px">${av}</div>
-      <div style="flex:1;min-width:0">${ext}<div class="cc-nm" title="${m.n}">${m.n}</div><div class="cc-cr">CRM ${m.c} · ${v} · ${areasTxt}</div></div>
-      ${isG?`<div class="cc-ac">${migBtn}<button class="btn btn-g btn-xs" onclick="abrirEditMed(${idx})">✏</button><button class="btn btn-d btn-xs" onclick="excluirMed(${idx})">✕</button></div>`:''}
+      <div style="flex:1;min-width:0">${ext}<div class="cc-nm" title="${m.n}">${m.n}</div><div class="cc-cr">CRM ${m.c} · ${v} · ${areasTxt}</div>${tagSemAcesso}</div>
+      ${isG?`<div class="cc-ac">${accBtn}${migBtn}<button class="btn btn-g btn-xs" onclick="abrirEditMed(${idx})">✏</button><button class="btn btn-d btn-xs" onclick="excluirMed(${idx})">✕</button></div>`:''}
     </div>`;
   }).join('')||'<div style="color:var(--text3);font-size:12px;grid-column:1/-1;padding:12px 0">Nenhum encontrado.</div>';
 }
@@ -2804,6 +3109,8 @@ function abrirEditMed(idx){
   document.getElementById('em-nome').value=m.n;document.getElementById('em-crm').value=m.c;
   document.getElementById('em-vinc').value=getVinc(m.n);
   document.getElementById('em-categoria').value=m.categoria||'GENERALISTA';
+  document.getElementById('em-cpf').value=m.cpf||'';
+  document.getElementById('em-data-nasc').value=m.data_nascimento||'';
   const areasAtivas=m.areas||([m.a]||[]).filter(Boolean);
   document.querySelectorAll('#em-areas-check input').forEach(cb=>{
     cb.checked=areasAtivas.includes(cb.value);
@@ -2817,31 +3124,99 @@ async function salvarEditMed(){
   const nn=document.getElementById('em-nome').value.trim().toUpperCase();
   const vc=document.getElementById('em-vinc').value;
   const cat=document.getElementById('em-categoria').value||'GENERALISTA';
+  const cpf=document.getElementById('em-cpf').value.trim();
+  const dataN=document.getElementById('em-data-nasc').value;
   const areas=[...document.querySelectorAll('#em-areas-check input:checked')].map(cb=>cb.value);
   const novoCRM=parseInt(document.getElementById('em-crm').value)||m.c;
   if(!nn){showToast('Nome obrigatório',true);return}
   if(!novoCRM){showToast('CRM inválido',true);return}
-  // PERSISTIR NO BANCO PRIMEIRO
+  if(novoCRM!==crmAntigo&&MEDICOS.find(mm=>mm.c===novoCRM)){
+    showToast('Já existe profissional com este CRM',true);return;
+  }
+  console.log('[salvarEditMed] Iniciando:',{crmAntigo,novoCRM,nome:nn});
+
   try{
-    const payload={nome:nn,crm:novoCRM,vinculo:vc,areas,categoria:cat};
-    let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
-    // Se a coluna categoria não existir ainda, tenta sem ela
-    if(error&&error.message&&error.message.toLowerCase().includes('categoria')){
-      delete payload.categoria;
-      const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
-      error=r.error;
-      console.warn('Coluna categoria não existe — execute SQL v24');
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // CASO 1: CRM NÃO MUDOU → simples update
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if(novoCRM===crmAntigo){
+      const payload={nome:nn,vinculo:vc,areas,categoria:cat};
+      if(cpf)payload.cpf=cpf;else payload.cpf=null;
+      if(dataN)payload.data_nascimento=dataN;else payload.data_nascimento=null;
+      let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+      // Fallback campos novos
+      if(error&&(/cpf|data_nascimento/i).test(error.message||'')){
+        delete payload.cpf;delete payload.data_nascimento;
+        const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+        error=r.error;
+      }
+      if(error&&(/categoria/i).test(error.message||'')){
+        delete payload.categoria;
+        const r=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
+        error=r.error;
+      }
+      if(error)throw error;
+      // Atualizar nome em logins também (se existir)
+      if(nn!==m.n){
+        await sb.from('logins').update({nome:nn}).eq('crm',crmAntigo);
+      }
     }
-    if(error)throw error;
-    if(nn!==m.n||novoCRM!==crmAntigo){
-      await sb.from('logins').update({nome:nn,crm:novoCRM}).eq('crm',crmAntigo);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // CASO 2: CRM MUDOU → INSERT novo, UPDATE filhas, DELETE antigo
+    // (Estratégia segura contra FK constraints)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    else {
+      // Capturar dados existentes do profissional antigo (para criar o novo igual)
+      const {data:profAntigo,error:eGet}=await sb.from('profissionais').select('*').eq('crm',crmAntigo).maybeSingle();
+      if(eGet||!profAntigo)throw eGet||new Error('Profissional original não encontrado');
+
+      // 1) INSERIR novo profissional com novo CRM
+      const novoPayload={
+        ...profAntigo,
+        crm:novoCRM,
+        nome:nn,vinculo:vc,areas,categoria:cat
+      };
+      if(cpf)novoPayload.cpf=cpf;else novoPayload.cpf=null;
+      if(dataN)novoPayload.data_nascimento=dataN;else novoPayload.data_nascimento=null;
+      delete novoPayload.id;// se houver coluna id, deixar o banco gerar
+      let {error:eIns}=await sb.from('profissionais').insert(novoPayload);
+      if(eIns&&(/cpf|data_nascimento/i).test(eIns.message||'')){
+        delete novoPayload.cpf;delete novoPayload.data_nascimento;
+        const r=await sb.from('profissionais').insert(novoPayload);eIns=r.error;
+      }
+      if(eIns&&(/categoria/i).test(eIns.message||'')){
+        delete novoPayload.categoria;
+        const r=await sb.from('profissionais').insert(novoPayload);eIns=r.error;
+      }
+      if(eIns)throw eIns;
+
+      // 2) Atualizar tabelas filhas para apontar para o novo CRM
+      // (perfis, logins, declaracoes_externos, declaracoes_plantoes, escala_mensal não tem FK direta)
+      try{await sb.from('perfis').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(e){console.warn('perfis update:',e);}
+      try{await sb.from('logins').update({crm:novoCRM,nome:nn}).eq('crm',crmAntigo);}catch(e){console.warn('logins update:',e);}
+      try{await sb.from('declaracoes_externos').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(e){console.warn('declaracoes_externos:',e);}
+      try{await sb.from('declaracoes_plantoes').update({crm:novoCRM}).eq('crm',crmAntigo);}catch(e){console.warn('declaracoes_plantoes:',e);}
+
+      // 3) Por fim, DELETAR o profissional antigo
+      const {error:eDel}=await sb.from('profissionais').delete().eq('crm',crmAntigo);
+      if(eDel){
+        // Se não conseguir deletar (FK ainda existente em alguma tabela não tratada)
+        console.error('Falha ao deletar antigo:',eDel);
+        // Reverter: deletar o que acabei de inserir
+        await sb.from('profissionais').delete().eq('crm',novoCRM);
+        throw new Error('Falha ao migrar CRM: '+(eDel.message||'verifique tabelas relacionadas'));
+      }
     }
   }catch(e){
-    console.error('Erro ao atualizar:',e);
-    showToast('Erro ao salvar — tente novamente',true);return;
+    const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
+    console.error('[salvarEditMed] Erro:',e);
+    showToast('Erro: '+String(msg).slice(0,100),true);
+    return;
   }
+
   // Estado local após confirmação do banco
   m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;m.categoria=cat;
+  m.cpf=cpf;m.data_nascimento=dataN;
   if(vc==='EF')EFETIVOS.add(nn);else EFETIVOS.delete(nn);
   // Sincronizar LOGINS local
   const li=LOGINS.findIndex(l=>l.c==crmAntigo);
@@ -2877,6 +3252,8 @@ async function addMedico(){
   const c=parseInt(document.getElementById('add-crm').value);
   const v=document.getElementById('add-vinc').value;
   const cat=document.getElementById('add-categoria').value||'GENERALISTA';
+  const cpf=document.getElementById('add-cpf').value.trim();
+  const dataN=document.getElementById('add-data-nasc').value;
   const isExt=document.getElementById('add-is-ext').checked;
   if(!n||!c){showToast('Nome e CRM obrigatórios',true);return}
   if(MEDICOS.find(m=>m.c===c)){showToast('CRM já cadastrado',true);return}
@@ -2886,31 +3263,41 @@ async function addMedico(){
   if(isExt){
     if(!uni){showToast('Selecione a unidade do externo',true);return}
     if(!wppExt){showToast('WhatsApp do externo é obrigatório',true);return}
+    if(!cpf||cpf.replace(/\D/g,'').length!==11){
+      showToast('CPF do externo é obrigatório',true);return;
+    }
+    if(!validarCPF(cpf)){
+      showToast('CPF inválido — verifique os dígitos',true);return;
+    }
   }
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
-  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v,categoria:cat};
+  const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v,categoria:cat,cpf,data_nascimento:dataN};
   if(v==='EF')EFETIVOS.add(n);
   try{
-    const payload={nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,externo:isExt,unidade:isExt?uni:null,categoria:cat};
+    const payload={nome:n,crm:c,vinculo:v,areas,cor:novoMed.cor,externo:isExt,unidade:isExt?uni:null,categoria:cat,cpf:cpf||null,data_nascimento:dataN||null};
     let {error:eP}=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
+    if(eP&&eP.message&&(eP.message.toLowerCase().includes('cpf')||eP.message.toLowerCase().includes('data_nascimento'))){
+      delete payload.cpf;delete payload.data_nascimento;
+      const r=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
+      eP=r.error;
+      console.warn('Colunas cpf/data_nascimento ainda não existem — execute SQL v25');
+    }
     if(eP&&eP.message&&eP.message.toLowerCase().includes('categoria')){
       delete payload.categoria;
       const r=await sb.from('profissionais').upsert(payload,{onConflict:'crm'});
       eP=r.error;
-      console.warn('Coluna categoria não existe — execute SQL v24');
     }
     if(eP)throw eP;
-    // INTERNOS: criar login automático com permissão plantonista
-    if(!isExt){
-      const {error:eL}=await sb.from('logins').upsert({
-        crm:c,nome:n,senha:String(c),perfil:'plantonista',
-        is_gestor:false,is_plantonista:true,is_clinico:true
-      },{onConflict:'crm'});
-      if(eL)throw eL;
-    } else {
+    // TODOS (internos E externos) ganham login plantonista — diferencial: externo tem ext=true
+    const {error:eL}=await sb.from('logins').upsert({
+      crm:c,nome:n,senha:String(c),perfil:'plantonista',
+      is_gestor:false,is_plantonista:true,is_clinico:true
+    },{onConflict:'crm'});
+    if(eL)throw eL;
+    if(isExt){
       // EXTERNOS: salvar WhatsApp em perfis
       await sb.from('perfis').upsert({
-        crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:'',primeiro_acesso:true
+        crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:cpf||'',primeiro_acesso:true
       },{onConflict:'crm'});
     }
   }catch(e){
@@ -2918,15 +3305,14 @@ async function addMedico(){
     showToast('Erro ao salvar — tente novamente',true);return;
   }
   MEDICOS.push(novoMed);
-  if(!isExt){
-    const novoLogin={id:'L'+Date.now(),loginId:null,n,c,role:'plantonista',pw:String(c),
-      isGestor:false,isPlantonista:true,isClinico:true,ativo:true};
-    LOGINS.push(novoLogin);
-  }
+  const novoLogin={id:'L'+Date.now(),loginId:null,n,c,role:'plantonista',pw:String(c),
+    isGestor:false,isPlantonista:true,isClinico:true,ativo:true};
+  LOGINS.push(novoLogin);
   fecharMo('mo-add-med');
   renderAll();preencherSelects();populaLogin();
-  showToast(isExt?'Externo cadastrado com WhatsApp!':'Interno + acesso plantonista criados!');
+  showToast(isExt?'Externo cadastrado + acesso criado (senha = CRM)':'Interno cadastrado + acesso criado (senha = CRM)');
   document.getElementById('add-nome').value='';document.getElementById('add-crm').value='';
+  document.getElementById('add-cpf').value='';document.getElementById('add-data-nasc').value='';
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
   document.getElementById('add-is-ext').checked=false;
   document.getElementById('add-ext-uni-wrap').style.display='none';
@@ -3011,6 +3397,7 @@ async function criarSnapshotMes(mes,ano){
 }
 
 // Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
+// Salva alteração manual de slot — APENAS no snapshot do mês, nunca no EB
 async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
@@ -3023,44 +3410,54 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
     if(!ESCMES[k][semLetra][ab])ESCMES[k][semLetra][ab]=Array(16).fill(undefined);
     ESCMES[k][semLetra][ab][ti]=valor;
   }
-  console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor,diaMes});
-  // ESTRATÉGIA: DELETE primeiro (limpa qualquer registro existente), depois INSERT
-  // Isso evita problemas com ON CONFLICT que dependem de índices únicos
+  console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor:(valor||'').slice(0,40),diaMes});
+
+  // VALIDAÇÃO CRÍTICA: edição de um dia específico DEVE ter diaMes definido
+  if(diaMes===undefined||diaMes===null){
+    console.error('[salvarSlotMes] CHAMADA SEM diaMes — abortando para evitar sobrescrever snapshot');
+    showToast('Erro interno: dia do mês não foi identificado',true);
+    return false;
+  }
+
   try{
-    // 1. DELETE: remover registros existentes para este slot+dia
-    let qDel=sb.from('escala_mensal').delete()
+    // 1. DELETE: remover qualquer registro existente para este slot+dia
+    const {error:eDel}=await sb.from('escala_mensal').delete()
       .eq('mes',mes).eq('ano',ano)
       .eq('semana_letra',semLetra)
       .eq('dia_semana',ab)
-      .eq('turno_idx',ti);
-    if(diaMes){
-      qDel=qDel.eq('dia_mes',diaMes);
-    } else {
-      qDel=qDel.is('dia_mes',null);
-    }
-    const {error:eDel}=await qDel;
+      .eq('turno_idx',ti)
+      .eq('dia_mes',diaMes);
     if(eDel){
-      console.warn('DELETE falhou (talvez coluna dia_mes não exista):',eDel.message);
-      // Fallback: deletar sem filtro de dia_mes
-      await sb.from('escala_mensal').delete()
-        .eq('mes',mes).eq('ano',ano)
-        .eq('semana_letra',semLetra)
-        .eq('dia_semana',ab)
-        .eq('turno_idx',ti);
+      const msg=(eDel.message||'').toLowerCase();
+      if(msg.includes('dia_mes')||msg.includes('column')){
+        console.error('[salvarSlotMes] Coluna dia_mes não existe no banco — execute SQL para criá-la');
+        showToast('Erro: coluna dia_mes não existe — contate o admin',true);
+        return false;
+      }
+      throw eDel;
     }
-    // 2. INSERT: criar novo registro
-    const payload={mes,ano,semana_letra:semLetra,dia_semana:ab,turno_idx:ti,
-      valor:valor||'',origem:diaMes?'manual':'snapshot'};
-    if(diaMes)payload.dia_mes=diaMes;
-    const {error:eIns}=await sb.from('escala_mensal').insert(payload);
+    // 2. INSERT: criar novo registro com origem='manual' explícita
+    const payload={
+      mes,ano,
+      semana_letra:semLetra,
+      dia_semana:ab,
+      turno_idx:ti,
+      valor:valor||'',
+      origem:'manual',
+      dia_mes:diaMes
+    };
+    const {error:eIns,data:insData}=await sb.from('escala_mensal').insert(payload).select();
     if(eIns){
-      // Se falhar com dia_mes, tenta sem
-      console.warn('INSERT com dia_mes falhou:',eIns.message);
-      delete payload.dia_mes;
-      const {error:eIns2}=await sb.from('escala_mensal').insert(payload);
-      if(eIns2)throw eIns2;
+      console.error('[salvarSlotMes] INSERT falhou:',eIns);
+      const msg=(eIns.message||'').toLowerCase();
+      if(msg.includes('dia_mes')||msg.includes('column')){
+        showToast('Erro: coluna dia_mes não existe no banco — contate o admin',true);
+      }else{
+        showToast('Erro ao salvar: '+(eIns.message||'').slice(0,60),true);
+      }
+      return false;
     }
-    console.log('[salvarSlotMes] SUCESSO — gravado no banco');
+    console.log('[salvarSlotMes] ✓ INSERT confirmado:',insData);
     return true;
   }catch(e){
     console.error('[salvarSlotMes] FALHOU:',e);
@@ -3173,25 +3570,52 @@ function valorDoPlantao(p){
 // ══ ESCALA MENSAL — carregar snapshots ══
 async function carregarESCMES(){
   try{
-    const {data,error}=await sb.from('escala_mensal').select('*');
-    if(error)throw error;
+    // IMPORTANTE: Supabase limita .select() a 1000 registros por padrão.
+    // Como uma escala completa do mês tem 224 snapshots + Ns manuais,
+    // facilmente passa de 1000 registros entre múltiplos meses.
+    // Solução: paginar para garantir que TODOS os registros são carregados.
+    const PAGE_SIZE=1000;
+    let allData=[];
+    let from=0;
+    let hasMore=true;
+    while(hasMore){
+      const {data,error}=await sb.from('escala_mensal')
+        .select('*')
+        .range(from,from+PAGE_SIZE-1)
+        .order('id',{ascending:true});
+      if(error)throw error;
+      if(!data||data.length===0){hasMore=false;break;}
+      allData=allData.concat(data);
+      if(data.length<PAGE_SIZE)hasMore=false;
+      else from+=PAGE_SIZE;
+      if(from>20000){
+        console.warn('[carregarESCMES] Mais de 20k registros — interrompendo paginação');
+        break;
+      }
+    }
     Object.keys(ESCMES).forEach(k=>delete ESCMES[k]);
-    (data||[]).forEach(r=>{
+    let manualCount=0,snapCount=0,trocaCount=0;
+    allData.forEach(r=>{
       const k=keyMes(r.mes,r.ano);
       if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
-      // Se o registro tem dia_mes, é uma alteração pontual de um dia específico
-      if(r.dia_mes&&r.origem==='manual'){
-        const dk='DIA_'+r.dia_mes;
+      // Se o registro tem dia_mes E origem='manual', é uma alteração pontual de um dia específico
+      const dm=r.dia_mes!=null?parseInt(r.dia_mes):null;
+      if(dm&&r.origem==='manual'){
+        const dk='DIA_'+dm;
         if(!ESCMES[k][dk])ESCMES[k][dk]=Array(16).fill(undefined);
         ESCMES[k][dk][r.turno_idx]=r.valor||'';
+        manualCount++;
       } else {
         // Snapshot por semana (origem='snapshot' ou 'troca')
         if(!ESCMES[k][r.semana_letra])ESCMES[k][r.semana_letra]={};
         if(!ESCMES[k][r.semana_letra][r.dia_semana])
           ESCMES[k][r.semana_letra][r.dia_semana]=Array(16).fill(undefined);
         ESCMES[k][r.semana_letra][r.dia_semana][r.turno_idx]=r.valor||'';
+        if(r.origem==='snapshot')snapCount++;
+        else if(r.origem==='troca')trocaCount++;
       }
     });
+    console.log(`[carregarESCMES] ${allData.length} registros carregados: ${snapCount} snapshot · ${manualCount} manual · ${trocaCount} troca`);
   }catch(e){console.error('carregarESCMES:',e)}
 }
 
@@ -3412,6 +3836,7 @@ function renderTrocas(filtro=trFiltro){
     // Gestor: aprovar/rejeitar/reverter — passa ID (não índice instável)
     const acoesGestor=isG?`
       ${t.status==='pendente'?`<button class="btn btn-s btn-xs" onclick="aprovarTr('${idSafe}')" title="Aprovar">✓ Aprovar</button><button class="btn btn-d btn-xs" onclick="rejeitarTr('${idSafe}')" title="Rejeitar">✕ Rejeitar</button>`:''}
+      ${t.status==='aprovado'?`<button class="btn btn-p btn-xs" title="Reaplicar esta troca na escala (caso não tenha sido efetivada)" onclick="reaplicarTrocaNaEscala('${idSafe}')" style="background:#f59e0b;border-color:#d97706">🔧 Reaplicar</button>`:''}
       ${(t.status==='aprovado'||t.status==='rejeitado')?`<button class="btn btn-g btn-xs" title="Reverter para pendente" onclick="reverterTr('${idSafe}')">↩ Reverter</button>`:''}
     `:'';
     // Solicitante: cancelar a própria solicitação pendente
@@ -3453,7 +3878,7 @@ function filtrarTr(f,btn){document.querySelectorAll('#tr-wrap .f-b').forEach(b=>
 // Recarrega APENAS as trocas do banco (botão ⟳ Atualizar)
 async function recarregarTrocas(){
   if(!sb){showToast('Sem conexão com servidor',true);return}
-  showToast('Atualizando trocas...');
+  // Não mostra toast — sincronização silenciosa
   try{
     const {data:trs,error:eT}=await sb.from('trocas').select('*').order('created_at',{ascending:false});
     if(eT)throw eT;
@@ -3476,10 +3901,10 @@ async function recarregarTrocas(){
       });
     });
     renderTrocas();
-    showToast(`${trs.length} trocas carregadas.`);
+    // Não mostra contagem — o status no header já indica sincronização
   }catch(e){
     console.error('Erro ao recarregar trocas:',e);
-    showToast('Erro ao atualizar — '+(e.message||'verifique conexão'),true);
+    showToast('Erro ao atualizar trocas',true);
   }
 }
 
@@ -3644,7 +4069,32 @@ async function aprovarTr(idOuIdx){
   try{ok=await aplicarTrocaEscala(t);}
   catch(e){console.error('[aprovarTr] Erro ao aplicar na escala:',e);}
   renderAll();
-  showToast(ok?'✓ Aprovada e aplicada na escala!':'✓ Aprovada (atenção: verifique a escala manualmente).');
+  if(ok){
+    showToast('✓ Aprovada e aplicada na escala!');
+  }else{
+    // Alerta visível, não só toast
+    alert(`⚠ TROCA APROVADA, MAS NÃO FOI APLICADA NA ESCALA\n\nO.S.: ${t.id}\n${t.sol} → ${t.sub}\nData: ${t.data} · ${t.turno}\n\nCausa provável: a célula da escala foi editada manualmente antes da aprovação, então o solicitante não está mais ali.\n\nUse o botão "🔧 Reaplicar" para tentar de novo, ou edite a célula manualmente.`);
+  }
+}
+
+// Reaplica uma troca aprovada que pode não ter ficado na escala
+async function reaplicarTrocaNaEscala(idOuIdx){
+  const t=resolverTroca(idOuIdx);
+  if(!t){showToast('Troca não encontrada',true);return}
+  if(t.status!=='aprovado'){showToast('Só posso reaplicar trocas aprovadas',true);return}
+  if(!confirm(`Reaplicar esta troca na escala?\n\nO.S.: ${t.id}\n${t.sol} → ${t.sub}\nData: ${t.data} · ${t.turno}\n\nIsso vai colocar ${nomeCurto(t.sub)} no lugar de ${nomeCurto(t.sol)} naquele plantão.`))return;
+  try{
+    const ok=await aplicarTrocaEscala(t);
+    if(ok){
+      renderAll();
+      showToast('✓ Troca reaplicada na escala!');
+    }else{
+      alert(`Não consegui reaplicar a troca.\n\nO solicitante ${nomeCurto(t.sol)} (CRM ${t.sCRM}) não foi encontrado em nenhum slot daquele dia (${t.data} · ${t.turno}).\n\nProvavelmente a célula foi alterada manualmente. Você precisa editar a célula direto na escala.`);
+    }
+  }catch(e){
+    console.error('[reaplicarTrocaNaEscala] Erro:',e);
+    alert('Erro ao reaplicar: '+(e.message||'desconhecido'));
+  }
 }
 
 async function rejeitarTr(idOuIdx){
@@ -3878,27 +4328,45 @@ async function enviarTroca(){
     subCRM=parseInt(document.getElementById('tr-ext-crm').value.trim())||0;
     const uni=document.getElementById('tr-ext-uni').value;
     const wpp=document.getElementById('tr-ext-whatsapp').value.trim();
-    if(!subNome||!subCRM||!uni){showToast('Preencha todos os dados do externo',true);return}
+    const cpfExt=document.getElementById('tr-ext-cpf').value.trim();
+    if(!subNome){showToast('Nome completo do externo é obrigatório',true);return}
+    if(!subCRM){showToast('CRM do externo é obrigatório',true);return}
+    if(!uni){showToast('Unidade de origem do externo é obrigatória',true);return}
     if(!wpp){showToast('WhatsApp do externo é obrigatório',true);return}
+    if(!cpfExt||cpfExt.replace(/\D/g,'').length!==11){
+      showToast('CPF do externo é obrigatório',true);return;
+    }
+    if(!validarCPF(cpfExt)){
+      showToast('CPF do externo é inválido',true);return;
+    }
     const vinc=document.getElementById('tr-ext-vinc').value;
     // Validar CRM contra banco e local
     const existe=MEDICOS.find(m=>m.c===subCRM);
     if(existe){
-      // CRM já cadastrado — usar dados existentes
+      // CRM já cadastrado — usar dados existentes E atualizar quaisquer dados faltantes
       subNome=existe.n;subCRM=existe.c;
+      const updates={};
+      if(!existe.cpf&&cpfExt)updates.cpf=cpfExt;
+      if(!existe.unidade&&uni)updates.unidade=uni;
+      if(Object.keys(updates).length>0){
+        try{await sb.from('profissionais').update(updates).eq('crm',subCRM);
+          if(updates.cpf)existe.cpf=updates.cpf;
+          if(updates.unidade)existe.unidade=updates.unidade;
+        }catch(e){console.warn('Atualizar dados externo:',e);}
+      }
     } else {
       // Novo externo — cadastrar no banco e local
       const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
       const novoMed={n:subNome,c:subCRM,a:'EXTERNO',areas:['EXTERNO'],
-        cor:cores[MEDICOS.length%5],ext:true,unidade:uni,vinculo:vinc};
+        cor:cores[MEDICOS.length%5],ext:true,unidade:uni,vinculo:vinc,cpf:cpfExt};
       try{
         await sb.from('profissionais').upsert({
           nome:subNome,crm:subCRM,vinculo:vinc,areas:['EXTERNO'],
-          cor:novoMed.cor,externo:true,unidade:uni
+          cor:novoMed.cor,externo:true,unidade:uni,cpf:cpfExt
         },{onConflict:'crm'});
-        // Salvar WhatsApp em perfis
+        // Salvar WhatsApp + CPF em perfis
         await sb.from('perfis').upsert({
-          crm:subCRM,nome_escala:'',whatsapp:wpp,email:'',cpf:'',
+          crm:subCRM,nome_escala:'',whatsapp:wpp,email:'',cpf:cpfExt,
           primeiro_acesso:true
         },{onConflict:'crm'});
       }catch(e){
@@ -3969,6 +4437,83 @@ async function enviarTroca(){
 function copiarMsg(){navigator.clipboard.writeText(document.getElementById('wpp-msg').textContent).then(()=>{const b=document.getElementById('btn-cp');b.textContent='✓ Copiado!';b.classList.add('ok')})}
 
 // Verifica CRM duplicado em tempo real ao digitar
+// ══ AUTOCOMPLETE DE EXTERNOS NO MODAL DE TROCA ══
+function filtrarExternoSug(q){
+  const sug=document.getElementById('tr-ext-sug');
+  if(!sug)return;
+  const termo=(q||'').trim().toLowerCase();
+  // Mostrar apenas externos
+  let lista=MEDICOS.filter(m=>m.ext===true);
+  if(termo.length>0){
+    lista=lista.filter(m=>m.n.toLowerCase().includes(termo)||String(m.c).includes(termo));
+  }
+  lista=lista.slice(0,15);
+  if(lista.length===0){
+    sug.innerHTML='<div style="padding:9px 12px;font-size:12px;color:var(--text3)">Nenhum externo cadastrado encontrado — preencha os dados para cadastrar novo</div>';
+    sug.style.display='block';
+    return;
+  }
+  sug.innerHTML=lista.map(m=>{
+    const segs=[];
+    if(m.unidade)segs.push(m.unidade);
+    if(m.cpf)segs.push('CPF cadastrado');
+    else segs.push('CPF faltando');
+    const dadosFaltam=[];
+    if(!m.cpf)dadosFaltam.push('CPF');
+    return `<div onclick="selecionarExternoSug(${m.c})" style="padding:8px 11px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s" onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background='transparent'">
+      <div style="font-size:12.5px;font-weight:600;color:var(--text)">${m.n}</div>
+      <div style="font-size:10.5px;color:var(--text2);margin-top:2px">CRM ${m.c} · ${segs.join(' · ')}</div>
+    </div>`;
+  }).join('');
+  sug.style.display='block';
+}
+
+function selecionarExternoSug(crm){
+  const m=MEDICOS.find(mm=>mm.c===crm);
+  if(!m)return;
+  document.getElementById('tr-ext-nome').value=m.n;
+  document.getElementById('tr-ext-crm').value=m.c;
+  document.getElementById('tr-ext-vinc').value=m.vinculo||'CR';
+  document.getElementById('tr-ext-uni').value=m.unidade||'';
+  // CPF do cadastro (se houver)
+  if(m.cpf){
+    document.getElementById('tr-ext-cpf').value=m.cpf;
+  }
+  // WhatsApp: buscar em perfis (assíncrono)
+  if(sb){
+    sb.from('perfis').select('whatsapp,cpf').eq('crm',crm).maybeSingle().then(({data})=>{
+      if(data){
+        if(data.whatsapp&&!document.getElementById('tr-ext-whatsapp').value){
+          document.getElementById('tr-ext-whatsapp').value=data.whatsapp;
+        }
+        if(data.cpf&&!document.getElementById('tr-ext-cpf').value){
+          document.getElementById('tr-ext-cpf').value=data.cpf;
+        }
+      }
+    }).catch(e=>console.warn('Buscar perfil externo:',e));
+  }
+  document.getElementById('tr-ext-sug').style.display='none';
+  // Avisar campos faltando
+  const faltam=[];
+  if(!m.cpf)faltam.push('CPF');
+  if(!document.getElementById('tr-ext-whatsapp').value)faltam.push('WhatsApp');
+  if(!m.unidade)faltam.push('Unidade');
+  if(faltam.length>0){
+    showToast(`⚠ Complete: ${faltam.join(', ')}`,false,true);
+  }else{
+    showToast('✓ Dados de '+m.n.split(' ')[0]+' carregados');
+  }
+}
+
+// Fechar sugestões ao clicar fora
+document.addEventListener('click',(ev)=>{
+  const sug=document.getElementById('tr-ext-sug');
+  const nome=document.getElementById('tr-ext-nome');
+  if(sug&&nome&&!nome.contains(ev.target)&&!sug.contains(ev.target)){
+    sug.style.display='none';
+  }
+});
+
 function verificarCRMExterno(inp){
   const aviso=document.getElementById('tr-ext-crm-aviso');
   const crm=parseInt(inp.value.trim())||0;
@@ -4028,6 +4573,12 @@ function renderMeusPlantoes(){
     document.getElementById('fin-grid').innerHTML='<div style="color:var(--text3);font-size:12px;grid-column:1/-1">Aguardando publicação da escala</div>';
     document.getElementById('meu-real').innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">Aguardando publicação</div>';
     document.getElementById('meu-prox').innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px 0">Aguardando publicação</div>';
+    // Limpar cards novos também
+    const _eH=document.getElementById('meu-hoje-content');if(_eH)_eH.innerHTML='<div style="padding:6px 0;font-size:12px;color:#64748b">Aguardando publicação da escala</div>';
+    const _eP=document.getElementById('meu-prox-content');if(_eP)_eP.innerHTML='<div style="padding:6px 0;font-size:12px;color:#64748b">Aguardando publicação da escala</div>';
+    const _eCh=document.getElementById('meu-comp-h');if(_eCh)_eCh.textContent='—';
+    const _eCd=document.getElementById('meu-comp-delta');if(_eCd)_eCd.innerHTML='<span style="color:var(--text3);font-size:12px">Aguardando</span>';
+    const _eTl=document.getElementById('meu-trocas-list');if(_eTl)_eTl.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:10px">Aguardando publicação</div>';
     return;
   }
 
@@ -4106,6 +4657,133 @@ function renderMeusPlantoes(){
   };
   document.getElementById('meu-real').innerHTML=realizados.length?realizados.map(p=>renderPc(p,'real')).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum realizado ainda</div>';
   document.getElementById('meu-prox').innerHTML=proximos.length?proximos.map(p=>renderPc(p,'prox')).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum plantão futuro</div>';
+
+  // ─── CARDS DESTAQUE: PLANTÃO DE HOJE + PRÓXIMO PLANTÃO ───
+  const hj2=hoje();
+  const ptHoje=pts.find(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d.getTime()===hj2.getTime();});
+  const ptProx=proximos.find(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d.getTime()>hj2.getTime();});
+  const elH=document.getElementById('meu-hoje-content');
+  const elP=document.getElementById('meu-prox-content');
+  if(elH){
+    if(ptHoje){
+      elH.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span style="font-size:28px">${ptHoje.not?'🌙':'🌅'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:800;color:#1e3a8a;font-family:var(--mono)">${ptHoje.turno.replace(/\s*\(.+/,'')}</div>
+            <div style="font-size:11px;color:#475569;margin-top:2px"><span class="${aCC[ptHoje.area]||'ch-apo'}" style="font-size:9px">${ptHoje.area}</span> · ${ptHoje.h}h · ${ptHoje.fds?'FDS':'DDS'}</div>
+          </div>
+        </div>`;
+    }else{
+      elH.innerHTML=`<div style="padding:6px 0;font-size:12px;color:#64748b">Você não tem plantão hoje. <span style="font-weight:600">Aproveite o descanso!</span> ☕</div>`;
+    }
+  }
+  if(elP){
+    if(ptProx){
+      const diasAteProx=Math.round((new Date(ptProx.dt).setHours(0,0,0,0)-hj2.getTime())/86400000);
+      const labelDias=diasAteProx===1?'amanhã':`em ${diasAteProx} dias`;
+      elP.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span style="font-size:28px">${ptProx.not?'🌙':'🌅'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:800;color:#166534;font-family:var(--mono)">${diaS(new Date(ptProx.dt))} ${String(ptProx.dia).padStart(2,'0')}/${String(mes).padStart(2,'0')} <span style="font-size:10px;font-weight:600;color:#15803daa;text-transform:lowercase">(${labelDias})</span></div>
+            <div style="font-size:11px;color:#166534;margin-top:2px"><span class="${aCC[ptProx.area]||'ch-apo'}" style="font-size:9px">${ptProx.area}</span> · ${ptProx.turno.replace(/\s*\(.+/,'')} · ${ptProx.h}h</div>
+          </div>
+        </div>`;
+    }else{
+      elP.innerHTML=`<div style="padding:6px 0;font-size:12px;color:#64748b">Nenhum plantão futuro programado neste mês.</div>`;
+    }
+  }
+
+  // ─── COMPARATIVO DE HORAS vs MÊS ANTERIOR ───
+  const elCh=document.getElementById('meu-comp-h');
+  const elCd=document.getElementById('meu-comp-delta');
+  const elCma=document.getElementById('meu-comp-mes-ant');
+  if(elCh){
+    const mAnt=mes===1?12:mes-1;
+    const aAnt=mes===1?ano-1:ano;
+    const stAnt=statsProf(crm,mAnt,aAnt);
+    const hAtual=st.hTotal||0;
+    const hAnt=stAnt.hTotal||0;
+    elCh.textContent=hAtual+'h';
+    if(elCma)elCma.textContent=MA[mAnt]+'/'+aAnt;
+    if(hAnt===0&&hAtual===0){
+      elCd.innerHTML=`<span style="color:var(--text3);font-size:12px">Sem comparação</span>`;
+    }else if(hAnt===0){
+      elCd.innerHTML=`<span style="color:var(--green)">▲ Primeiro mês com plantões</span>`;
+    }else{
+      const delta=hAtual-hAnt;
+      const pct=Math.round((delta/hAnt)*100);
+      const sinal=delta>0?'▲':(delta<0?'▼':'=');
+      const cor=delta>0?'var(--green)':(delta<0?'var(--red)':'var(--text3)');
+      elCd.innerHTML=`<span style="color:${cor}">${sinal} ${Math.abs(pct)}% (${delta>0?'+':''}${delta}h)</span><div style="font-size:10px;color:var(--text3);margin-top:1px">${hAnt}h em ${MA[mAnt]}</div>`;
+    }
+  }
+
+  // ─── TROCAS ENVIADAS POR MIM ───
+  const elTl=document.getElementById('meu-trocas-list');
+  if(elTl){
+    const minhasTrocas=TROCAS.filter(t=>t.sCRM===crm).sort((a,b)=>{
+      const dA=a.dt instanceof Date?a.dt:new Date(a.dt);
+      const dB=b.dt instanceof Date?b.dt:new Date(b.dt);
+      return dB-dA;
+    }).slice(0,10);
+    if(minhasTrocas.length===0){
+      elTl.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:10px">Nenhuma troca enviada ainda</div>';
+    }else{
+      const statusBadge={
+        'pendente':{txt:'⏳ Pendente',bg:'#fef3c7',cor:'#92400e',bd:'#fde68a'},
+        'aprovado':{txt:'✓ Aprovada',bg:'#dcfce7',cor:'#166534',bd:'#86efac'},
+        'rejeitado':{txt:'✗ Rejeitada',bg:'#fee2e2',cor:'#991b1b',bd:'#fca5a5'},
+        'cancelado':{txt:'⊘ Cancelada',bg:'#f3f4f6',cor:'#374151',bd:'#d1d5db'}
+      };
+      elTl.innerHTML=minhasTrocas.map(t=>{
+        const s=statusBadge[t.status]||statusBadge.pendente;
+        const turnoCurto=String(t.turno||'').replace(/\s*\(.+/,'');
+        return `<div style="display:flex;align-items:center;gap:9px;padding:8px 11px;background:${s.bg};border:1px solid ${s.bd};border-radius:6px;margin-bottom:5px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:12px;font-weight:700;color:${s.cor}">${t.data} · ${turnoCurto}</div>
+            <div style="font-size:10px;color:${s.cor};opacity:.8">Substituto: ${nomeCurto(t.sub||'?')}</div>
+          </div>
+          <span style="font-size:10.5px;font-weight:800;color:${s.cor};letter-spacing:.04em;padding:4px 10px;background:#fff;border-radius:5px;white-space:nowrap">${s.txt}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ─── DECLARAÇÕES (só para externos) ───
+  const medAtual=MEDICOS.find(m=>m.c===crm);
+  const cardDecls=document.getElementById('meu-decls-card');
+  if(cardDecls){
+    if(medAtual&&medAtual.ext){
+      cardDecls.style.display='block';
+      const externoNoMes=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+      const listaEl=document.getElementById('meu-decls-lista');
+      if(!externoNoMes||externoNoMes.plantoes.length===0){
+        listaEl.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum plantão registrado neste mês</div>';
+      }else{
+        listaEl.innerHTML=externoNoMes.plantoes.map(p=>{
+          const pk=plantaoKey(mes,ano,p.dia,p.turnoIdx);
+          const decKey=crm+'|'+pk;
+          const enviada=DECLARACOES_PLANTOES[decKey]&&DECLARACOES_PLANTOES[decKey].enviada;
+          const corBg=enviada?'#dcfce7':'#fee2e2';
+          const corBd=enviada?'#22a35a':'#dc2626';
+          const corTxt=enviada?'#166534':'#991b1b';
+          const txt=enviada?'✓ ENVIADA':'⚠ PENDENTE';
+          const dataEnvio=enviada&&DECLARACOES_PLANTOES[decKey].data_envio?` · enviada em ${new Date(DECLARACOES_PLANTOES[decKey].data_envio).toLocaleDateString('pt-BR')}`:'';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;background:${corBg};border:1px solid ${corBd}66;border-radius:6px;margin-bottom:5px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:${corTxt}">${p.data} · ${p.turno}</div>
+              <div style="font-size:10px;color:${corTxt};opacity:.75">${p.area} · ${p.h}h${dataEnvio}</div>
+            </div>
+            <span style="font-size:10.5px;font-weight:800;color:${corTxt};letter-spacing:.04em;padding:4px 10px;background:#fff;border-radius:5px;white-space:nowrap">${txt}</span>
+          </div>`;
+        }).join('');
+      }
+    }else{
+      cardDecls.style.display='none';
+    }
+  }
 }
 function mudarMeuMes(d){meuMes+=d;if(meuMes>12){meuMes=1;meuAno++}if(meuMes<1){meuMes=12;meuAno--}renderMeusPlantoes()}
 function abrirMoTrocaEsp(dia,turno,area){
@@ -4161,42 +4839,121 @@ function _renderDashboardImpl(){
   }
   const cobPct=0;// removido do dashboard a pedido do usuário (era % cobertura)
 
-  // Declarações pendentes
+  // Declarações pendentes (sistema novo: pelo menos um plantão pendente)
   const externosNoMes=coletarExternosMes(mesMes,mesAno);
   const decsPend=externosNoMes.filter(x=>{
-    const k=x.med.c+'-'+mesMes+'-'+mesAno;
-    return !(DECLARACOES[k]&&DECLARACOES[k].enviada);
+    const st=decsPendentesExterno(x.med.c,mesMes,mesAno);
+    return st.pendentes>0;
   });
 
   // ─── LINHA 1: ALERTAS ───
+  // Coletar aniversariantes do mês (precisa do campo data_nascimento — vai vir vazio até cadastrarem)
+  const aniversariantes=MEDICOS
+    .filter(m=>m.a!=='GESTOR'&&m.data_nascimento)
+    .map(m=>{
+      const partes=String(m.data_nascimento).split('-');// formato YYYY-MM-DD
+      if(partes.length!==3)return null;
+      const mn=parseInt(partes[1]),dn=parseInt(partes[2]);
+      if(mn!==mesMes)return null;
+      return {n:m.n,dia:dn,med:m};
+    })
+    .filter(Boolean)
+    .sort((a,b)=>a.dia-b.dia);
+
+  // Escala de hoje
+  const hj0=hoje();
+  const ptsHoje=todosPts.filter(p=>{
+    const d=new Date(p.dt);d.setHours(0,0,0,0);
+    return d.getTime()===hj0.getTime();
+  });
+  // Escala de amanhã
+  const amanha=new Date(hj0);amanha.setDate(amanha.getDate()+1);
+  const ptsAmanha=todosPts.filter(p=>{
+    const d=new Date(p.dt);d.setHours(0,0,0,0);
+    return d.getTime()===amanha.getTime();
+  });
+
+  // ─── HOJE / AMANHÃ (seção compacta com expansão) ───
+  const renderListaCompacta=(pts,idExpand)=>{
+    if(!pts.length)return '<div style="color:var(--text3);font-size:11px;padding:6px 0">Sem plantões neste dia</div>';
+    const exp=window._dashAlertExp&&window._dashAlertExp[idExpand]===true;
+    const visivel=exp?pts:pts.slice(0,5);
+    const sobra=pts.length-5;
+    const linhas=visivel.map(p=>{
+      const med=MEDICOS.find(m=>m.c===p.crm);
+      const nome=med?nomeCurto(med.n):'(vago)';
+      const corA=aCC[p.area]||'ch-apo';
+      return `<div style="padding:2px 0;font-size:11px;display:flex;align-items:center;gap:5px;line-height:1.4">
+        <span class="${corA}" style="font-size:8.5px;padding:1px 5px">${p.area}</span>
+        <span style="color:var(--text);font-weight:600">${nome}</span>
+        <span style="color:var(--text3);font-size:9.5px;margin-left:auto">${p.turno.replace(/\s*\(.+/,'')}</span>
+      </div>`;
+    }).join('');
+    const botao=sobra>0?`<button onclick="window._dashAlertExp=window._dashAlertExp||{};window._dashAlertExp['${idExpand}']=${!exp};renderDashboard()" style="background:transparent;border:1px solid var(--border2);color:var(--blue);font-size:10px;font-weight:600;padding:3px 9px;border-radius:5px;cursor:pointer;margin-top:5px;width:100%">${exp?'▲ Recolher':`▼ Mostrar todos (${pts.length})`}</button>`:'';
+    return linhas+botao;
+  };
+  const elHd=document.getElementById('d-hoje-data');if(elHd)elHd.textContent=fmtData(hj0);
+  const elHc=document.getElementById('d-hoje-count');if(elHc)elHc.textContent=ptsHoje.length+' plantões';
+  const elHl=document.getElementById('d-hoje-list');if(elHl)elHl.innerHTML=renderListaCompacta(ptsHoje,'exp-hoje');
+  const elAd=document.getElementById('d-amanha-data');if(elAd)elAd.textContent=fmtData(amanha);
+  const elAc=document.getElementById('d-amanha-count');if(elAc)elAc.textContent=ptsAmanha.length+' plantões';
+  const elAl=document.getElementById('d-amanha-list');if(elAl)elAl.innerHTML=renderListaCompacta(ptsAmanha,'exp-amanha');
+
   const alertas=[];
+
+  // Cards numéricos compactos primeiro
   if(pendList.length>0){
-    alertas.push({icon:'⏳',cor:'#92400e',bg:'#fef3c7',label:'Trocas pendentes',val:pendList.length,
+    alertas.push({tipo:'num',icon:'⏳',cor:'#92400e',bg:'#fef3c7',label:'Trocas pendentes',val:pendList.length,
       sub:'Aguardando aprovação',action:()=>nav(document.querySelector('[data-p=trocas]'))});
   }
-  if(vagasVazias>0){
-    alertas.push({icon:'🕳️',cor:'#991b1b',bg:'#fee2e2',label:'Vagas em branco',val:vagasVazias,
-      sub:'Plantões sem profissional',action:()=>nav(document.querySelector('[data-p=escala]'))});
-  }
   if(decsPend.length>0){
-    alertas.push({icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
-      sub:'Externos sem declaração',action:null});
+    alertas.push({tipo:'num',icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
+      sub:'Externos sem declaração — clique para ver',action:()=>{
+        const alvo=document.getElementById('d-externos-card');
+        if(alvo)alvo.scrollIntoView({behavior:'smooth',block:'start'});
+      }});
   }
   if(!escPub){
-    alertas.push({icon:'🔒',cor:'#92400e',bg:'#fef3c7',label:'Escala atual',val:'Bloqueada',
+    alertas.push({tipo:'num',icon:'🔒',cor:'#92400e',bg:'#fef3c7',label:'Escala atual',val:'Bloqueada',
       sub:'Ainda não publicada',action:()=>nav(document.querySelector('[data-p=gestao-escalas]'))});
   }
   if(!nMesTemEsc){
-    alertas.push({icon:'📅',cor:'#7c2d12',bg:'#fed7aa',label:`Escala de ${MA[nMes]}/${nAno}`,val:'Não gerada',
+    alertas.push({tipo:'num',icon:'📅',cor:'#7c2d12',bg:'#fed7aa',label:`Escala de ${MA[nMes]}/${nAno}`,val:'Não gerada',
       sub:'Próximo mês ainda vazio',action:()=>nav(document.querySelector('[data-p=gestao-escalas]'))});
   }
+
+  // Cards expansíveis (lista): Aniversariantes — Hoje/Amanhã ficam em seção compacta separada
+  if(aniversariantes.length>0){
+    alertas.push({tipo:'lista',icon:'🎂',cor:'#9333ea',bg:'#faf5ff',label:`Aniversariantes de ${MA[mesMes]}`,
+      itens:aniversariantes.map(a=>`<div style="padding:3px 0;font-size:11.5px;color:#581c87"><span style="font-weight:700">${nomeCurto(a.n)}</span> <span style="color:#a78bfa;margin-left:6px">${String(a.dia).padStart(2,'0')}/${String(mesMes).padStart(2,'0')}</span></div>`),
+      idExpand:'exp-anive'});
+  }
+
   if(alertas.length===0){
-    alertas.push({icon:'✅',cor:'#166534',bg:'#dcfce7',label:'Tudo em ordem',val:'OK',
+    alertas.push({tipo:'num',icon:'✅',cor:'#166534',bg:'#dcfce7',label:'Tudo em ordem',val:'OK',
       sub:'Nenhuma pendência crítica',action:null});
   }
+
   // Guardar ações em variável global temporária para event listener
-  window._dashAlertActions=alertas.map(a=>a.action);
+  window._dashAlertActions=alertas.map(a=>a.action||null);
+  window._dashAlertExp=window._dashAlertExp||{};
   document.getElementById('d-alertas').innerHTML=alertas.map((a,i)=>{
+    if(a.tipo==='lista'){
+      const exp=window._dashAlertExp[a.idExpand]===true;
+      const visivel=exp?a.itens:a.itens.slice(0,5);
+      const sobra=a.itens.length-5;
+      const botao=sobra>0?`<button onclick="window._dashAlertExp['${a.idExpand}']=${!exp};renderDashboard()" style="background:transparent;border:1px solid ${a.cor}55;color:${a.cor};font-size:10px;font-weight:600;padding:4px 9px;border-radius:5px;cursor:pointer;margin-top:6px;width:100%">${exp?'▲ Recolher':`▼ Mostrar todos (${a.itens.length})`}</button>`:'';
+      return `<div style="background:${a.bg};border:1px solid ${a.cor}33;border-radius:8px;padding:10px 12px;grid-column:span 2;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="font-size:20px">${a.icon}</div>
+          <div style="font-size:11px;color:${a.cor};font-weight:700;text-transform:uppercase;letter-spacing:.04em">${a.label}</div>
+          <div style="margin-left:auto;font-size:11px;color:${a.cor}aa;font-weight:600">${a.itens.length}</div>
+        </div>
+        <div>${visivel.join('')}</div>
+        ${botao}
+      </div>`;
+    }
+    // tipo num
     const click=a.action?'cursor:pointer':'';
     const onclick=a.action?`onclick="window._dashAlertActions[${i}]&&window._dashAlertActions[${i}]()"`:'';
     return `<div ${onclick} style="background:${a.bg};border:1px solid ${a.cor}33;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;${click}">
@@ -4306,45 +5063,56 @@ function _renderDashboardImpl(){
     </div>`).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:8px 0">Nenhum plantão no mês</div>';
 
-  // Sem plantões
-  const semPts=internos.filter(m=>statsProf(m.c,mesMes,mesAno).total===0);
-  const semExpandido=window._semExpandido===true;
-  const semVisible=semExpandido?semPts:semPts.slice(0,5);
-  document.getElementById('d-sem').innerHTML=semPts.length?
-    semVisible.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;margin-bottom:4px">
-      <span style="color:#92400e">⚠️</span>
-      <div style="font-size:12px;color:#78350f;flex:1">${nomeCurto(m.n)}</div>
-      <div style="font-size:10px;color:#92400eaa">CRM ${m.c}</div>
-    </div>`).join('')+(semPts.length>5?`<div style="text-align:center;margin-top:6px"><button onclick="window._semExpandido=${!semExpandido};renderDashboard()" style="background:transparent;border:1px solid var(--border2);color:var(--blue);font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer">${semExpandido?'▲ Recolher':`▼ Mostrar todos (${semPts.length})`}</button></div>`:''):
-    '<div class="al ok"><span>✓</span><div style="font-size:12px;color:var(--text2)">Todos os profissionais têm plantões</div></div>';
-
-  // Trocas pendentes no fim da página
-  document.getElementById('d-tr-list').innerHTML=pendList.length?
-    pendList.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg3);border-radius:var(--r2);margin-bottom:5px;flex-wrap:wrap">
-      <div class="tr-dot pendente"></div>
-      <div style="flex:1;font-size:12px;font-weight:600;min-width:80px">${nomeCurto(t.sol)} → ${nomeCurto(t.sub)}</div>
-      <span style="font-size:11px;color:var(--text2)">${t.data}</span>
-      <span class="badge b-amber">Pendente</span></div>`).join('')+(pendList.length>5?`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px">... e mais ${pendList.length-5}</div>`:''):
-    '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhuma troca pendente ✓</div>';
-
-  // ─── EXTERNOS NO MÊS (caixa de baixo) ───
+  // ─── EXTERNOS NO MÊS (Linha 5, lado direito) ───
+  // Para cada externo: linha resumida + (se expandido) checkboxes por plantão + botões de ação
+  window._extExpandido=window._extExpandido||{};
   const el=document.getElementById('d-externos');
   el.innerHTML=externosNoMes.length?
     externosNoMes.map(x=>{
-      const dec=DECLARACOES[x.med.c+'-'+mesMes+'-'+mesAno]&&DECLARACOES[x.med.c+'-'+mesMes+'-'+mesAno].enviada;
-      const btnDec=dec
-        ?`<button onclick="toggleDeclaracao(${x.med.c},${mesMes},${mesAno})" style="background:#e8f7ee;border:1px solid #22a35a;color:#22a35a;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Declaração enviada — clique para desmarcar">✓ Enviada</button>`
-        :`<button onclick="toggleDeclaracao(${x.med.c},${mesMes},${mesAno})" style="background:#fff;border:1px dashed var(--amber);color:var(--amber);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap" title="Clique para marcar declaração como enviada">📄 Marcar</button>`;
-      return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg3);border-radius:6px;margin-bottom:4px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:12px;font-weight:700">${x.med.n}</div>
-          <div style="font-size:10px;color:var(--text2)">CRM ${x.med.c} · ${x.med.unidade||'—'}</div>
+      const crm=x.med.c;
+      const status=decsPendentesExterno(crm,mesMes,mesAno);
+      const todasOk=status.pendentes===0&&status.total>0;
+      const corStatus=todasOk?'var(--green)':'var(--red)';
+      const labelStatus=todasOk?`✓ Todas enviadas (${status.total})`:`${status.pendentes} pendente${status.pendentes>1?'s':''} de ${status.total}`;
+      const expandido=window._extExpandido[crm]===true;
+      const detalhe=expandido?`
+        <div style="background:#fff;border-top:1px solid var(--border);padding:8px 10px;border-radius:0 0 6px 6px">
+          ${x.plantoes.map(p=>{
+            const pk=plantaoKey(mesMes,mesAno,p.dia,p.turnoIdx);
+            const decKey=crm+'|'+pk;
+            const enviada=DECLARACOES_PLANTOES[decKey]&&DECLARACOES_PLANTOES[decKey].enviada;
+            const corPlantao=enviada?'#dcfce7':'#fee2e2';
+            const corBorda=enviada?'#22a35a':'#dc2626';
+            const corTxt=enviada?'#166534':'#991b1b';
+            const txtStatus=enviada?'✓ ENVIADA':'⚠ PENDENTE';
+            return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:${corPlantao};border:1px solid ${corBorda}66;border-radius:6px;margin-bottom:4px;flex-wrap:wrap">
+              <input type="checkbox" ${enviada?'checked':''} onchange="toggleDecPlantao(${crm},${mesMes},${mesAno},'${pk}',this.checked).then(ok=>{if(ok)renderDashboard();else this.checked=!this.checked;})" style="width:17px;height:17px;cursor:pointer;accent-color:${corBorda}">
+              <div style="flex:1;min-width:0;font-size:11.5px;color:${corTxt}">
+                <strong>${p.data}</strong> · ${p.turno}
+              </div>
+              <span style="font-size:10px;font-weight:800;color:${corTxt};letter-spacing:.04em">${txtStatus}</span>
+            </div>`;
+          }).join('')}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+            <button onclick="marcarTodasDecExterno(${crm},${mesMes},${mesAno})" style="background:#dcfce7;border:1px solid #22a35a;color:#166534;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">✓ Confirmar Todas Enviadas</button>
+            <button onclick="gerarTextoDeclaracao(${crm},${mesMes},${mesAno})" style="background:#dbeafe;border:1px solid #2563d4;color:#1e40af;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">📄 Gerar Declaração</button>
+          </div>
         </div>
-        <div style="font-size:11px;color:var(--text2);text-align:right">
-          <div>${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
-          <div style="color:var(--green);font-weight:700">${fmtMoeda(x.totalValor)}</div>
+      `:'';
+      return `<div style="background:var(--bg3);border-radius:6px;margin-bottom:5px;overflow:hidden">
+        <div onclick="window._extExpandido[${crm}]=${!expandido};renderDashboard()" style="display:flex;align-items:center;gap:9px;padding:8px 10px;cursor:pointer;flex-wrap:wrap" title="${expandido?'Recolher':'Expandir'}">
+          <span style="font-size:14px;color:var(--text3);transition:transform .2s;display:inline-block;${expandido?'transform:rotate(90deg)':''}">▶</span>
+          <div style="flex:1;min-width:140px">
+            <div style="font-size:12px;font-weight:700">${x.med.n}</div>
+            <div style="font-size:10px;color:var(--text2)">CRM ${crm} · ${x.med.unidade||'—'}</div>
+          </div>
+          <div style="font-size:11px;color:var(--text2);text-align:right">
+            <div>${x.plantoes.length} plantão(ões) · ${x.totalH}h</div>
+            <div style="color:var(--green);font-weight:700">${fmtMoeda(x.totalValor)}</div>
+          </div>
+          <span style="font-size:10px;color:${corStatus};font-weight:700;padding:3px 8px;background:${todasOk?'#dcfce7':'#fee2e2'};border-radius:4px;white-space:nowrap">${labelStatus}</span>
         </div>
-        ${btnDec}
+        ${detalhe}
       </div>`;
     }).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum externo neste mês</div>';
@@ -4356,6 +5124,580 @@ function _renderDashboardImpl(){
 // DECLARAÇÕES DE PLANTÃO (externos) — controle de envio
 // ═══════════════════════════════════════════════════════
 const DECLARACOES={};
+// Declarações por plantão individual: chave = `${crm}|${plantao_key}`
+// plantao_key = `YYYYMM-DIA-TURNOIDX`
+const DECLARACOES_PLANTOES={};
+
+function plantaoKey(mes,ano,dia,turnoIdx){
+  return `${ano}${String(mes).padStart(2,'0')}-${dia}-${turnoIdx!=null?turnoIdx:'X'}`;
+}
+
+// ══════════════════════════════════════════════════════
+// TURNOS — gestão dinâmica (turnos_base + turnos_mes)
+// ══════════════════════════════════════════════════════
+async function carregarTurnosBase(){
+  try{
+    const {data,error}=await sb.from('turnos_base').select('*').order('ordem',{ascending:true});
+    if(error){
+      if(error.code==='42P01'||(error.message||'').includes('relation')){
+        console.warn('Tabela turnos_base ainda não existe — execute SQL v26');
+        return;
+      }
+      throw error;
+    }
+    if(data&&data.length>0){
+      TURNOS_BASE=data.map(r=>({
+        l:r.label,a:r.area,h:r.horas,not:r.noturno===true,cls:r.cls,
+        _ordem:r.ordem,_id:r.id
+      }));
+      // Sincronizar TURNOS (estado vigente) com TURNOS_BASE inicialmente
+      TURNOS.length=0;
+      TURNOS_BASE.forEach(t=>TURNOS.push({...t}));
+      console.log(`[carregarTurnosBase] ${TURNOS_BASE.length} turnos carregados do banco`);
+    }
+  }catch(e){console.error('carregarTurnosBase:',e);}
+}
+
+async function carregarTurnosMes(){
+  try{
+    const {data,error}=await sb.from('turnos_mes').select('*');
+    if(error){
+      if(error.code==='42P01'||(error.message||'').includes('relation')){
+        console.warn('Tabela turnos_mes ainda não existe — execute SQL v26');
+        return;
+      }
+      throw error;
+    }
+    Object.keys(TURNOS_MES_OVERRIDES).forEach(k=>delete TURNOS_MES_OVERRIDES[k]);
+    (data||[]).forEach(r=>{
+      const k=keyMes(r.mes,r.ano);
+      if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
+      TURNOS_MES_OVERRIDES[k].push({
+        id:r.id,ordem:r.ordem,acao:r.acao,
+        l:r.label,a:r.area,h:r.horas,not:r.noturno===true,cls:r.cls
+      });
+    });
+  }catch(e){console.error('carregarTurnosMes:',e);}
+}
+
+// Aplica overrides do mês ao array global TURNOS.
+// Chamado quando muda o mês visualizado.
+function aplicarTurnosDoMes(mes,ano){
+  const k=keyMes(mes,ano);
+  TURNOS.length=0;
+  // 1. Começa com TURNOS_BASE
+  const base=TURNOS_BASE.map(t=>({...t}));
+  // 2. Aplica overrides
+  const overrides=TURNOS_MES_OVERRIDES[k]||[];
+  const ordensRemovidas=new Set(overrides.filter(o=>o.acao==='remove').map(o=>o.ordem));
+  base.forEach((t,i)=>{
+    if(ordensRemovidas.has(i))return;// removido
+    const edit=overrides.find(o=>o.acao==='edit'&&o.ordem===i);
+    if(edit){
+      TURNOS.push({l:edit.l,a:edit.a,h:edit.h,not:edit.not,cls:edit.cls,_ordemBase:i});
+    }else{
+      TURNOS.push({...t,_ordemBase:i});
+    }
+  });
+  // 3. Adicionar 'add' (ordem >= 100 convencionalmente)
+  overrides.filter(o=>o.acao==='add').forEach(a=>{
+    TURNOS.push({l:a.l,a:a.a,h:a.h,not:a.not,cls:a.cls,_ordemAdd:a.ordem});
+  });
+}
+
+// Quando o mês muda, reaplica overrides
+function atualizarTurnosParaMesVigente(){
+  if(typeof mesMes!=='undefined'&&typeof mesAno!=='undefined'){
+    aplicarTurnosDoMes(mesMes,mesAno);
+  }
+}
+
+// ─── PERSISTÊNCIA ───
+
+// Adicionar turno à escala BASE (afeta todas futuras gerações)
+async function adicionarTurnoBase(label,area,horas,noturno,cls){
+  const ordem=TURNOS_BASE.length;
+  try{
+    const {data,error}=await sb.from('turnos_base').insert({
+      ordem,label,area,horas,noturno,cls
+    }).select();
+    if(error)throw error;
+    TURNOS_BASE.push({l:label,a:area,h:horas,not:noturno,cls,_ordem:ordem,_id:data[0]?.id});
+    return true;
+  }catch(e){
+    console.error('adicionarTurnoBase:',e);
+    showToast('Erro ao adicionar turno na base: '+(e.message||'').slice(0,80),true);
+    return false;
+  }
+}
+
+async function editarTurnoBase(ordem,label,area,horas,noturno,cls){
+  try{
+    const {error}=await sb.from('turnos_base').update({
+      label,area,horas,noturno,cls,atualizado_em:new Date().toISOString()
+    }).eq('ordem',ordem);
+    if(error)throw error;
+    if(TURNOS_BASE[ordem]){
+      TURNOS_BASE[ordem].l=label;
+      TURNOS_BASE[ordem].a=area;
+      TURNOS_BASE[ordem].h=horas;
+      TURNOS_BASE[ordem].not=noturno;
+      TURNOS_BASE[ordem].cls=cls;
+    }
+    return true;
+  }catch(e){
+    console.error('editarTurnoBase:',e);
+    showToast('Erro ao editar turno: '+(e.message||'').slice(0,80),true);
+    return false;
+  }
+}
+
+async function removerTurnoBase(ordem){
+  try{
+    const {error}=await sb.from('turnos_base').delete().eq('ordem',ordem);
+    if(error)throw error;
+    TURNOS_BASE.splice(ordem,1);
+    // Reindexar ordens no banco
+    for(let i=ordem;i<TURNOS_BASE.length;i++){
+      await sb.from('turnos_base').update({ordem:i}).eq('ordem',i+1);
+      TURNOS_BASE[i]._ordem=i;
+    }
+    return true;
+  }catch(e){
+    console.error('removerTurnoBase:',e);
+    showToast('Erro ao remover turno: '+(e.message||'').slice(0,80),true);
+    return false;
+  }
+}
+
+// Adicionar turno apenas para o mês específico (não afeta a base)
+async function adicionarTurnoMes(mes,ano,label,area,horas,noturno,cls){
+  // ordens >= 100 são reservadas para adições no mês
+  const k=keyMes(mes,ano);
+  const overrides=TURNOS_MES_OVERRIDES[k]||[];
+  const maxAdd=overrides.filter(o=>o.acao==='add').reduce((m,o)=>Math.max(m,o.ordem),99);
+  const ordem=maxAdd+1;
+  try{
+    const {error}=await sb.from('turnos_mes').upsert({
+      mes,ano,ordem,acao:'add',label,area,horas,noturno,cls
+    },{onConflict:'mes,ano,ordem'});
+    if(error)throw error;
+    if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
+    TURNOS_MES_OVERRIDES[k].push({ordem,acao:'add',l:label,a:area,h:horas,not:noturno,cls});
+    aplicarTurnosDoMes(mes,ano);
+    return true;
+  }catch(e){
+    console.error('adicionarTurnoMes:',e);
+    showToast('Erro ao adicionar turno no mês: '+(e.message||'').slice(0,80),true);
+    return false;
+  }
+}
+
+async function editarTurnoMes(mes,ano,ordemBase,label,area,horas,noturno,cls){
+  const k=keyMes(mes,ano);
+  try{
+    const {error}=await sb.from('turnos_mes').upsert({
+      mes,ano,ordem:ordemBase,acao:'edit',label,area,horas,noturno,cls
+    },{onConflict:'mes,ano,ordem'});
+    if(error)throw error;
+    if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
+    const idx=TURNOS_MES_OVERRIDES[k].findIndex(o=>o.ordem===ordemBase);
+    const reg={ordem:ordemBase,acao:'edit',l:label,a:area,h:horas,not:noturno,cls};
+    if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;
+    else TURNOS_MES_OVERRIDES[k].push(reg);
+    aplicarTurnosDoMes(mes,ano);
+    return true;
+  }catch(e){
+    console.error('editarTurnoMes:',e);
+    showToast('Erro ao editar turno do mês: '+(e.message||'').slice(0,80),true);
+    return false;
+  }
+}
+
+async function removerTurnoMes(mes,ano,ordem,isAdd){
+  const k=keyMes(mes,ano);
+  try{
+    if(isAdd){
+      // É uma adição feita só nesse mês — deleta o registro
+      const {error}=await sb.from('turnos_mes').delete()
+        .eq('mes',mes).eq('ano',ano).eq('ordem',ordem);
+      if(error)throw error;
+      if(TURNOS_MES_OVERRIDES[k]){
+        TURNOS_MES_OVERRIDES[k]=TURNOS_MES_OVERRIDES[k].filter(o=>!(o.acao==='add'&&o.ordem===ordem));
+      }
+    }else{
+      // É um turno da base — marca como removido para esse mês
+      const {error}=await sb.from('turnos_mes').upsert({
+        mes,ano,ordem,acao:'remove',label:null,area:null,horas:null,noturno:null,cls:null
+      },{onConflict:'mes,ano,ordem'});
+      if(error)throw error;
+      if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
+      const idx=TURNOS_MES_OVERRIDES[k].findIndex(o=>o.ordem===ordem);
+      const reg={ordem,acao:'remove'};
+      if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;
+      else TURNOS_MES_OVERRIDES[k].push(reg);
+    }
+    aplicarTurnosDoMes(mes,ano);
+    return true;
+  }catch(e){
+    console.error('removerTurnoMes:',e);
+    showToast('Erro ao remover turno: '+(e.message||'').slice(0,80),true);
+    return false;
+  }
+}
+
+// ─── UI: GERENCIAR TURNOS ───
+// Contexto: 'base' (escala base) ou 'mes' (mês específico)
+let _turnoCtx={contexto:'base',mes:null,ano:null,editIdx:null,editIsAdd:false};
+
+function abrirGerenciarTurnos(contexto){
+  _turnoCtx.contexto=contexto;
+  _turnoCtx.mes=mesMes;_turnoCtx.ano=mesAno;
+  const titulo=contexto==='base'?'Gerenciar Turnos — Escala Base':'Gerenciar Turnos — '+MP[mesMes]+' '+mesAno;
+  const sub=contexto==='base'
+    ?'Alterações afetam novas escalas geradas. Não muda escalas já criadas.'
+    :'Alterações afetam SÓ a escala de '+MP[mesMes]+' '+mesAno+'. Não muda a base nem outros meses.';
+  const aviso=contexto==='base'
+    ?'⚠️ Alterações aqui afetam apenas escalas FUTURAS que forem geradas após a edição. Não modifica escalas já existentes (vigentes ou passadas).'
+    :'⚠️ Alterações afetam SOMENTE a escala deste mês. A escala base e outros meses não são tocados.';
+  document.getElementById('mo-turnos-titulo').textContent=titulo;
+  document.getElementById('mo-turnos-sub').textContent=sub;
+  document.getElementById('mo-turnos-aviso-txt').textContent=aviso;
+  renderListaTurnos();
+  abrirMo('mo-turnos');
+}
+
+function renderListaTurnos(){
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const isBase=_turnoCtx.contexto==='base';
+  document.getElementById('mo-turnos-lista').innerHTML=lista.map((t,i)=>{
+    const ordem=isBase?i:(t._ordemBase!=null?t._ordemBase:t._ordemAdd);
+    const isAddNoMes=!isBase&&t._ordemAdd!=null;
+    const tagAdd=isAddNoMes?'<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:700">SÓ NESTE MÊS</span>':'';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:5px;margin-bottom:4px;background:var(--bg2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600">${t.l}${tagAdd}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px">${t.a} · ${t.h}h · ${t.not?'🌙 Noturno':'🌅 Diurno'}</div>
+      </div>
+      <button class="btn btn-g btn-xs" onclick="abrirEditTurno(${i})" title="Editar">✏</button>
+      <button class="btn btn-d btn-xs" onclick="confirmarRemoverTurno(${i})" title="Remover">✕</button>
+    </div>`;
+  }).join('')||'<div style="color:var(--text3);font-size:12px;padding:14px;text-align:center">Nenhum turno cadastrado.</div>';
+}
+
+function abrirAddTurno(){
+  _turnoCtx.editIdx=null;_turnoCtx.editIsAdd=false;
+  document.getElementById('mo-tu-titulo').textContent='Adicionar Turno';
+  document.getElementById('tu-horario-preset').value='07:00–19:00';
+  document.getElementById('tu-horario-custom').value='';
+  document.getElementById('tu-horas-custom').value=6;
+  document.getElementById('tu-noturno-custom').checked=false;
+  document.getElementById('tu-area').value='CM';
+  document.getElementById('tu-label-extra').value='';
+  document.getElementById('tu-custom-wrap').style.display='none';
+  document.getElementById('tu-btn-remover').style.display='none';
+  atualizarHorarioCustom();
+  autoLabelTurno();
+  abrirMo('mo-turno-edit');
+}
+
+function abrirEditTurno(idx){
+  _turnoCtx.editIdx=idx;
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const t=lista[idx];
+  if(!t)return;
+  _turnoCtx.editIsAdd=(!_turnoCtx.contexto.includes('base'))&&(t._ordemAdd!=null);
+  document.getElementById('mo-tu-titulo').textContent='Editar Turno';
+  // Tentar identificar o horário base
+  const horarioMatch=String(t.l).match(/^(\d{2}:\d{2}–\d{2}:\d{2})/);
+  const horario=horarioMatch?horarioMatch[1]:'';
+  const presets=['07:00–19:00','13:00–19:00','19:00–07:00','19:00–01:00'];
+  if(presets.includes(horario)){
+    document.getElementById('tu-horario-preset').value=horario;
+    document.getElementById('tu-custom-wrap').style.display='none';
+  }else{
+    document.getElementById('tu-horario-preset').value='custom';
+    document.getElementById('tu-horario-custom').value=horario;
+    document.getElementById('tu-horas-custom').value=t.h;
+    document.getElementById('tu-noturno-custom').checked=t.not===true;
+    document.getElementById('tu-custom-wrap').style.display='block';
+  }
+  document.getElementById('tu-area').value=t.a;
+  // Extrair label-extra (parte após a área)
+  const aux=String(t.l).replace(/^\d{2}:\d{2}–\d{2}:\d{2}\s+/,'').replace(t.a,'').trim();
+  document.getElementById('tu-label-extra').value=aux;
+  document.getElementById('tu-btn-remover').style.display='inline-block';
+  abrirMo('mo-turno-edit');
+}
+
+function atualizarHorarioCustom(){
+  const v=document.getElementById('tu-horario-preset').value;
+  const wrap=document.getElementById('tu-custom-wrap');
+  if(v==='custom'){
+    wrap.style.display='block';
+  }else{
+    wrap.style.display='none';
+  }
+}
+
+function autoLabelTurno(){
+  if(_turnoCtx.editIdx!==null)return;// só auto-numera ao adicionar
+  const area=document.getElementById('tu-area').value;
+  const horario=document.getElementById('tu-horario-preset').value;
+  if(horario==='custom')return;
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  // Contar quantos já existem com mesmo horário+área
+  const padrao=new RegExp('^'+horario.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+'+area+'\\b');
+  const usados=lista.filter(t=>padrao.test(t.l));
+  // Sugerir próximo número
+  if(usados.length===0){
+    document.getElementById('tu-label-extra').value='';
+  }else{
+    document.getElementById('tu-label-extra').value='('+(usados.length+1)+')';
+  }
+}
+
+async function salvarTurno(){
+  const presetH=document.getElementById('tu-horario-preset').value;
+  const customH=document.getElementById('tu-horario-custom').value.trim();
+  let horario,horas,noturno;
+  // Mapear preset → atributos
+  const presets={
+    '07:00–19:00':{horas:12,noturno:false},
+    '13:00–19:00':{horas:6,noturno:false},
+    '19:00–07:00':{horas:12,noturno:true},
+    '19:00–01:00':{horas:6,noturno:true}
+  };
+  if(presetH==='custom'){
+    if(!customH||!/^\d{1,2}:\d{2}–\d{1,2}:\d{2}$/.test(customH)){
+      showToast('Horário inválido (use formato HH:MM–HH:MM, com travessão)',true);return;
+    }
+    horario=customH;
+    horas=parseInt(document.getElementById('tu-horas-custom').value)||6;
+    noturno=document.getElementById('tu-noturno-custom').checked;
+  }else{
+    horario=presetH;horas=presets[presetH].horas;noturno=presets[presetH].noturno;
+  }
+  const area=document.getElementById('tu-area').value;
+  const labelExtra=document.getElementById('tu-label-extra').value.trim();
+  const label=horario+'  '+area+(labelExtra?' '+labelExtra:'');
+  // Determinar classe CSS
+  const clsMap={
+    'SV+ENF':{d:'sv-d',n:'sv-n'},
+    'CM':{d:'cm-d',n:'cm-n'},
+    'PED':{d:'ped-d',n:'ped-n'},
+    'APOIO':{d:'apo-d',n:'apo-n'}
+  };
+  const cls=clsMap[area]?(noturno?clsMap[area].n:clsMap[area].d):'cm-d';
+
+  let ok=false;
+  if(_turnoCtx.editIdx===null){
+    // ADICIONAR
+    if(_turnoCtx.contexto==='base'){
+      ok=await adicionarTurnoBase(label,area,horas,noturno,cls);
+    }else{
+      ok=await adicionarTurnoMes(_turnoCtx.mes,_turnoCtx.ano,label,area,horas,noturno,cls);
+    }
+  }else{
+    // EDITAR
+    if(_turnoCtx.contexto==='base'){
+      ok=await editarTurnoBase(_turnoCtx.editIdx,label,area,horas,noturno,cls);
+    }else{
+      const t=TURNOS[_turnoCtx.editIdx];
+      if(t._ordemAdd!=null){
+        // É uma adição local: deletar e re-adicionar (simplifica)
+        await removerTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemAdd,true);
+        ok=await adicionarTurnoMes(_turnoCtx.mes,_turnoCtx.ano,label,area,horas,noturno,cls);
+      }else{
+        ok=await editarTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemBase,label,area,horas,noturno,cls);
+      }
+    }
+  }
+  if(ok){
+    fecharMo('mo-turno-edit');
+    aplicarTurnosDoMes(mesMes,mesAno);
+    renderListaTurnos();
+    renderAll();
+    showToast('✓ Turno '+(_turnoCtx.editIdx===null?'adicionado':'atualizado'));
+  }
+}
+
+function confirmarRemoverTurno(idx){
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const t=lista[idx];
+  if(!t)return;
+  const escopo=_turnoCtx.contexto==='base'?'da Escala Base (afetará novas gerações)':'da escala de '+MP[_turnoCtx.mes]+'/'+_turnoCtx.ano;
+  if(!confirm(`Remover o turno "${t.l}" ${escopo}?\n\nEssa ação pode ser desfeita.`))return;
+  _turnoCtx.editIdx=idx;
+  removerTurnoAtual();
+}
+
+async function removerTurnoAtual(){
+  if(_turnoCtx.editIdx===null)return;
+  let ok=false;
+  if(_turnoCtx.contexto==='base'){
+    ok=await removerTurnoBase(_turnoCtx.editIdx);
+  }else{
+    const t=TURNOS[_turnoCtx.editIdx];
+    if(t._ordemAdd!=null){
+      ok=await removerTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemAdd,true);
+    }else{
+      ok=await removerTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemBase,false);
+    }
+  }
+  if(ok){
+    fecharMo('mo-turno-edit');
+    aplicarTurnosDoMes(mesMes,mesAno);
+    renderListaTurnos();
+    renderAll();
+    showToast('✓ Turno removido');
+  }
+}
+
+async function carregarDeclaracoesPlantoes(){
+  try{
+    const {data,error}=await sb.from('declaracoes_plantoes').select('*');
+    if(error){
+      if(error.code==='42P01'||(error.message||'').includes('relation')){
+        console.warn('Tabela declaracoes_plantoes ainda não existe — execute SQL v25');
+        return;
+      }
+      throw error;
+    }
+    Object.keys(DECLARACOES_PLANTOES).forEach(k=>delete DECLARACOES_PLANTOES[k]);
+    (data||[]).forEach(d=>{
+      const k=d.crm+'|'+d.plantao_key;
+      DECLARACOES_PLANTOES[k]={crm:d.crm,mes:d.mes,ano:d.ano,plantao_key:d.plantao_key,
+        enviada:d.enviada===true,data_envio:d.data_envio};
+    });
+  }catch(e){console.error('carregarDeclaracoesPlantoes:',e);}
+}
+
+// Marca/desmarca declaração de UM plantão
+async function toggleDecPlantao(crm,mes,ano,pkey,novoStatus){
+  const k=crm+'|'+pkey;
+  const atual=DECLARACOES_PLANTOES[k];
+  const dataEnvio=novoStatus?new Date().toISOString().split('T')[0]:null;
+  DECLARACOES_PLANTOES[k]={crm,mes,ano,plantao_key:pkey,enviada:novoStatus,data_envio:dataEnvio};
+  try{
+    const {error}=await sb.from('declaracoes_plantoes').upsert({
+      crm,mes,ano,plantao_key:pkey,enviada:novoStatus,data_envio:dataEnvio,atualizada_em:new Date().toISOString()
+    },{onConflict:'crm,plantao_key'});
+    if(error)throw error;
+    return true;
+  }catch(e){
+    console.error('toggleDecPlantao:',e);
+    showToast('Erro ao salvar declaração — execute SQL v25',true);
+    if(atual)DECLARACOES_PLANTOES[k]=atual;else delete DECLARACOES_PLANTOES[k];
+    return false;
+  }
+}
+
+// Marca TODAS as declarações de um externo no mês como enviadas (batch)
+async function marcarTodasDecExterno(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista){showToast('Externo sem plantões',true);return;}
+  if(!confirm(`Confirmar envio de TODAS as ${lista.plantoes.length} declarações do(a) ${lista.med.n}?`))return;
+  let ok=0;
+  const dataEnvio=new Date().toISOString().split('T')[0];
+  const payload=lista.plantoes.map(p=>({
+    crm,mes,ano,
+    plantao_key:plantaoKey(mes,ano,p.dia,p.turnoIdx),
+    enviada:true,data_envio:dataEnvio,
+    atualizada_em:new Date().toISOString()
+  }));
+  try{
+    const {error}=await sb.from('declaracoes_plantoes').upsert(payload,{onConflict:'crm,plantao_key'});
+    if(error)throw error;
+    // Atualizar local
+    payload.forEach(p=>{
+      DECLARACOES_PLANTOES[p.crm+'|'+p.plantao_key]={...p,enviada:true};
+      ok++;
+    });
+    showToast(`✓ ${ok} declarações marcadas como enviadas`);
+    renderDashboard();
+  }catch(e){
+    console.error('marcarTodasDecExterno:',e);
+    showToast('Erro ao salvar — execute SQL v25',true);
+  }
+}
+
+// Verifica se TODAS as declarações de um externo estão enviadas
+function todasDecsEnviadas(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista)return false;
+  if(lista.plantoes.length===0)return false;
+  return lista.plantoes.every(p=>{
+    const k=crm+'|'+plantaoKey(mes,ano,p.dia,p.turnoIdx);
+    return DECLARACOES_PLANTOES[k]&&DECLARACOES_PLANTOES[k].enviada;
+  });
+}
+
+// Conta quantas declarações estão pendentes para um externo
+function decsPendentesExterno(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista)return {total:0,pendentes:0};
+  let pend=0;
+  lista.plantoes.forEach(p=>{
+    const k=crm+'|'+plantaoKey(mes,ano,p.dia,p.turnoIdx);
+    if(!(DECLARACOES_PLANTOES[k]&&DECLARACOES_PLANTOES[k].enviada))pend++;
+  });
+  return {total:lista.plantoes.length,pendentes:pend};
+}
+
+// ══ GERAR TEXTO DE DECLARAÇÃO (modelo padrão CAIS) ══
+function gerarTextoDeclaracao(crm,mes,ano){
+  const lista=coletarExternosMes(mes,ano).find(x=>x.med.c===crm);
+  if(!lista){showToast('Externo sem plantões neste mês',true);return;}
+  const med=lista.med;
+  const cpf=med.cpf||'[CPF NÃO CADASTRADO]';
+  const unidade=med.unidade||'[UNIDADE]';
+  const linhasPlantoes=lista.plantoes.map(p=>{
+    // Extrair horários do turno
+    const turnoStr=String(p.turno||'');
+    const m=turnoStr.match(/(\d{1,2})[:h](\d{2})\s*[–\-]\s*(\d{1,2})[:h](\d{2})/);
+    let h1='HH:MM',h2='HH:MM',periodo='diurno';
+    if(m){
+      h1=m[1].padStart(2,'0')+':'+m[2];
+      h2=m[3].padStart(2,'0')+':'+m[4];
+      periodo=p.not?'noturno':'diurno';
+    }
+    const mesNome=MP[mes].toLowerCase();
+    return `${p.dia} de ${mesNome} de ${ano}, no período ${periodo}, das ${h1} às ${h2}`;
+  });
+  const corpoLinhas=linhasPlantoes.map(l=>'• '+l).join('\n');
+  const texto=`DE: CAIS CAMPINAS
+PARA: ${unidade.toUpperCase()}
+
+Declaramos para os devidos fins, que o(a) médico(a) ${med.n.toUpperCase()}, inscrito(a) sob o CRM/GO de número ${med.c} e CPF de número ${cpf}, realizou plantão no CAIS Campinas, na Urgência e Emergência, no(s) seguinte(s) dia(s):
+
+${corpoLinhas}
+
+Por ser a expressão da verdade, firmamos a presente declaração.
+
+Goiânia, ${new Date().toLocaleDateString('pt-BR')}.
+
+Atenciosamente,
+
+____________________________________________
+Gestor de Escala — CAIS Campinas`;
+
+  // Abrir modal com o texto e botão de copiar
+  document.getElementById('decl-texto-titulo').textContent='Declaração — '+med.n;
+  document.getElementById('decl-texto-area').value=texto;
+  abrirMo('mo-decl-texto');
+}
+
+function copiarTextoDeclaracao(){
+  const ta=document.getElementById('decl-texto-area');
+  ta.select();ta.setSelectionRange(0,99999);
+  try{
+    document.execCommand('copy');
+    showToast('✓ Texto copiado!');
+  }catch(e){
+    showToast('Não foi possível copiar — selecione manualmente',true);
+  }
+}
 
 async function carregarDeclaracoes(){
   try{
@@ -4376,34 +5718,19 @@ async function carregarDeclaracoes(){
 }
 
 async function toggleDeclaracao(crm,mes,ano){
-  const k=crm+'-'+mes+'-'+ano;
-  const atual=DECLARACOES[k];
-  const novoStatus=!(atual&&atual.enviada);
-  const dataEnvio=novoStatus?new Date().toISOString():null;
-  // Atualizar local primeiro (UX)
-  DECLARACOES[k]={crm,mes,ano,enviada:novoStatus,data_envio:dataEnvio};
-  renderDashboard();
-  // Persistir no banco
-  try{
-    // DELETE + INSERT (mais seguro que upsert)
-    await sb.from('declaracoes_externos').delete()
-      .eq('crm',crm).eq('mes',mes).eq('ano',ano);
-    const {error}=await sb.from('declaracoes_externos').insert({
-      crm,mes,ano,enviada:novoStatus,data_envio:dataEnvio
-    });
-    if(error)throw error;
-    showToast(novoStatus?'✓ Declaração marcada como enviada':'Declaração desmarcada');
-  }catch(e){
-    console.error('toggleDeclaracao:',e);
-    showToast('Erro ao salvar — execute o SQL v22',true);
-    // Reverter local
-    if(atual)DECLARACOES[k]=atual;else delete DECLARACOES[k];
-    renderDashboard();
-  }
+  // Função antiga (mês inteiro) — mantida para compat mas marca TODAS via novo sistema
+  await marcarTodasDecExterno(crm,mes,ano);
 }
 
 // ══ RELATÓRIO GESTOR ══
-function mudarMesRel(d){relMes+=d;if(relMes>12){relMes=1;relAno++}if(relMes<1){relMes=12;relAno--}document.getElementById('mc-rel').textContent=MP[relMes]+' '+relAno;renderRelatorio(relFiltroAtual)}
+function mudarMesRel(d){
+  relMes+=d;if(relMes>12){relMes=1;relAno++}if(relMes<1){relMes=12;relAno--}
+  document.getElementById('mc-rel').textContent=MP[relMes]+' '+relAno;
+  renderRelatorio(relFiltroAtual);
+  // Se a aba Externos está ativa, recarregar também
+  const btnExt=document.getElementById('btn-rel-ext');
+  if(btnExt&&btnExt.classList.contains('active'))renderRelExterno();
+}
 
 function calcRel(mes,ano){
   return MEDICOS.filter(m=>!m.ext).map(m=>{
@@ -4613,7 +5940,7 @@ function renderRelExterno(){
           <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--green)">${fmtMoeda(totalGeralValor)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-a btn-sm" onclick="pdfExternosGeral()" title="PDF consolidado de todos os externos">📄 PDF Geral</button>
+          <button class="btn btn-p btn-sm" onclick="pdfExternosGeral()" title="Gerar relatório consolidado dos externos">📄 Gerar Relatório</button>
           <button class="btn btn-s btn-sm" onclick="exportXLSXExternos()" title="Excel com os externos do mês">📊 Excel</button>
         </div>
       </div>
@@ -4653,6 +5980,32 @@ function renderRelExterno(){
 }
 
 // Placeholder — função antiga removida (substituída por coletarExternosMes + renderRelExterno acima)
+
+// ══ MODAL RELATÓRIO MENSAL (com filtros) ══
+function abrirModalRelMensal(){
+  document.getElementById('rm-mes').value=mesMes;
+  document.getElementById('rm-ano').value=mesAno;
+  abrirMo('mo-rel-mensal');
+}
+
+function gerarRelMensalFiltrado(){
+  const mes=parseInt(document.getElementById('rm-mes').value);
+  const ano=parseInt(document.getElementById('rm-ano').value);
+  const filtros={
+    cr:document.getElementById('rm-cr').checked,
+    rqe:document.getElementById('rm-rqe').checked,
+    ext:document.getElementById('rm-ext').checked,
+    ef:document.getElementById('rm-ef').checked,
+    somente:document.getElementById('rm-somente').checked,
+    valores:document.getElementById('rm-valores').checked,
+    detalhe:document.getElementById('rm-detalhe').checked
+  };
+  if(!filtros.cr&&!filtros.rqe&&!filtros.ext&&!filtros.ef){
+    showToast('Selecione pelo menos uma categoria',true);return;
+  }
+  fecharMo('mo-rel-mensal');
+  pdfRelMensal(mes,ano,filtros);
+}
 
 // ══ MODAL RELATÓRIO POR PROFISSIONAL ══
 function gerarRelProfModal(){
@@ -5424,26 +6777,26 @@ function pdfFichaExterno(crm){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff}
     @page{size:A4 portrait;margin:8mm}
-    .h{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
+    .h{background:linear-gradient(135deg,#1a3a5c 0%,#2563d4 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
     .h-left{display:flex;align-items:center;gap:8px}
     .h-title{font-size:14px;font-weight:800;letter-spacing:-.01em}
     .h-sub{font-size:9px;opacity:.9;margin-top:1px}
     .h-right{font-size:8px;text-align:right;opacity:.95}
-    .ext-badge{background:#fff;color:#7c3aed;padding:3px 8px;border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.05em}
-    .info-bar{background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;padding:7px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+    .ext-badge{background:#fff;color:#2563d4;padding:3px 8px;border-radius:4px;font-size:8px;font-weight:800;letter-spacing:.05em}
+    .info-bar{background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:7px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
     .info-item{font-size:7.5px}
-    .info-l{color:#6b21a8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:6.5px}
+    .info-l{color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:6.5px}
     .info-v{color:#1a1a2e;font-weight:700;font-size:9px;margin-top:1px}
-    .sec{background:#1f0a4d;color:#fff;padding:4px 9px;font-size:9px;font-weight:700;border-radius:3px;margin:8px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+    .sec{background:#1a3a5c;color:#fff;padding:4px 9px;font-size:9px;font-weight:700;border-radius:3px;margin:8px 0 5px;text-transform:uppercase;letter-spacing:.04em}
     .total-box{background:linear-gradient(135deg,#166534 0%,#15803d 100%);color:#fff;padding:9px 12px;border-radius:5px;display:flex;justify-content:space-between;align-items:center;margin:6px 0}
     .total-label{font-size:8px;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
     .total-v{font-size:18px;font-weight:800;font-family:'Consolas',monospace}
     table{width:100%;border-collapse:collapse;font-size:8px}
-    th{background:#1f0a4d;color:#fff;padding:5px 6px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #1f0a4d}
+    th{background:#1a3a5c;color:#fff;padding:5px 6px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #1a3a5c}
     td{padding:4px 6px;border:1px solid #e5e7eb;background:#fff}
     .c{text-align:center}
-    tr:nth-child(even) td{background:#faf5ff}
-    tfoot td{background:#1f0a4d!important;color:#fff!important;font-weight:800;font-size:8.5px}
+    tr:nth-child(even) td{background:#f0f9ff}
+    tfoot td{background:#1a3a5c!important;color:#fff!important;font-weight:800;font-size:8.5px}
     .sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:18px}
     .sign-box{text-align:center}
     .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:32px}
@@ -5536,19 +6889,19 @@ function pdfExternosGeral(){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff}
     @page{size:A4 landscape;margin:8mm}
-    .h{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
+    .h{background:linear-gradient(135deg,#1a3a5c 0%,#2563d4 100%);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:6px}
     .h-title{font-size:14px;font-weight:800}
     .h-sub{font-size:9px;opacity:.9;margin-top:1px}
     .h-right{font-size:8px;text-align:right}
-    .res-bar{background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:9px}
+    .res-bar{background:#dbeafe;border:1px solid #93c5fd;border-radius:6px;padding:8px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:9px}
     .res-item{font-size:8px}
-    .res-l{color:#6b21a8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
+    .res-l{color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
     .res-v{color:#1a1a2e;font-weight:800;font-size:14px;margin-top:2px;font-family:'Consolas',monospace}
     table{width:100%;border-collapse:collapse;font-size:8.5px}
-    th{background:#1f0a4d;color:#fff;padding:5px 7px;text-align:left;font-weight:700;font-size:8px;border:1px solid #1f0a4d}
+    th{background:#1a3a5c;color:#fff;padding:5px 7px;text-align:left;font-weight:700;font-size:8px;border:1px solid #1a3a5c}
     td{padding:4px 7px;border:1px solid #e5e7eb;background:#fff}
-    tr:nth-child(even) td{background:#faf5ff}
-    tfoot td{background:#1f0a4d!important;color:#fff!important;font-weight:800;font-size:9px}
+    tr:nth-child(even) td{background:#f0f9ff}
+    tfoot td{background:#1a3a5c!important;color:#fff!important;font-weight:800;font-size:9px}
     .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:18px}
     .sign-box{text-align:center}
     .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:30px}
@@ -5644,32 +6997,56 @@ function exportXLSXExternos(){
 // ══ PDF ESCALA DO MÊS — A4 PAISAGEM ══
 function pdfEscala(){
   const sems=gerarSemanas(mesMes,mesAno);
-  // Nome do gestor logado
-  const nomeGestor=curUser.n||'Gestor de Escala';
-  const crmGestor=curUser.c||'';
-  let tabelasHtml='';
-  sems.forEach((sem,si)=>{
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:curUser.n||'Gestor de Escala',c:curUser.c||''};
+  const nomeGestor=gestorLogin.n;
+  const crmGestor=gestorLogin.c||'';
+  const dataGeracao=new Date().toLocaleString('pt-BR');
+
+  // Cabeçalho que se repete em cada página
+  const headerHtml=(letra)=>`
+    <div class="header">
+      <div>
+        <div class="h-title">🏥 CAIS Campinas — Escala de Plantão</div>
+        <div class="h-sub">${MP[mesMes]} ${mesAno} · <span style="background:${letra==='A'?'#16a34a':'#2563d4'};color:#fff;padding:2px 7px;border-radius:3px;font-weight:700">SEMANA ${letra}</span></div>
+      </div>
+      <div class="h-right">Gerado por: ${nomeGestor}<br>${dataGeracao}</div>
+    </div>
+    <div class="leg">
+      <strong style="font-size:7.5px">LEGENDA:</strong>
+      <div class="leg-item"><div class="leg-dot" style="background:#dc2626"></div>SV+ENF Diurno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#b91c1c"></div>SV+ENF Noturno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#2563eb"></div>CM Diurno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#1d4ed8"></div>CM Noturno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#d97706"></div>PED Diurno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#c2410c"></div>PED Noturno</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#059669"></div>APOIO</div>
+    </div>
+  `;
+
+  // Tabela de UMA semana
+  const tabelaSemana=(sem,si)=>{
     const cor=sem.letra==='A'?'#166534':'#1d4ed8';
     const mn=Math.min(...Object.values(sem.dias)),mx=Math.max(...Object.values(sem.dias));
-    tabelasHtml+=`<div style="margin-bottom:8px">
-      <div style="font-size:8.5px;font-weight:700;color:${cor};margin-bottom:5px;text-transform:uppercase;letter-spacing:.07em">
-        ● Semana ${si+1} — Ciclo ${sem.letra} · Dias ${mn} a ${mx} de ${MP[mesMes].charAt(0)+MP[mesMes].slice(1).toLowerCase()}
+    let html=`<div style="text-align:center;margin-bottom:8px">
+      <div style="display:inline-block;font-size:11px;font-weight:700;color:${cor};letter-spacing:.05em">
+        ● SEMANA ${si+1} — CICLO ${sem.letra} · DIAS ${mn} A ${mx} DE ${MP[mesMes]}
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:7px">
-        <thead><tr style="background:#1a3a5c">
-          <th style="color:#fff;padding:4px 5px;text-align:left;width:110px;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">HORÁRIO / FUNÇÃO</th>`;
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:7.5px;margin:0 auto">
+      <thead><tr style="background:#1a3a5c">
+        <th style="color:#fff;padding:5px 6px;text-align:left;width:120px;font-size:8px;border-right:1px solid rgba(255,255,255,.2)">HORÁRIO / FUNÇÃO</th>`;
     DA.forEach((ab,i)=>{
       const n=sem.dias[ab];
-      tabelasHtml+=`<th style="color:#fff;padding:4px 3px;text-align:center;font-size:7.5px;border-right:1px solid rgba(255,255,255,.2)">${DN[i]}<br><span style="font-size:7px;opacity:.7">${n!==undefined?n:''}</span></th>`;
+      html+=`<th style="color:#fff;padding:5px 4px;text-align:center;font-size:8px;border-right:1px solid rgba(255,255,255,.2)">${DN[i]}<br><span style="font-size:7.5px;opacity:.7">${n!==undefined?n:''}</span></th>`;
     });
-    tabelasHtml+=`</tr></thead><tbody>`;
+    html+=`</tr></thead><tbody>`;
     TURNOS.forEach((t,ti)=>{
       const bgRow={'sv-d':'#ffd5d5','sv-n':'#ffc9cc','cm-d':'#e8f0fe','cm-n':'#dbeafe','ped-d':'#fef3c7','ped-n':'#fed7aa','apo-d':'#d1fae5','apo-n':'#bbf7d0'}[t.cls]||'#fff';
       const clrT={'sv-d':'#dc2626','sv-n':'#b91c1c','cm-d':'#2563eb','cm-n':'#1d4ed8','ped-d':'#d97706','ped-n':'#c2410c','apo-d':'#059669','apo-n':'#047857'}[t.cls]||'#374151';
-      tabelasHtml+=`<tr style="background:${bgRow};border-bottom:1px solid #ddd">
-        <td style="padding:3px 5px;font-size:7px;font-weight:700;color:${clrT};border-right:1px solid #ddd;white-space:nowrap">${t.l}</td>`;
+      html+=`<tr style="background:${bgRow};border-bottom:1px solid #ddd">
+        <td style="padding:4px 6px;font-size:7.5px;font-weight:700;color:${clrT};border-right:1px solid #ddd;white-space:nowrap">${t.l}</td>`;
       DA.forEach(ab=>{
-        if(sem.dias[ab]===undefined){tabelasHtml+=`<td style="background:#f0f0f0;border-right:1px solid #ddd"></td>`;return}
+        if(sem.dias[ab]===undefined){html+=`<td style="background:#f0f0f0;border-right:1px solid #ddd"></td>`;return}
         const arr=EB[sem.letra][ab]||[];const val=ti<arr.length?arr[ti]:'';
         let nome='',crm='',vinc='';
         if(val){
@@ -5679,17 +7056,49 @@ function pdfEscala(){
           else{nome=val.replace(/\s*(CR|EF)$/,'').trim();}
         }
         const sub=val?(crm+(vinc?' '+vinc:'')):'';
-        tabelasHtml+=`<td style="padding:2px 3px;text-align:center;border-right:1px solid #ddd;vertical-align:middle">
+        html+=`<td style="padding:3px 4px;text-align:center;border-right:1px solid #ddd;vertical-align:middle">
           ${val
-            ?`<div style="font-size:7px;font-weight:700;color:#1a1f36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;margin:0 auto">${nome}</div>
-              <div style="font-size:6px;color:#5a6485;white-space:nowrap">${sub}</div>`
-            :`<div style="font-size:7px;color:#ccc">—</div>`}
+            ?`<div style="font-size:7.5px;font-weight:700;color:#1a1f36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;margin:0 auto">${nome}</div>
+              <div style="font-size:6.5px;color:#5a6485;white-space:nowrap">${sub}</div>`
+            :`<div style="font-size:7.5px;color:#ccc">—</div>`}
         </td>`;
       });
-      tabelasHtml+=`</tr>`;
+      html+=`</tr>`;
     });
-    tabelasHtml+=`</tbody></table></div>`;
-  });
+    html+=`</tbody></table>`;
+    return html;
+  };
+
+  // Bloco de uma página (semana inteira centralizada + cabeçalho + rodapé)
+  const paginaSemana=(sem,si,total)=>`
+    <div class="pagina-semana">
+      ${headerHtml(sem.letra)}
+      <div style="display:flex;flex-direction:column;justify-content:center;min-height:140mm">
+        ${tabelaSemana(sem,si)}
+      </div>
+      <div class="sign-wrap">
+        <div class="sign">
+          <div class="sign-box">
+            <div class="sign-line"></div>
+            <div class="sign-label">${nomeGestor}</div>
+            <div class="sign-sub">Gestor de Escala${crmGestor?' · CRM '+crmGestor:''}</div>
+            <div class="sign-sub">CAIS Campinas · Data: ___/___/______</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-line"></div>
+            <div class="sign-label">Aprovado por</div>
+            <div class="sign-sub">Coordenação de Saúde · Data: ___/___/______</div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>CAIS Campinas · Escala · ${MP[mesMes]} ${mesAno} · Semana ${sem.letra} (${si+1}/${total})</span>
+          <span>Gerado em ${dataGeracao}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const paginasHtml=sems.map((sem,si)=>paginaSemana(sem,si,sems.length)).join('');
 
   const w=window.open('','_blank');
   if(!w){showToast('Permita pop-ups',true);return}
@@ -5699,61 +7108,27 @@ function pdfEscala(){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#111}
     @page{size:A4 landscape;margin:8mm}
-    .header{background:#1a3a5c;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:5px}
+    /* Cada bloco .pagina-semana ocupa uma página A4 separada */
+    .pagina-semana{page-break-after:always;break-after:page;min-height:195mm;display:flex;flex-direction:column}
+    .pagina-semana:last-child{page-break-after:auto;break-after:auto}
+    .header{background:#1a3a5c;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-radius:5px;flex-shrink:0}
     .h-title{font-size:15px;font-weight:800}
-    .h-sub{font-size:8px;opacity:.7;margin-top:2px}
-    .h-right{text-align:right;font-size:7.5px;opacity:.65;line-height:1.7}
-    .leg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:7px;font-size:7.5px;align-items:center;padding:5px 10px;background:#f8f9fc;border-radius:4px}
+    .h-sub{font-size:9px;opacity:.95;margin-top:3px}
+    .h-right{text-align:right;font-size:7.5px;opacity:.85;line-height:1.7}
+    .leg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:7px;font-size:7.5px;align-items:center;padding:5px 10px;background:#f8f9fc;border-radius:4px;flex-shrink:0}
     .leg-item{display:flex;align-items:center;gap:3px}
     .leg-dot{width:7px;height:7px;border-radius:50%}
-    /* Assinatura — nunca quebra de página, cola no final do conteúdo */
-    .sign-wrap{page-break-inside:avoid;break-inside:avoid;margin-top:10px;padding-top:8px;border-top:2px solid #1a3a5c}
-    .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .sign-wrap{margin-top:auto;padding-top:8px;border-top:2px solid #1a3a5c;flex-shrink:0}
+    .sign{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:520px;margin:0 auto}
     .sign-box{text-align:center}
-    .sign-line{border-bottom:1.5px solid #333;height:28px;margin-bottom:4px}
-    .sign-label{font-size:7.5px;color:#444;line-height:1.5;font-weight:600}
-    .sign-sub{font-size:6.5px;color:#888;margin-top:1px}
+    .sign-line{border-bottom:1.5px solid #333;height:30px;margin-bottom:4px}
+    .sign-label{font-size:8px;color:#222;line-height:1.5;font-weight:700}
+    .sign-sub{font-size:7px;color:#888;margin-top:1px}
     .footer{margin-top:6px;display:flex;justify-content:space-between;font-size:6.5px;color:#bbb;padding-top:5px;border-top:1px solid #eee}
   </style></head><body>
-  <div class="header">
-    <div>
-      <div class="h-title">🏥 CAIS Campinas — Escala de Plantão</div>
-      <div class="h-sub">${MP[mesMes]} ${mesAno} · Gestão de Escalas v16</div>
-    </div>
-    <div class="h-right">Gerado por: ${nomeGestor}<br>${new Date().toLocaleString('pt-BR')}</div>
-  </div>
-  <div class="leg">
-    <strong style="font-size:7.5px">LEGENDA:</strong>
-    <div class="leg-item"><div class="leg-dot" style="background:#dc2626"></div>SV+ENF Diurno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#b91c1c"></div>SV+ENF Noturno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#2563eb"></div>CM Diurno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#1d4ed8"></div>CM Noturno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#d97706"></div>PED Diurno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#c2410c"></div>PED Noturno</div>
-    <div class="leg-item"><div class="leg-dot" style="background:#059669"></div>APOIO</div>
-  </div>
-  ${tabelasHtml}
-  <div class="sign-wrap">
-    <div class="sign" style="grid-template-columns:1fr 1fr;max-width:420px">
-      <div class="sign-box">
-        <div class="sign-line"></div>
-        <div class="sign-label">${nomeGestor}</div>
-        <div class="sign-sub">Gestor de Escala · CRM ${crmGestor}</div>
-        <div class="sign-sub">CAIS Campinas · Data: ___/___/______</div>
-      </div>
-      <div class="sign-box">
-        <div class="sign-line"></div>
-        <div class="sign-label">Aprovado por</div>
-        <div class="sign-sub">Coordenação de Saúde · Data: ___/___/______</div>
-      </div>
-    </div>
-    <div class="footer">
-      <span>CAIS Campinas · Escala de Plantão · ${MP[mesMes]} ${mesAno}</span>
-      <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
-    </div>
-  </div>
+  ${paginasHtml}
   </body></html>`);
-  w.document.close();setTimeout(()=>w.print(),600);
+  w.document.close();setTimeout(()=>w.print(),500);
 }
 
 // ══ PDF RELATÓRIO GERAL — A4 PAISAGEM OTIMIZADO (Fix 10/11) ══
@@ -5863,7 +7238,253 @@ function pdfRelatorio(){
   w.document.close();setTimeout(()=>w.print(),500);
 }
 
-// ══ XLSX ══
+// ══ PDF RELATÓRIO MENSAL (com filtros, 4 seções) ══
+function pdfRelMensal(mes,ano,filtros){
+  // Coletar dados de todos os profissionais com plantões no mês
+  const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext);
+  const externosMap={};
+  // 1. Plantonistas internos: separar CR Generalista, RQE, e EF
+  const linhasCR=[],linhasRQE=[],linhasEF=[];
+  internos.forEach(m=>{
+    const st=statsProf(m.c,mes,ano);
+    if(filtros.somente&&st.total===0)return;
+    const vinc=getVinc(m.n);
+    const cat=m.categoria||'GENERALISTA';
+    const linha={med:m,st,vinc,cat};
+    if(vinc==='EF')linhasEF.push(linha);
+    else if(cat==='PEDIATRA_RQE')linhasRQE.push(linha);
+    else linhasCR.push(linha);
+  });
+  // 2. Externos
+  const externosList=coletarExternosMes(mes,ano);
+  // 3. Filtragem por seleção
+  const incluirCR=filtros.cr&&linhasCR.length>0;
+  const incluirRQE=filtros.rqe&&linhasRQE.length>0;
+  const incluirExt=filtros.ext&&externosList.length>0;
+  const incluirEF=filtros.ef&&linhasEF.length>0;
+
+  if(!incluirCR&&!incluirRQE&&!incluirExt&&!incluirEF){
+    showToast('Sem dados para gerar — nenhum profissional encontrado com os filtros',true);
+    return;
+  }
+
+  // Ordenar por nome dentro de cada seção
+  linhasCR.sort((a,b)=>a.med.n.localeCompare(b.med.n));
+  linhasRQE.sort((a,b)=>a.med.n.localeCompare(b.med.n));
+  linhasEF.sort((a,b)=>a.med.n.localeCompare(b.med.n));
+
+  const gestorLogin=LOGINS.find(l=>l.isGestor)||{n:'Tiago Resende Telles',c:28691};
+  const nomeGestorPdf=gestorLogin.n||'Gestor de Escala';
+  const crmGestorPdf=gestorLogin.c||'';
+
+  // Função helper para linha de profissional (com ou sem valores)
+  const linhaPlant=(d,idxBg)=>{
+    const colVal=filtros.valores?`<td style="text-align:right;font-weight:700;color:#166534">${d.st.totalFin>0?fmtMoeda(d.st.totalFin):(d.st.viaFolha?'<span style="color:#888;font-style:italic;font-size:7px">via folha</span>':'—')}</td>`:'';
+    const detalhe=filtros.detalhe?`
+      <tr style="background:#fafafa">
+        <td colspan="${filtros.valores?9:8}" style="padding:4px 8px;font-size:7px;color:#444;border-top:1px dashed #ccc">
+          ${d.st.pts.map(p=>`${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${mes.toString().padStart(2,'0')} ${p.turno}`).join(' · ')}
+        </td>
+      </tr>`:'';
+    return `<tr style="${idxBg%2===0?'':'background:#f5f7fc'}">
+      <td style="font-size:7.5px;font-weight:600">${d.med.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${d.med.c}</td>
+      <td style="font-size:7.5px">${d.st.pts.map(p=>p.area).filter((v,i,a)=>a.indexOf(v)===i).map(a=>`<span style="color:${a==='SV+ENF'?'#dc2626':a==='PED'?'#b45309':a==='APOIO'?'#166534':'#1d4ed8'};font-weight:700">${a}</span>`).join(', ')||'—'}</td>
+      <td style="text-align:center">${d.st.fin.CM_DU.h?d.st.fin.CM_DU.h+'h':'—'}</td>
+      <td style="text-align:center">${d.st.fin.CM_FDS.h?d.st.fin.CM_FDS.h+'h':'—'}</td>
+      <td style="text-align:center">${d.st.fin.SV_DU.h?d.st.fin.SV_DU.h+'h':'—'}</td>
+      <td style="text-align:center">${d.st.fin.SV_FDS.h?d.st.fin.SV_FDS.h+'h':'—'}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${d.st.hTotal?d.st.hTotal+'h':'—'}</td>
+      ${colVal}
+    </tr>${detalhe}`;
+  };
+
+  // Linha para externos
+  const linhaExt=(x,idxBg)=>{
+    const colVal=filtros.valores?`<td style="text-align:right;font-weight:700;color:#166534">${fmtMoeda(x.totalValor)}</td>`:'';
+    const cat=(x.med.categoria||'GENERALISTA')==='PEDIATRA_RQE'?'Pediatra RQE':'Generalista';
+    const detalhe=filtros.detalhe?`
+      <tr style="background:#fafafa">
+        <td colspan="${filtros.valores?6:5}" style="padding:4px 8px;font-size:7px;color:#444;border-top:1px dashed #ccc">
+          ${x.plantoes.map(p=>`${p.data} ${p.turno}`).join(' · ')}
+        </td>
+      </tr>`:'';
+    return `<tr style="${idxBg%2===0?'':'background:#f5f7fc'}">
+      <td style="font-size:7.5px;font-weight:600">${x.med.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${x.med.c}</td>
+      <td style="font-size:7.5px">${x.med.unidade||'—'}</td>
+      <td style="text-align:center;font-size:7.5px">${cat}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${x.totalH}h</td>
+      ${colVal}
+    </tr>${detalhe}`;
+  };
+
+  // Linha para EF
+  const linhaEF=(d,idxBg)=>{
+    return `<tr style="${idxBg%2===0?'':'background:#f5f7fc'}">
+      <td style="font-size:7.5px;font-weight:600">${d.med.n}</td>
+      <td style="font-family:monospace;font-size:7.5px">${d.med.c}</td>
+      <td style="font-size:7.5px">${d.st.pts.map(p=>p.area).filter((v,i,a)=>a.indexOf(v)===i).join(', ')||'—'}</td>
+      <td style="text-align:center;font-weight:800;font-family:monospace">${d.st.hTotal?d.st.hTotal+'h':'—'}</td>
+      <td style="text-align:right;color:#888;font-size:7.5px;font-style:italic">via folha</td>
+    </tr>`;
+  };
+
+  // Totais por seção
+  const totH_CR=linhasCR.reduce((s,d)=>s+d.st.hTotal,0);
+  const totV_CR=linhasCR.reduce((s,d)=>s+d.st.totalFin,0);
+  const totH_RQE=linhasRQE.reduce((s,d)=>s+d.st.hTotal,0);
+  const totV_RQE=linhasRQE.reduce((s,d)=>s+d.st.totalFin,0);
+  const totH_Ext=externosList.reduce((s,x)=>s+x.totalH,0);
+  const totV_Ext=externosList.reduce((s,x)=>s+x.totalValor,0);
+  const totH_EF=linhasEF.reduce((s,d)=>s+d.st.hTotal,0);
+
+  // Colunas do header para internos
+  const colsInt=`<tr>
+    <th style="text-align:left">Profissional</th>
+    <th style="text-align:left">CRM</th>
+    <th style="text-align:left">Áreas</th>
+    <th>H.DDS<br>Porta</th>
+    <th>H.FDS<br>Porta</th>
+    <th>H.DDS<br>SV+ENF</th>
+    <th>H.FDS<br>SV+ENF</th>
+    <th>Total</th>
+    ${filtros.valores?'<th style="text-align:right">Valor (bruto)</th>':''}
+  </tr>`;
+  const colsExt=`<tr>
+    <th style="text-align:left">Profissional</th>
+    <th style="text-align:left">CRM</th>
+    <th style="text-align:left">Unidade de Origem</th>
+    <th>Categoria</th>
+    <th>Total</th>
+    ${filtros.valores?'<th style="text-align:right">Valor (bruto)</th>':''}
+  </tr>`;
+  const colsEF=`<tr>
+    <th style="text-align:left">Profissional</th>
+    <th style="text-align:left">CRM</th>
+    <th style="text-align:left">Áreas</th>
+    <th>Total</th>
+    <th style="text-align:right">Observação</th>
+  </tr>`;
+
+  const secao=(titulo,cor,bg,colspan,header,rows,totalRow)=>`
+    <div class="sec-h" style="background:${cor};color:#fff;padding:6px 10px;font-size:11px;font-weight:800;border-radius:4px;margin-top:10px;margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase">${titulo}</div>
+    <table>
+      <thead style="background:${bg}">${header}</thead>
+      <tbody>${rows}</tbody>
+      ${totalRow}
+    </table>
+  `;
+
+  const totalRowInt=(totH,totV)=>`<tfoot><tr style="background:#1a3a5c;color:#fff;font-weight:800">
+    <td colspan="7" style="text-align:right;padding:5px 8px">TOTAL</td>
+    <td style="text-align:center;font-family:monospace">${totH}h</td>
+    ${filtros.valores?`<td style="text-align:right;font-family:monospace">${fmtMoeda(totV)}</td>`:''}
+  </tr></tfoot>`;
+  const totalRowExt=(totH,totV)=>`<tfoot><tr style="background:#1a3a5c;color:#fff;font-weight:800">
+    <td colspan="4" style="text-align:right;padding:5px 8px">TOTAL</td>
+    <td style="text-align:center;font-family:monospace">${totH}h</td>
+    ${filtros.valores?`<td style="text-align:right;font-family:monospace">${fmtMoeda(totV)}</td>`:''}
+  </tr></tfoot>`;
+  const totalRowEF=(totH)=>`<tfoot><tr style="background:#6b7280;color:#fff;font-weight:800">
+    <td colspan="3" style="text-align:right;padding:5px 8px">TOTAL</td>
+    <td style="text-align:center;font-family:monospace">${totH}h</td>
+    <td style="text-align:right;font-style:italic">via folha</td>
+  </tr></tfoot>`;
+
+  // Totais gerais
+  const totGeralH=totH_CR+totH_RQE+totH_Ext+totH_EF;
+  const totGeralV=(filtros.cr?totV_CR:0)+(filtros.rqe?totV_RQE:0)+(filtros.ext?totV_Ext:0);
+
+  const w=window.open('','_blank');
+  if(!w){showToast('Permita pop-ups',true);return}
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Relatório Mensal CAIS — ${MP[mes]} ${ano}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:8.5px;color:#1a1a2e;background:#fff}
+    @page{size:A4 landscape;margin:7mm}
+    .header{background:#1a3a5c;color:#fff;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;border-radius:4px}
+    .h-title{font-size:14px;font-weight:800}.h-sub{font-size:9px;opacity:.8;margin-top:1px}
+    .h-right{text-align:right;font-size:7.5px;opacity:.85;line-height:1.6}
+    .resumo-bar{background:#e0f2fe;border:1px solid #93c5fd;border-radius:6px;padding:7px 11px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:9px}
+    .resumo-item{font-size:8px}
+    .resumo-l{color:#1e40af;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:7px}
+    .resumo-v{color:#0f172a;font-weight:800;font-size:13px;font-family:'Consolas',monospace;margin-top:1px}
+    table{width:100%;border-collapse:collapse;font-size:8px;margin-bottom:8px}
+    th{background:#dbeafe;color:#1e3a8a;padding:5px 7px;text-align:left;font-weight:700;font-size:7.5px;letter-spacing:.02em;border:1px solid #93c5fd}
+    th[style*="text-align:center"]{text-align:center !important}
+    th[style*="text-align:right"]{text-align:right !important}
+    td{padding:4px 7px;border:1px solid #e5e7eb;background:#fff}
+    .sec-h{page-break-after:avoid}
+    table{page-break-inside:avoid}
+    .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:16px;page-break-before:avoid}
+    .sign-box{text-align:center}
+    .sign-line{border-bottom:1.5px solid #1a1a2e;margin-bottom:4px;height:30px}
+    .sign-label{font-weight:700;font-size:9px}
+    .sign-sub{font-size:7.5px;color:#6b7280;margin-top:1px}
+    .footer{margin-top:10px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;color:#6b7280;font-size:7.5px}
+  </style></head><body>
+  <div class="header">
+    <div><div class="h-title">🏥 CAIS Campinas — Relatório Mensal</div>
+      <div class="h-sub">${MP[mes]} ${ano}</div></div>
+    <div class="h-right">Gerado: ${new Date().toLocaleString('pt-BR')}<br>v${typeof APP_VERSION!=='undefined'?APP_VERSION:'16'}</div>
+  </div>
+  <div class="resumo-bar">
+    ${incluirCR?`<div class="resumo-item"><div class="resumo-l">Credenciados (CR)</div><div class="resumo-v">${linhasCR.length}</div></div>`:''}
+    ${incluirRQE?`<div class="resumo-item"><div class="resumo-l">Pediatras RQE</div><div class="resumo-v">${linhasRQE.length}</div></div>`:''}
+    ${incluirExt?`<div class="resumo-item"><div class="resumo-l">Externos</div><div class="resumo-v">${externosList.length}</div></div>`:''}
+    ${incluirEF?`<div class="resumo-item"><div class="resumo-l">Efetivos (EF)</div><div class="resumo-v">${linhasEF.length}</div></div>`:''}
+    <div class="resumo-item"><div class="resumo-l">Total de Horas</div><div class="resumo-v">${totGeralH}h</div></div>
+    ${filtros.valores?`<div class="resumo-item" style="background:#dcfce7;border:1px solid #86efac;border-radius:4px;padding:4px 6px;margin:-4px"><div class="resumo-l" style="color:#166534">Total (BRUTO)</div><div class="resumo-v" style="color:#166534">${fmtMoeda(totGeralV)}</div></div>`:''}
+  </div>
+
+  ${incluirCR?secao(
+    `1. Internos Credenciados (CR Generalistas) — ${linhasCR.length}`,
+    '#1d4ed8','#dbeafe',9,colsInt,
+    linhasCR.map((d,i)=>linhaPlant(d,i)).join(''),
+    totalRowInt(totH_CR,totV_CR)
+  ):''}
+
+  ${incluirRQE?secao(
+    `2. Pediatras RQE — ${linhasRQE.length}`,
+    '#7c3aed','#ede9fe',9,colsInt,
+    linhasRQE.map((d,i)=>linhaPlant(d,i)).join(''),
+    totalRowInt(totH_RQE,totV_RQE)
+  ):''}
+
+  ${incluirExt?secao(
+    `3. Plantonistas Externos — ${externosList.length}`,
+    '#0369a1','#e0f2fe',6,colsExt,
+    externosList.map((x,i)=>linhaExt(x,i)).join(''),
+    totalRowExt(totH_Ext,totV_Ext)
+  ):''}
+
+  ${incluirEF?secao(
+    `4. Efetivos (EF — via folha) — ${linhasEF.length}`,
+    '#6b7280','#f3f4f6',5,colsEF,
+    linhasEF.map((d,i)=>linhaEF(d,i)).join(''),
+    totalRowEF(totH_EF)
+  ):''}
+
+  <div class="sign">
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">${nomeGestorPdf}</div>
+      <div class="sign-sub">Gestor de Escala${crmGestorPdf?' · CRM '+crmGestorPdf:''} · CAIS Campinas</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+    <div class="sign-box"><div class="sign-line"></div>
+      <div class="sign-label">Coordenador de Saúde</div>
+      <div class="sign-sub">Data: ___/___/______</div></div>
+  </div>
+  <div class="footer">
+    <span>CAIS Campinas · Relatório Mensal · ${MP[mes]} ${ano}</span>
+    <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+  </body></html>`);
+  w.document.close();setTimeout(()=>w.print(),500);
+}
+
+// ══ XLSX ESCALA DO MÊS ══
 function exportXLSX(){
   const sems=gerarSemanas(mesMes,mesAno);
   const wb=XLSX.utils.book_new();
@@ -6091,6 +7712,134 @@ async function salvarPerfil(){
   fecharMo('mo-perfil');
   showToast(pwNova?'Perfil e senha salvos!':'Perfil salvo!');
 }
+// ══ SINCRONIZAR LOGINS DE EXTERNOS ══
+// Cria acesso plantonista para externos cadastrados sem login (senha = CRM)
+async function sincronizarLoginsExternos(){
+  const externosSemLogin=MEDICOS.filter(m=>m.ext&&!LOGINS.find(l=>l.c===m.c));
+  if(externosSemLogin.length===0){
+    showToast('Todos os externos já têm acesso ✓');return;
+  }
+  // Lista detalhada com nomes para confirmação
+  const listaNomes=externosSemLogin.map(m=>`• ${m.n} (CRM ${m.c})`).join('\n');
+  if(!confirm(`Criar acesso para ${externosSemLogin.length} externo(s) sem login?\n\n${listaNomes}\n\nSenha padrão = CRM.`))return;
+  let ok=0,err=0;
+  const errosDetalhe=[];
+  const okList=[];
+  for(const m of externosSemLogin){
+    console.log(`[sync externos] Processando ${m.n} (CRM ${m.c})...`);
+    try{
+      // Tentar UPSERT primeiro
+      const {error,data:upData}=await sb.from('logins').upsert({
+        crm:m.c,nome:m.n,senha:String(m.c),perfil:'plantonista',
+        is_gestor:false,is_plantonista:true,is_clinico:true
+      },{onConflict:'crm'}).select();
+      if(error){
+        // Se upsert falhou, tentar INSERT puro
+        console.warn(`[sync] UPSERT falhou para CRM ${m.c}, tentando INSERT:`,error.message);
+        const {error:eIns,data:insData}=await sb.from('logins').insert({
+          crm:m.c,nome:m.n,senha:String(m.c),perfil:'plantonista',
+          is_gestor:false,is_plantonista:true,is_clinico:true
+        }).select();
+        if(eIns){
+          // Se INSERT também falhou, capturar erro
+          throw eIns;
+        }
+        console.log(`[sync] ✓ INSERT puro deu certo para ${m.n}`,insData);
+      }else{
+        console.log(`[sync] ✓ UPSERT deu certo para ${m.n}`,upData);
+      }
+      ok++;
+      okList.push(m.n);
+    }catch(e){
+      const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
+      console.error(`[sync] ❌ FALHA para ${m.n} (CRM ${m.c}):`,e);
+      errosDetalhe.push({crm:m.c,nome:m.n,msg:String(msg).slice(0,100)});
+      err++;
+    }
+  }
+  // Recarregar lista de logins do banco para garantir estado correto
+  try{
+    const {data:lgs,error:eLg}=await sb.from('logins').select('*');
+    if(!eLg&&lgs){
+      LOGINS.length=0;
+      lgs.forEach(l=>{
+        LOGINS.push({
+          id:'L'+(l.id||l.crm||l.cpf),
+          loginId:l.id,
+          n:l.nome,c:l.crm||null,cpf:l.cpf||null,
+          isGestor:l.is_gestor===true,
+          isPlantonista:l.is_plantonista!==false,
+          isClinico:l.is_clinico!==false,
+          role:l.perfil||(l.is_gestor?'gestor':'plantonista'),
+          pw:l.senha,
+          primeiroAcesso:l.primeiro_acesso!==false,
+          ativo:l.ativo!==false
+        });
+      });
+    }
+  }catch(e){console.warn('Recarregar logins falhou:',e);}
+  renderLogins();populaLogin();
+  if(err===0){
+    showToast(`✓ ${ok} externo(s) sincronizados — senha padrão = CRM`);
+  }else{
+    // Mostrar alerta detalhado com nomes que falharam
+    const listaFalhas=errosDetalhe.map(e=>`• ${e.nome} (CRM ${e.crm}): ${e.msg}`).join('\n');
+    console.error('Erros na sincronização:',errosDetalhe);
+    alert(`Sincronização: ${ok} OK, ${err} FALHAS\n\nFalhas:\n${listaFalhas}\n\nVerifique o console (F12) para detalhes.`);
+  }
+}
+
+// Cria acesso para um único externo (botão na lista de Externos)
+async function criarAcessoExternoIndividual(crm){
+  const m=MEDICOS.find(mm=>mm.c===crm);
+  if(!m){showToast('Profissional não encontrado',true);return;}
+  if(LOGINS.find(l=>l.c===crm)){showToast('Este profissional já tem acesso',true);return;}
+  if(!confirm(`Criar acesso para ${m.n} (CRM ${crm})?\nSenha padrão = ${crm}`))return;
+  try{
+    // INSERT direto (sem upsert) para diagnóstico claro
+    const {error,data}=await sb.from('logins').insert({
+      crm:crm,nome:m.n,senha:String(crm),perfil:'plantonista',
+      is_gestor:false,is_plantonista:true,is_clinico:true
+    }).select();
+    if(error){
+      // Se já existe (conflito), tentar UPDATE
+      if((error.code==='23505')||(error.message||'').includes('duplicate')){
+        console.log('Login já existe, tentando UPDATE...');
+        const {error:eUp}=await sb.from('logins').update({
+          nome:m.n,senha:String(crm),perfil:'plantonista',
+          is_gestor:false,is_plantonista:true,is_clinico:true
+        }).eq('crm',crm);
+        if(eUp)throw eUp;
+      }else{
+        throw error;
+      }
+    }
+    console.log('[criarAcessoExternoIndividual] ✓ Sucesso:',data);
+    // Recarregar lista completa do banco
+    const {data:lgs}=await sb.from('logins').select('*');
+    if(lgs){
+      LOGINS.length=0;
+      lgs.forEach(l=>LOGINS.push({
+        id:'L'+(l.id||l.crm||l.cpf),loginId:l.id,
+        n:l.nome,c:l.crm||null,cpf:l.cpf||null,
+        isGestor:l.is_gestor===true,
+        isPlantonista:l.is_plantonista!==false,
+        isClinico:l.is_clinico!==false,
+        role:l.perfil||(l.is_gestor?'gestor':'plantonista'),
+        pw:l.senha,
+        primeiroAcesso:l.primeiro_acesso!==false,
+        ativo:l.ativo!==false
+      }));
+    }
+    renderLogins();populaLogin();renderCC('');
+    showToast(`✓ Acesso criado para ${m.n.split(' ')[0]}`);
+  }catch(e){
+    const msg=e?.message||e?.details||e?.hint||JSON.stringify(e);
+    console.error('[criarAcessoExternoIndividual] FALHA:',e);
+    alert(`Falha ao criar acesso para ${m.n}:\n\n${String(msg).slice(0,200)}\n\nVerifique o console (F12).`);
+  }
+}
+
 function aplicarPerfil(crm){
   var pf=getPerfil(crm)||{};
   var ne=pf.nomeEscala||'';
@@ -6098,6 +7847,61 @@ function aplicarPerfil(crm){
     document.getElementById('u-nome').textContent=ne.split(' ').slice(0,2).join(' ');
     var init=ne.split(' ').filter(function(p){return p.length>2}).slice(0,2).map(function(p){return p[0]}).join('').toUpperCase();
     document.getElementById('u-ava').textContent=init||ini2(curUser.nU);
+  }
+  // Verificar se cadastro está completo (CPF + Data de Nascimento)
+  verificarCadastroCompleto();
+}
+
+// ══ VERIFICAR CADASTRO COMPLETO (CPF + Data Nascimento) ══
+function verificarCadastroCompleto(){
+  if(!curUser||!curUser.c)return;
+  // Gestor não é obrigado a preencher (já está cadastrado)
+  if(curUser.isGestor)return;
+  const med=MEDICOS.find(m=>m.c===curUser.c);
+  if(!med)return;
+  const semCpf=!med.cpf||String(med.cpf).replace(/\D/g,'').length!==11;
+  const semData=!med.data_nascimento;
+  if(semCpf||semData){
+    // Abre modal bloqueante
+    setTimeout(()=>{
+      document.getElementById('cc-cpf').value=med.cpf||'';
+      document.getElementById('cc-data-nasc').value=med.data_nascimento||'';
+      abrirMo('mo-completar-cadastro');
+    },200);
+  }
+}
+
+async function salvarCompletarCadastro(){
+  const cpf=document.getElementById('cc-cpf').value.trim();
+  const dataN=document.getElementById('cc-data-nasc').value;
+  if(!cpf||cpf.replace(/\D/g,'').length!==11){
+    showToast('CPF inválido — preencha completamente',true);return;
+  }
+  if(!validarCPF(cpf)){
+    showToast('CPF inválido — verifique os dígitos',true);return;
+  }
+  if(!dataN){
+    showToast('Data de nascimento é obrigatória',true);return;
+  }
+  // Verificar idade plausível
+  const dt=new Date(dataN);
+  const idade=Math.floor((new Date()-dt)/(1000*60*60*24*365.25));
+  if(idade<18||idade>90){
+    showToast('Data de nascimento parece inválida',true);return;
+  }
+  try{
+    const {error}=await sb.from('profissionais').update({
+      cpf:cpf,data_nascimento:dataN
+    }).eq('crm',curUser.c);
+    if(error)throw error;
+    // Atualizar local
+    const med=MEDICOS.find(m=>m.c===curUser.c);
+    if(med){med.cpf=cpf;med.data_nascimento=dataN;}
+    fecharMo('mo-completar-cadastro');
+    showToast('✓ Cadastro completo! Obrigado.');
+  }catch(e){
+    console.error('Erro ao completar cadastro:',e);
+    showToast('Erro ao salvar — verifique sua conexão',true);
   }
 }
 async function verificarPrimeiroAcesso(){
@@ -6222,6 +8026,9 @@ initLogins();
 populaLogin();
 async function bootApp(){
   try {
+    // Mostrar versão visível
+    const vTag=document.getElementById('app-version-tag');
+    if(vTag)vTag.textContent='v'+APP_VERSION;
     initSidebar();
     await carregarSupabase();
     const restaurou=await restaurarSessao();
