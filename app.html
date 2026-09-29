@@ -1930,13 +1930,16 @@ async function carregarSupabase(){
 
 // ══ SALVAR NO SUPABASE ══
 async function salvarLocal(){
-  // Salvar escala base
+  // Salvar SOMENTE os turnos que pertencem à Escala Base.
+  // Turnos adicionados em um mês específico vivem em turnos_mes e nunca entram aqui.
   const slots=[];
+  const qtdTurnosBase=TURNOS_BASE.length;
   ['A','B'].forEach(sem=>{
     DA.forEach(ab=>{
-      (EB[sem][ab]||[]).forEach((val,ti)=>{
-        slots.push({semana:sem,dia_semana:ab,turno_idx:ti,valor:val||''});
-      });
+      for(let ti=0;ti<qtdTurnosBase;ti++){
+        const val=(EB[sem][ab]||[])[ti]||'';
+        slots.push({semana:sem,dia_semana:ab,turno_idx:ti,valor});
+      }
     });
   });
   try{
@@ -2897,6 +2900,9 @@ async function gerarTrocaAutoEdicao(valAntes,valDepois,mes,ano,semLetra,ab,ti,di
 // ══ ESCALA BASE ══
 function renderEB(){
   const canEdit=curRole==='gestor';
+  // A Escala Base deve exibir exclusivamente TURNOS_BASE.
+  // TURNOS contém também overrides/adicionais do mês visualizado e não pode ser usado aqui.
+  const turnosDaBase=TURNOS_BASE;
   let html='';
   ['A','B'].forEach(sem=>{
     const cor=sem==='A'?'#2dc97a':'#5a9cf8';
@@ -2909,7 +2915,7 @@ function renderEB(){
     html+=`</colgroup><thead><tr><th class="col-h">HORÁRIO</th>`;
     DA.forEach((ab,i)=>html+=`<th class="col-d">${DN[i]}</th>`);
     html+=`</tr></thead><tbody>`;
-    TURNOS.forEach((t,ti)=>{
+    turnosDaBase.forEach((t,ti)=>{
       html+=`<tr class="trow ${t.cls}"><td class="col-h">${t.l}</td>`;
       DA.forEach(ab=>{
         const arr=EB[sem][ab]||[];const val=ti<arr.length?arr[ti]:'';
@@ -3372,15 +3378,19 @@ function initESCMES(mes,ano){
   });
 }
 
-// Cria snapshot do mês a partir da Escala Base — chamado ao publicar
+// Cria snapshot do mês a partir da Escala Base — chamado ao publicar/gerar.
+// IMPORTANTE: usa somente a quantidade de linhas de TURNOS_BASE.
+// Turnos criados exclusivamente em outro mês (turnos_mes) nunca são copiados para o novo mês.
 async function criarSnapshotMes(mes,ano){
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
-  // Copia EB para o mês
+  const qtdTurnosBase=TURNOS_BASE.length;
+  // Copia exclusivamente a Escala Base para o mês
   ['A','B'].forEach(s=>{
     DA.forEach(ab=>{
       const arr=EB[s][ab]||[];
-      for(let ti=0;ti<16;ti++){
+      ESCMES[k][s][ab]=Array(qtdTurnosBase).fill('');
+      for(let ti=0;ti<qtdTurnosBase;ti++){
         ESCMES[k][s][ab][ti]=arr[ti]||'';
       }
     });
@@ -3394,7 +3404,7 @@ async function criarSnapshotMes(mes,ano){
     const rows=[];
     ['A','B'].forEach(s=>{
       DA.forEach(ab=>{
-        for(let ti=0;ti<16;ti++){
+        for(let ti=0;ti<qtdTurnosBase;ti++){
           rows.push({mes,ano,semana_letra:s,dia_semana:ab,turno_idx:ti,
             valor:(EB[s][ab]||[])[ti]||'',origem:'snapshot'});
         }
@@ -7634,7 +7644,8 @@ function exportXLSXBase(){
   const wb=XLSX.utils.book_new();
   ['A','B'].forEach(sem=>{
     const rows=[['Horário',...DA.map((ab,i)=>DN[i])]];
-    TURNOS.forEach((t,ti)=>{const row=[t.l];DA.forEach(ab=>{const arr=EB[sem][ab]||[];row.push(ti<arr.length?arr[ti]:'')});rows.push(row)});
+    // Exporta exclusivamente a estrutura da Escala Base, sem turnos locais do mês visualizado.
+    TURNOS_BASE.forEach((t,ti)=>{const row=[t.l];DA.forEach(ab=>{const arr=EB[sem][ab]||[];row.push(ti<arr.length?arr[ti]:'')});rows.push(row)});
     const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:26},...Array(7).fill({wch:22})];
     XLSX.utils.book_append_sheet(wb,ws,'Semana'+sem);
   });
