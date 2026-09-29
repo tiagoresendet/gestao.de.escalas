@@ -165,23 +165,45 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 .sem-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border2);border-radius:var(--r);margin-bottom:12px;background:var(--bg1)}
 .sem-label{font-size:10px;font-weight:700;color:var(--text2);padding:8px 12px;background:var(--bg2);display:flex;align-items:center;gap:8px;font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--border);flex-shrink:0}
 /* Tabela com larguras fixas */
-.sem-tbl{border-collapse:collapse;width:100%;min-width:820px}
-.sem-tbl th{background:#f0f2f7;color:#5a6485;font-size:9px;font-weight:700;letter-spacing:.06em;padding:6px 4px;text-align:center;border-right:1px solid #dde1ed;text-transform:uppercase;white-space:nowrap}
-.sem-tbl th.col-h{width:120px;min-width:120px;text-align:left;padding-left:8px;color:#5a6485}
-.sem-tbl th.col-d{width:calc((100% - 120px)/7);min-width:118px}
+.sem-tbl{border-collapse:collapse;width:100%;min-width:1040px}
+.sem-tbl th{background:#f0f2f7;color:#5a6485;font-size:10px;font-weight:700;letter-spacing:.05em;padding:8px 5px;text-align:center;border-right:1px solid #dde1ed;text-transform:uppercase;white-space:nowrap}
+.sem-tbl th.col-h{width:150px;min-width:150px;text-align:left;padding-left:10px;color:#5a6485}
+.sem-tbl th.col-d{width:calc((100% - 150px)/7);min-width:127px}
 .sem-tbl .trow{border-bottom:1px solid #dde1ed}
 .sem-tbl .trow:last-child{border-bottom:none}
-.sem-tbl .trow td{border-right:1px solid #dde1ed;padding:0;text-align:center;height:32px}
-.sem-tbl .trow td.col-h{text-align:left;padding:3px 5px 3px 7px;font-size:8px;font-weight:700;cursor:default;line-height:1.25;height:auto;min-height:26px}
+.sem-tbl .trow td{border-right:1px solid #dde1ed;padding:0;text-align:center;height:48px}
+.sem-tbl .trow td.col-h{text-align:left;padding:6px 7px 6px 9px;font-size:9px;font-weight:700;cursor:default;line-height:1.25;height:auto;min-height:48px}
 .sem-tbl .trow td.nd{background:#f0f2f7!important;cursor:default}
 .sem-tbl .trow td.cell{cursor:pointer;transition:background .1s;vertical-align:middle;padding:0}
 .sem-tbl .trow td.cell:hover{background:rgba(37,99,235,.12)!important}
 .sem-tbl .trow td:last-child{border-right:none}
-/* nome dentro da célula — UMA linha, ellipsis */
-.cn-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:2px 3px;gap:1px}
-.cn{font-family:var(--mono);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a1f36;font-weight:700;text-align:center;width:100%;line-height:1.2}
+/* Conteúdo dos slots — prioriza legibilidade do nome e CRM */
+.cn-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;height:100%;padding:5px 6px;gap:3px;overflow:hidden}
+.cn{font-family:var(--font);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111827;font-weight:700;text-align:center;width:100%;line-height:1.2;letter-spacing:-.05px}
 .cn.vz{color:var(--text3);font-weight:400}
-.cn-sub{font-family:var(--mono);font-size:6.5px;color:#5a6485;text-align:center;white-space:nowrap;line-height:1;width:100%;overflow:hidden;text-overflow:ellipsis}
+.cn-sub{font-family:var(--mono);font-size:8.5px;color:#4b5875;text-align:center;white-space:nowrap;line-height:1.15;width:100%;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+/* Meio plantão: dois profissionais no mesmo slot, cada metade com espaço próprio */
+.cn-wrap-duplo{padding:0;min-height:68px;justify-content:stretch;gap:0}
+.cn-part{display:flex;flex:1 1 50%;width:100%;min-height:34px;flex-direction:column;align-items:center;justify-content:center;padding:4px 5px;gap:2px;overflow:hidden}
+.cn-part+.cn-part{border-top:1px dashed rgba(90,100,133,.45)}
+.cn-wrap-duplo .cn{font-size:9.5px}
+.cn-wrap-duplo .cn-sub{font-size:7.8px}
+@media(max-width:600px){
+  .sem-wrap{margin-left:-2px;margin-right:-2px;border-radius:7px}
+  .sem-tbl{min-width:960px}
+  .sem-tbl th{font-size:9.5px;padding:7px 4px}
+  .sem-tbl th.col-h{width:138px;min-width:138px}
+  .sem-tbl th.col-d{min-width:117px}
+  .sem-tbl .trow td{height:50px}
+  .sem-tbl .trow td.col-h{font-size:8.5px;min-height:50px}
+  .cn-wrap{min-height:50px;padding:5px}
+  .cn{font-size:10px}
+  .cn-sub{font-size:8px}
+  .cn-wrap-duplo{min-height:70px;padding:0}
+  .cn-part{min-height:35px;padding:4px}
+  .cn-wrap-duplo .cn{font-size:9.2px}
+  .cn-wrap-duplo .cn-sub{font-size:7.6px}
+}
 /* Cores de fundo por tipo de turno */
 .sv-d{background:#ffd5d5}.sv-d .col-h{color:#dc2626;font-weight:700}
 .cm-d{background:#e8f0fe}.cm-d .col-h{color:#2563eb;font-weight:700}
@@ -1054,8 +1076,8 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 <div class="mo" id="mo-add-med">
   <div class="m-box">
     <div class="m-t">Adicionar Profissional</div>
-    <div class="fg"><label class="fl">Nome Completo</label><input type="text" class="fi" id="add-nome" placeholder="NOME EM MAIÚSCULAS"></div>
-    <div class="fg"><label class="fl">CRM</label><input type="text" class="fi" id="add-crm" placeholder="Número do CRM"></div>
+    <div class="fg"><label class="fl">Nome Completo <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="text" class="fi" id="add-nome" placeholder="NOME EM MAIÚSCULAS"></div>
+    <div class="fg"><label class="fl">CRM <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="text" class="fi" id="add-crm" placeholder="Número do CRM"></div>
     <div class="fg">
       <label class="fl">Áreas de atuação <span style="font-weight:400;color:var(--text3)">(para filtro — não afeta relatórios)</span></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="add-areas-check">
@@ -1074,7 +1096,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option value="PEDIATRA_RQE">Pediatra RQE</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">CPF</label>
+    <div class="fg"><label class="fl">CPF <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
       <input type="text" class="fi" id="add-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
     </div>
     <div class="fg"><label class="fl">Data de Nascimento</label>
@@ -1090,8 +1112,8 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option>UPA Itaipu</option><option>UPA Jardim América</option><option>UPA Noroeste</option>
       </select>
     </div>
-    <div class="fg" id="add-ext-wpp-wrap" style="display:none">
-      <label class="fl">WhatsApp do Externo <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
+    <div class="fg" id="add-ext-wpp-wrap">
+      <label class="fl">WhatsApp <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
       <input type="tel" class="fi" id="add-ext-wpp" placeholder="(62) 9 0000-0000">
     </div>
     <div style="margin-bottom:12px">
@@ -1111,8 +1133,8 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   <div class="m-box">
     <div class="m-t">Editar Profissional</div>
     <div class="m-s" id="mo-em-sub"></div>
-    <div class="fg"><label class="fl">Nome</label><input type="text" class="fi" id="em-nome"></div>
-    <div class="fg"><label class="fl">CRM</label><input type="text" class="fi" id="em-crm"></div>
+    <div class="fg"><label class="fl">Nome Completo <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="text" class="fi" id="em-nome"></div>
+    <div class="fg"><label class="fl">CRM <span style="color:var(--red);font-size:10px">*obrigatório</span></label><input type="text" class="fi" id="em-crm"></div>
     <div class="fg">
       <label class="fl">Áreas de atuação <span style="font-weight:400;color:var(--text3)">(filtro apenas)</span></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="em-areas-check">
@@ -1131,11 +1153,31 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <option value="PEDIATRA_RQE">Pediatra RQE</option>
       </select>
     </div>
-    <div class="fg"><label class="fl">CPF</label>
+    <div class="fg"><label class="fl">CPF <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
       <input type="text" class="fi" id="em-cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)">
     </div>
     <div class="fg"><label class="fl">Data de Nascimento</label>
       <input type="date" class="fi" id="em-data-nasc" max="2008-12-31" min="1940-01-01">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text2)">
+        <input type="checkbox" id="em-is-ext" onchange="toggleEditExtFields(this.checked)" style="width:16px;height:16px;accent-color:var(--blue)">
+        Plantonista Externo (outra unidade)
+      </label>
+    </div>
+    <div class="fg" id="em-ext-uni-wrap" style="display:none">
+      <label class="fl">Unidade de Lotação <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
+      <select class="fs" id="em-ext-uni">
+        <option value="">— Selecione —</option>
+        <option>CAIS Bairro Goiá</option><option>CAIS Cândida de Morais</option>
+        <option>CAIS Finsocial</option><option>CAIS Novo Mundo</option><option>CAIS Vila Nova</option>
+        <option>CIAMS Urias Magalhães</option><option>UPA Chácara do Governador</option>
+        <option>UPA Itaipu</option><option>UPA Jardim América</option><option>UPA Noroeste</option>
+      </select>
+    </div>
+    <div class="fg" id="em-ext-wpp-wrap">
+      <label class="fl">WhatsApp <span style="color:var(--red);font-size:10px">*obrigatório</span></label>
+      <input type="tel" class="fi" id="em-ext-wpp" placeholder="(62) 9 0000-0000">
     </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-edit-med')">Cancelar</button>
@@ -2497,10 +2539,9 @@ function gerarHtmlSems(sems,canEdit){
                 ?(metade==='1'?'19-01':'01-07')
                 :(metade==='1'?'07-13':'13-19');
               const subLine=crm+(vinc?' · '+vinc:'')+' · '+hCurto+'h';
-              const sepStyle=idx===0?'border-bottom:1px dashed var(--border2);padding-bottom:1px;margin-bottom:1px':'';
-              return `<div style="${sepStyle}"><span class="cn">${nome}</span><span class="cn-sub">${subLine}</span></div>`;
+              return `<div class="cn-part"><span class="cn">${nome}</span><span class="cn-sub">${subLine}</span></div>`;
             }).join('');
-            cellHTML=`<div class="cn-wrap">${linhas}</div>`;
+            cellHTML=`<div class="cn-wrap cn-wrap-duplo">${linhas}</div>`;
           } else {
             // ═══ PLANTÃO INTEIRO ═══
             let nomeCell='—',crmCell='',vincCell='';
@@ -3151,6 +3192,17 @@ function abrirEditMed(idx){
   document.getElementById('em-categoria').value=m.categoria||'GENERALISTA';
   document.getElementById('em-cpf').value=m.cpf||'';
   document.getElementById('em-data-nasc').value=m.data_nascimento||'';
+  document.getElementById('em-is-ext').checked=!!m.ext;
+  document.getElementById('em-ext-uni').value=m.ext?(m.unidade||''):'';
+  const pfLocal=getPerfil(m.c)||{};
+  document.getElementById('em-ext-wpp').value=pfLocal.whatsapp||'';
+  toggleEditExtFields(!!m.ext);
+  // Busca o WhatsApp mais recente no banco sem bloquear a abertura do modal
+  sb.from('perfis').select('whatsapp').eq('crm',m.c).maybeSingle().then(({data})=>{
+    if(editMedIdx===idx&&data&&data.whatsapp&&!document.getElementById('em-ext-wpp').value){
+      document.getElementById('em-ext-wpp').value=data.whatsapp;
+    }
+  }).catch(e=>console.warn('Buscar WhatsApp do profissional:',e));
   const areasAtivas=m.areas||([m.a]||[]).filter(Boolean);
   document.querySelectorAll('#em-areas-check input').forEach(cb=>{
     cb.checked=areasAtivas.includes(cb.value);
@@ -3166,10 +3218,17 @@ async function salvarEditMed(){
   const cat=document.getElementById('em-categoria').value||'GENERALISTA';
   const cpf=document.getElementById('em-cpf').value.trim();
   const dataN=document.getElementById('em-data-nasc').value;
+  const isExt=document.getElementById('em-is-ext').checked;
+  const uni=isExt?document.getElementById('em-ext-uni').value:'';
+  const wppExt=document.getElementById('em-ext-wpp').value.trim();
   const areas=[...document.querySelectorAll('#em-areas-check input:checked')].map(cb=>cb.value);
   const novoCRM=parseInt(document.getElementById('em-crm').value)||m.c;
-  if(!nn){showToast('Nome obrigatório',true);return}
-  if(!novoCRM){showToast('CRM inválido',true);return}
+  if(!nn){showToast('Nome completo é obrigatório',true);return}
+  if(!novoCRM){showToast('CRM é obrigatório',true);return}
+  if(!cpf||cpf.replace(/\D/g,'').length!==11){showToast('CPF é obrigatório',true);return}
+  if(!validarCPF(cpf)){showToast('CPF inválido — verifique os dígitos',true);return}
+  if(!wppExt){showToast('WhatsApp é obrigatório',true);return}
+  if(isExt&&!uni){showToast('Unidade de origem do profissional externo é obrigatória',true);return}
   if(novoCRM!==crmAntigo&&MEDICOS.find(mm=>mm.c===novoCRM)){
     showToast('Já existe profissional com este CRM',true);return;
   }
@@ -3180,7 +3239,7 @@ async function salvarEditMed(){
     // CASO 1: CRM NÃO MUDOU → simples update
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if(novoCRM===crmAntigo){
-      const payload={nome:nn,vinculo:vc,areas,categoria:cat};
+      const payload={nome:nn,vinculo:vc,areas,categoria:cat,externo:isExt,unidade:isExt?uni:null};
       if(cpf)payload.cpf=cpf;else payload.cpf=null;
       if(dataN)payload.data_nascimento=dataN;else payload.data_nascimento=null;
       let {error}=await sb.from('profissionais').update(payload).eq('crm',crmAntigo);
@@ -3214,7 +3273,7 @@ async function salvarEditMed(){
       const novoPayload={
         ...profAntigo,
         crm:novoCRM,
-        nome:nn,vinculo:vc,areas,categoria:cat
+        nome:nn,vinculo:vc,areas,categoria:cat,externo:isExt,unidade:isExt?uni:null
       };
       if(cpf)novoPayload.cpf=cpf;else novoPayload.cpf=null;
       if(dataN)novoPayload.data_nascimento=dataN;else novoPayload.data_nascimento=null;
@@ -3254,9 +3313,22 @@ async function salvarEditMed(){
     return;
   }
 
+  // Salvar/atualizar WhatsApp e CPF de TODOS os profissionais no perfil
+  try{
+    const {error:ePf}=await sb.from('perfis').upsert({
+      crm:novoCRM,whatsapp:wppExt,cpf:cpf
+    },{onConflict:'crm'});
+    if(ePf)throw ePf;
+    const pfAtual=getPerfil(novoCRM)||{};
+    setPerfil(novoCRM,Object.assign({},pfAtual,{whatsapp:wppExt,cpf:cpf}));
+  }catch(e){
+    console.error('Erro ao salvar WhatsApp/CPF do profissional:',e);
+    showToast('Profissional salvo, mas houve erro ao atualizar WhatsApp/CPF',true);
+  }
+
   // Estado local após confirmação do banco
   m.n=nn;m.c=novoCRM;m.areas=areas;m.a=areas.join('/')||m.a;m.vinculo=vc;m.categoria=cat;
-  m.cpf=cpf;m.data_nascimento=dataN;
+  m.cpf=cpf;m.data_nascimento=dataN;m.ext=isExt;m.unidade=isExt?uni:'';
   if(vc==='EF')EFETIVOS.add(nn);else EFETIVOS.delete(nn);
   // Sincronizar LOGINS local
   const li=LOGINS.findIndex(l=>l.c==crmAntigo);
@@ -3299,17 +3371,15 @@ async function addMedico(){
   if(MEDICOS.find(m=>m.c===c)){showToast('CRM já cadastrado',true);return}
   const areas=[...document.querySelectorAll('#add-areas-check input:checked')].map(cb=>cb.value);
   const uni=isExt?document.getElementById('add-ext-uni').value:'';
-  const wppExt=isExt?document.getElementById('add-ext-wpp').value.trim():'';
-  if(isExt){
-    if(!uni){showToast('Selecione a unidade do externo',true);return}
-    if(!wppExt){showToast('WhatsApp do externo é obrigatório',true);return}
-    if(!cpf||cpf.replace(/\D/g,'').length!==11){
-      showToast('CPF do externo é obrigatório',true);return;
-    }
-    if(!validarCPF(cpf)){
-      showToast('CPF inválido — verifique os dígitos',true);return;
-    }
+  const wppExt=document.getElementById('add-ext-wpp').value.trim();
+  if(!cpf||cpf.replace(/\D/g,'').length!==11){
+    showToast('CPF é obrigatório',true);return;
   }
+  if(!validarCPF(cpf)){
+    showToast('CPF inválido — verifique os dígitos',true);return;
+  }
+  if(!wppExt){showToast('WhatsApp é obrigatório',true);return}
+  if(isExt&&!uni){showToast('Unidade de origem do profissional externo é obrigatória',true);return}
   const cores=['#22a35a','#2563d4','#9f7aea','#d29922','#e06666'];
   const novoMed={n,c,a:areas.join('/'),areas,cor:cores[MEDICOS.length%5],ext:isExt,unidade:isExt?uni:undefined,vinculo:v,categoria:cat,cpf,data_nascimento:dataN};
   if(v==='EF')EFETIVOS.add(n);
@@ -3334,12 +3404,10 @@ async function addMedico(){
       is_gestor:false,is_plantonista:true,is_clinico:true
     },{onConflict:'crm'});
     if(eL)throw eL;
-    if(isExt){
-      // EXTERNOS: salvar WhatsApp em perfis
-      await sb.from('perfis').upsert({
-        crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:cpf||'',primeiro_acesso:true
-      },{onConflict:'crm'});
-    }
+    // TODOS os profissionais: salvar WhatsApp e CPF em perfis
+    await sb.from('perfis').upsert({
+      crm:c,nome_escala:'',whatsapp:wppExt,email:'',cpf:cpf,primeiro_acesso:true
+    },{onConflict:'crm'});
   }catch(e){
     console.error('Erro ao salvar:',e);
     showToast('Erro ao salvar — tente novamente',true);return;
@@ -3356,7 +3424,7 @@ async function addMedico(){
   document.querySelectorAll('#add-areas-check input').forEach(cb=>cb.checked=false);
   document.getElementById('add-is-ext').checked=false;
   document.getElementById('add-ext-uni-wrap').style.display='none';
-  document.getElementById('add-ext-wpp-wrap').style.display='none';
+  document.getElementById('add-ext-wpp-wrap').style.display='block';
   document.getElementById('add-ext-wpp').value='';
   document.getElementById('add-categoria').value='GENERALISTA';
   document.getElementById('add-vinc').value='CR';
@@ -3365,7 +3433,13 @@ async function addMedico(){
 // Toggle dos campos extras quando marca "externo"
 function toggleExtFields(checked){
   document.getElementById('add-ext-uni-wrap').style.display=checked?'block':'none';
-  document.getElementById('add-ext-wpp-wrap').style.display=checked?'block':'none';
+  document.getElementById('add-ext-wpp-wrap').style.display='block';
+}
+
+// Toggle dos campos de externo na edição do profissional
+function toggleEditExtFields(checked){
+  document.getElementById('em-ext-uni-wrap').style.display=checked?'block':'none';
+  document.getElementById('em-ext-wpp-wrap').style.display='block';
 }
 
 // ══ TROCAS ══
