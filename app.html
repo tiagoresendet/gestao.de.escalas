@@ -1983,7 +1983,7 @@ async function carregarSupabase(){
         turno:t.turno,area:t.area,motivo:t.motivo||'',
         metade:metadeSan,
         status:t.status,mes:t.mes,ano:t.ano,
-        turnoIdx:extrairTurnoIdxTroca(visRaw),vis:limparVisTroca(visRaw)
+        turnoIdx:extrairTurnoIdxTroca(visRaw),linhaRef:extrairLinhaRefTroca(visRaw),vis:limparVisTroca(visRaw)
       });
     });
 
@@ -2037,6 +2037,7 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 // Identificador interno do turno exato da troca, persistido dentro de visivel_para.
 // Evita alteração de schema no Supabase e mantém compatibilidade com trocas antigas.
 const TROCA_TIDX_PREFIX='__KOS_TIDX__:';
+const TROCA_LINHA_PREFIX='__KOS_LINHA__:';
 function extrairTurnoIdxTroca(vis){
   if(!Array.isArray(vis))return null;
   const mk=vis.find(v=>typeof v==='string'&&v.startsWith(TROCA_TIDX_PREFIX));
@@ -2044,12 +2045,19 @@ function extrairTurnoIdxTroca(vis){
   const n=parseInt(mk.slice(TROCA_TIDX_PREFIX.length),10);
   return Number.isInteger(n)&&n>=0?n:null;
 }
-function limparVisTroca(vis){
-  return (Array.isArray(vis)?vis:[]).filter(v=>!(typeof v==='string'&&v.startsWith(TROCA_TIDX_PREFIX)));
+function extrairLinhaRefTroca(vis){
+  if(!Array.isArray(vis))return null;
+  const mk=vis.find(v=>typeof v==='string'&&v.startsWith(TROCA_LINHA_PREFIX));
+  if(!mk)return null;
+  try{return decodeURIComponent(mk.slice(TROCA_LINHA_PREFIX.length))||null;}catch(e){return null;}
 }
-function visTrocaComIndice(vis,turnoIdx){
+function limparVisTroca(vis){
+  return (Array.isArray(vis)?vis:[]).filter(v=>!(typeof v==='string'&&(v.startsWith(TROCA_TIDX_PREFIX)||v.startsWith(TROCA_LINHA_PREFIX))));
+}
+function visTrocaComMeta(vis,turnoIdx,linhaRef){
   const arr=limparVisTroca(vis);
   if(Number.isInteger(turnoIdx)&&turnoIdx>=0)arr.push(TROCA_TIDX_PREFIX+turnoIdx);
+  if(linhaRef)arr.push(TROCA_LINHA_PREFIX+encodeURIComponent(String(linhaRef)));
   return arr;
 }
 
@@ -2064,7 +2072,7 @@ async function salvarTroca(troca){
     (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
-    visivel_para:visTrocaComIndice(troca.vis||[],troca.turnoIdx),
+    visivel_para:visTrocaComMeta(troca.vis||[],troca.turnoIdx,troca.linhaRef),
     metade:metadeLimpa
   };
   try{
@@ -2186,7 +2194,7 @@ function gerarPlantoesMes(mes,ano){
               id:`${mes}-${ano}-${sem.letra}-${ab}-${ti}-${diaMes}-m${metade}`,
               crm,nome:med?med.n:parte.replace(/\s*\(\d+\)\s*(CR|EF)?\s*#?[12]?$/,'').trim(),
               area:t.a,dt,dia:diaMes,ab,semLetra:sem.letra,
-              turnoIdx:ti,turno:turnoLabel,not:t.not,h:6,fds,
+              turnoIdx:ti,turno:turnoLabel,linhaRef:t.l,not:t.not,h:6,fds,
               valOriginal:val,meioPlantao:true,metade,
               medExt:med?med.ext:false,medUnidade:med?med.unidade:null
             });
@@ -2202,7 +2210,7 @@ function gerarPlantoesMes(mes,ano){
           id:`${mes}-${ano}-${sem.letra}-${ab}-${ti}-${diaMes}`,
           crm,nome:med?med.n:val.replace(/\s*\(\d+\)\s*(CR|EF)$/,'').trim(),
           area:t.a,dt,dia:diaMes,ab,semLetra:sem.letra,
-          turnoIdx:ti,turno:t.l,not:t.not,h:t.h,fds,valOriginal:val,
+          turnoIdx:ti,turno:t.l,linhaRef:t.l,not:t.not,h:t.h,fds,valOriginal:val,
           medExt:med?med.ext:false,medUnidade:med?med.unidade:null
         });
       });
@@ -3888,6 +3896,13 @@ async function aplicarTrocaEscala(troca){
     ?[troca.turnoIdx]
     :Array.from({length:qtdTurnosParaTroca(troca.mes,troca.ano)},(_,i)=>i);
   for(const i of indicesAplicar){
+    if(Number.isInteger(troca.turnoIdx)&&troca.linhaRef){
+      const linhaAtual=obterTurnosDoMes(troca.mes,troca.ano)[i];
+      if(!linhaAtual||linhaAtual.l!==troca.linhaRef){
+        console.warn('[aplicarTrocaEscala] A linha exata da troca mudou ou foi removida. Operação bloqueada.',{esperada:troca.linhaRef,atual:linhaAtual?.l,idx:i});
+        return false;
+      }
+    }
     const valAtual=getSlotValDia(troca.mes,troca.ano,ciclo,ab,i,diaMes);
     if(!valAtual)continue;
     if(!valAtual.includes(buscaCRM))continue;// solicitante não está neste slot
@@ -3974,6 +3989,13 @@ async function desfazerTrocaEscala(troca){
     ?[troca.turnoIdx]
     :Array.from({length:qtdTurnosParaTroca(troca.mes,troca.ano)},(_,i)=>i);
   for(const i of indicesDesfazer){
+    if(Number.isInteger(troca.turnoIdx)&&troca.linhaRef){
+      const linhaAtual=obterTurnosDoMes(troca.mes,troca.ano)[i];
+      if(!linhaAtual||linhaAtual.l!==troca.linhaRef){
+        console.warn('[desfazerTrocaEscala] A linha exata da troca mudou ou foi removida. Operação bloqueada.',{esperada:troca.linhaRef,atual:linhaAtual?.l,idx:i});
+        return false;
+      }
+    }
     const valAtual=getSlotValDia(troca.mes,troca.ano,ciclo,ab,i,diaMes);
     if(!valAtual)continue;
     if(!valAtual.includes(buscaCRM))continue;// substituto não está neste slot
@@ -4156,7 +4178,7 @@ async function recarregarTrocas(){
         data:dt.toLocaleDateString('pt-BR'),dt:dt,
         turno:t.turno,area:t.area,motivo:t.motivo||'',metade:metadeSan,
         status:t.status,mes:t.mes,ano:t.ano,
-        turnoIdx:extrairTurnoIdxTroca(visRaw),vis:limparVisTroca(visRaw)
+        turnoIdx:extrairTurnoIdxTroca(visRaw),linhaRef:extrairLinhaRefTroca(visRaw),vis:limparVisTroca(visRaw)
       });
     });
     renderTrocas();
@@ -4478,7 +4500,7 @@ function popularPlantoesTroca(crm){
   sel.innerHTML='<option value="">— Selecione o plantão —</option>';
   futuros.forEach(p=>{
     const o=document.createElement('option');
-    o.value=JSON.stringify({dia:p.dia,turno:p.turno,area:p.area,not:p.not,h:p.h,turnoIdx:p.turnoIdx,mes:meuMes,ano:meuAno});
+    o.value=JSON.stringify({dia:p.dia,turno:p.turno,linhaRef:p.linhaRef||p.turno,area:p.area,not:p.not,h:p.h,turnoIdx:p.turnoIdx,mes:meuMes,ano:meuAno});
     o.dataset.turno=p.turno;o.dataset.area=p.area;
     o.dataset.horas=p.h;o.dataset.not=p.not?'1':'0';
     o.textContent=`${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${meuMes.toString().padStart(2,'0')} · ${p.turno}`;
@@ -4562,6 +4584,29 @@ async function enviarTroca(){
     solNome=trSolGestor.nome.toUpperCase();
   }
   const meuCRM=solCRM;
+
+  // SEGURANÇA: a solicitação é vinculada ao DIA DO MÊS + LINHA EXATA.
+  // Antes de criar a troca, relê a célula real e confirma que o solicitante ainda está ali.
+  if(!Number.isInteger(piPre.turnoIdx)){
+    showToast('Não foi possível identificar a linha exata deste plantão. Atualize a escala e tente novamente.',true);
+    return;
+  }
+  const mesExato=piPre.mes||meuMes,anoExato=piPre.ano||meuAno,diaExato=piPre.dia;
+  const dtExato=new Date(anoExato,mesExato-1,diaExato,12,0,0);
+  const abExato=DA[JTC[dtExato.getDay()]];
+  const cicloExato=getCiclo(dtExato);
+  const valExato=getSlotValDia(mesExato,anoExato,cicloExato,abExato,piPre.turnoIdx,diaExato);
+  if(!valExato||!valExato.includes(`(${meuCRM})`)){
+    showToast('Este profissional não está mais neste dia/linha da escala. Atualize os plantões antes de solicitar a troca.',true);
+    return;
+  }
+  const linhaAtualExata=obterTurnosDoMes(mesExato,anoExato)[piPre.turnoIdx];
+  if(!linhaAtualExata){
+    showToast('A linha selecionada não existe mais na escala.',true);
+    return;
+  }
+  piPre.linhaRef=linhaAtualExata.l;
+
   const jaPendente=TROCAS.find(t=>{
     if(t.status!=='pendente')return false;
     if(t.sCRM!==meuCRM)return false;
@@ -4678,6 +4723,7 @@ async function enviarTroca(){
   const nova={id:'',sol:sNomeFinal,sCRM:sCRMFinal,sub:subNome,bCRM:subCRM,
     data:df,dt:dtPlantao,turno:turnoExibir,area:pi.area,
     turnoIdx:Number.isInteger(pi.turnoIdx)?pi.turnoIdx:null,
+    linhaRef:pi.linhaRef||pi.turno,
     metade,
     motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[sNomeFinal,subNome]};
   nova.id=gerarCodigoTroca(nova);
@@ -5160,18 +5206,24 @@ function _renderDashboardImpl(){
     .filter(Boolean)
     .sort((a,b)=>a.dia-b.dia);
 
-  // Escala de hoje
+  // Escala de hoje e amanhã: SEMPRE lê o mês real da data e somente a escala PUBLICADA.
+  // Não depende do mês que o gestor esteja navegando no dashboard.
   const hj0=hoje();
-  const ptsHoje=todosPts.filter(p=>{
-    const d=new Date(p.dt);d.setHours(0,0,0,0);
-    return d.getTime()===hj0.getTime();
-  });
-  // Escala de amanhã
   const amanha=new Date(hj0);amanha.setDate(amanha.getDate()+1);
-  const ptsAmanha=todosPts.filter(p=>{
-    const d=new Date(p.dt);d.setHours(0,0,0,0);
-    return d.getTime()===amanha.getTime();
-  });
+  const plantoesPublicadosDoDia=(dt)=>{
+    const m=dt.getMonth()+1,a=dt.getFullYear();
+    if(!ePub(m,a))return {publicada:false,pts:[]};
+    const alvo=new Date(dt);alvo.setHours(0,0,0,0);
+    const pts=gerarPlantoesMes(m,a).filter(p=>{
+      const d=new Date(p.dt);d.setHours(0,0,0,0);
+      return d.getTime()===alvo.getTime();
+    });
+    return {publicada:true,pts};
+  };
+  const hojePub=plantoesPublicadosDoDia(hj0);
+  const amanhaPub=plantoesPublicadosDoDia(amanha);
+  const ptsHoje=hojePub.pts;
+  const ptsAmanha=amanhaPub.pts;
 
   // ─── HOJE / AMANHÃ (seção compacta com expansão) ───
   const renderListaCompacta=(pts,idExpand)=>{
@@ -5193,11 +5245,11 @@ function _renderDashboardImpl(){
     return linhas+botao;
   };
   const elHd=document.getElementById('d-hoje-data');if(elHd)elHd.textContent=fmtData(hj0);
-  const elHc=document.getElementById('d-hoje-count');if(elHc)elHc.textContent=ptsHoje.length+' plantões';
-  const elHl=document.getElementById('d-hoje-list');if(elHl)elHl.innerHTML=renderListaCompacta(ptsHoje,'exp-hoje');
+  const elHc=document.getElementById('d-hoje-count');if(elHc)elHc.textContent=hojePub.publicada?(ptsHoje.length+' plantões'):'escala não publicada';
+  const elHl=document.getElementById('d-hoje-list');if(elHl)elHl.innerHTML=hojePub.publicada?renderListaCompacta(ptsHoje,'exp-hoje'):'<div style="color:var(--amber);font-size:11px;padding:6px 0;font-weight:600">⚠ Escala deste mês ainda não está publicada</div>';
   const elAd=document.getElementById('d-amanha-data');if(elAd)elAd.textContent=fmtData(amanha);
-  const elAc=document.getElementById('d-amanha-count');if(elAc)elAc.textContent=ptsAmanha.length+' plantões';
-  const elAl=document.getElementById('d-amanha-list');if(elAl)elAl.innerHTML=renderListaCompacta(ptsAmanha,'exp-amanha');
+  const elAc=document.getElementById('d-amanha-count');if(elAc)elAc.textContent=amanhaPub.publicada?(ptsAmanha.length+' plantões'):'escala não publicada';
+  const elAl=document.getElementById('d-amanha-list');if(elAl)elAl.innerHTML=amanhaPub.publicada?renderListaCompacta(ptsAmanha,'exp-amanha'):'<div style="color:var(--amber);font-size:11px;padding:6px 0;font-weight:600">⚠ Escala deste mês ainda não está publicada</div>';
 
   const alertas=[];
 
@@ -5356,15 +5408,23 @@ function _renderDashboardImpl(){
     </div>`;
   }).join('');
 
-  // Top plantonistas
-  const topList=internos.map(m=>({n:m.n,c:m.c,h:statsProf(m.c,mesMes,mesAno).hTotal,total:statsProf(m.c,mesMes,mesAno).total}))
-    .filter(x=>x.h>0).sort((a,b)=>b.h-a.h).slice(0,5);
+  // Top plantonistas — horas + quantidade discriminada de plantões de 6h e 12h.
+  const topList=internos.map(m=>{
+    const pts=todosPts.filter(p=>p.crm===m.c);
+    return {
+      n:m.n,c:m.c,
+      h:pts.reduce((s,p)=>s+(p.h||0),0),
+      total:pts.length,
+      p6:pts.filter(p=>p.h===6).length,
+      p12:pts.filter(p=>p.h===12).length
+    };
+  }).filter(x=>x.h>0).sort((a,b)=>b.h-a.h).slice(0,5);
   document.getElementById('d-top').innerHTML=topList.length?
     topList.map((p,i)=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 9px;background:var(--bg3);border-radius:6px;margin-bottom:4px">
       <div style="font-size:14px;font-weight:800;color:var(--blue);min-width:18px">${i+1}º</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nomeCurto(p.n)}</div>
-        <div style="font-size:10px;color:var(--text2)">${p.total} plantões</div>
+        <div style="font-size:10px;color:var(--text2)">${p.total} plantões · ${p.p6}×6h · ${p.p12}×12h</div>
       </div>
       <div style="font-weight:800;font-family:var(--mono);color:var(--blue)">${p.h}h</div>
     </div>`).join(''):
@@ -5448,7 +5508,7 @@ function renderHistoricoDeclaracoesGestor(){
         const reg=DECLARACOES_PLANTOES[x.med.c+'|'+pk];
         const ok=!!(reg&&reg.enviada);
         total++; if(ok)enviadas++; else pendentes++;
-        linhas.push({p,ok,reg});
+        linhas.push({p,ok,reg,pk});
       });
       if(linhas.length)detalhes.push({med:x.med,linhas});
     });
@@ -5470,6 +5530,7 @@ function renderHistoricoDeclaracoesGestor(){
         <div style="margin-bottom:8px">
           <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px">${d.med.n} · CRM ${d.med.c} · ${d.med.unidade||'—'}</div>
           ${d.linhas.map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:3px;border-radius:5px;background:${l.ok?'#dcfce7':'#fee2e2'};font-size:10.5px;color:${l.ok?'#166534':'#991b1b'}">
+            <input type="checkbox" ${l.ok?'checked':''} onclick="event.stopPropagation()" onchange="event.stopPropagation();const ck=this;toggleDecPlantao(${d.med.c},${x.m},${x.a},'${l.pk}',this.checked).then(ok=>{if(ok){renderDashboard();}else{ck.checked=!ck.checked;}})" style="width:16px;height:16px;cursor:pointer;accent-color:${l.ok?'#22a35a':'#dc2626'}" title="Marcar declaração como realizada/enviada">
             <span style="font-weight:800">${l.ok?'✓ ENVIADA':'⚠ PENDENTE'}</span>
             <span style="flex:1">${l.p.data} · ${l.p.turno}</span>
             ${l.ok&&l.reg?.data_envio?`<span>${new Date(l.reg.data_envio+'T12:00:00').toLocaleDateString('pt-BR')}</span>`:''}
@@ -5651,6 +5712,40 @@ async function inserirSlotMesNaPosicao(mes,ano,idx){
   }
 }
 
+// Remove uma posição dos dados do snapshot de UM mês e desloca as linhas seguintes
+// mantendo os profissionais associados às mesmas linhas visuais.
+async function removerSlotMesNaPosicao(mes,ano,idx){
+  const k=keyMes(mes,ano);
+  if(ESCMES[k]){
+    Object.keys(ESCMES[k]).forEach(chave=>{
+      if(chave==='A'||chave==='B'){
+        DA.forEach(ab=>{
+          if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,1);
+        });
+      }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
+        ESCMES[k][chave].splice(idx,1);
+      }
+    });
+  }
+  try{
+    const {error:eDel}=await sb.from('escala_mensal').delete()
+      .eq('mes',mes).eq('ano',ano).eq('turno_idx',idx);
+    if(eDel)throw eDel;
+    const {data:rows,error:eRows}=await sb.from('escala_mensal')
+      .select('id,turno_idx').eq('mes',mes).eq('ano',ano)
+      .gt('turno_idx',idx).order('turno_idx',{ascending:true});
+    if(eRows)throw eRows;
+    for(const r of (rows||[])){
+      const {error:e2}=await sb.from('escala_mensal').update({turno_idx:r.turno_idx-1}).eq('id',r.id);
+      if(e2)throw e2;
+    }
+  }catch(e){
+    console.error('removerSlotMesNaPosicao:',e);
+    throw e;
+  }
+}
+
+
 // Mantém meses já gerados independentes quando a Base recebe uma nova linha.
 // O novo turno da Base fica oculto nos snapshots existentes e só entra em novas escalas.
 async function preservarMesesExistentesAoInserirTurnoBase(idx){
@@ -5693,19 +5788,41 @@ async function preservarMesesExistentesAoInserirTurnoBase(idx){
 function obterTurnosDoMes(mes,ano){
   const k=keyMes(mes,ano);
   const lista=[];
-  const base=TURNOS_BASE.map(t=>({...t}));
   const overrides=TURNOS_MES_OVERRIDES[k]||[];
-  const ordensRemovidas=new Set(overrides.filter(o=>o.acao==='remove').map(o=>o.ordem));
 
-  base.forEach((t,i)=>{
-    if(ordensRemovidas.has(i))return;
-    const edit=overrides.find(o=>o.acao==='edit'&&o.ordem===i);
-    if(edit){
-      lista.push({l:edit.l,a:edit.a,h:edit.h,not:edit.not,cls:edit.cls,_ordemBase:i});
-    }else{
-      lista.push({...t,_ordemBase:i});
-    }
-  });
+  // Meses gerados nas versões atuais possuem um snapshot estrutural completo em turnos_mes:
+  // uma linha edit/remove para cada índice original da Base. Quando esse snapshot existe,
+  // ele é a fonte da verdade e o mês não depende mais da estrutura atual de TURNOS_BASE.
+  const estruturais=overrides
+    .filter(o=>o.acao!=='add'&&Number.isInteger(o.ordem)&&o.ordem>=0&&o.ordem<1000)
+    .sort((a,b)=>a.ordem-b.ordem);
+  let estruturaCongelada=false;
+  if(estruturais.length>=4){
+    const ordens=new Set(estruturais.map(o=>o.ordem));
+    const max=Math.max(...ordens);
+    estruturaCongelada=true;
+    for(let i=0;i<=max;i++){if(!ordens.has(i)){estruturaCongelada=false;break;}}
+  }
+
+  if(estruturaCongelada){
+    estruturais.forEach(o=>{
+      if(o.acao==='remove')return;
+      lista.push({l:o.l,a:o.a,h:o.h,not:o.not,cls:o.cls,_ordemBase:o.ordem,_snapshotMes:true});
+    });
+  }else{
+    // Compatibilidade com meses antigos: Base atual + overrides pontuais.
+    const base=TURNOS_BASE.map(t=>({...t}));
+    const ordensRemovidas=new Set(overrides.filter(o=>o.acao==='remove').map(o=>o.ordem));
+    base.forEach((t,i)=>{
+      if(ordensRemovidas.has(i))return;
+      const edit=overrides.find(o=>o.acao==='edit'&&o.ordem===i);
+      if(edit){
+        lista.push({l:edit.l,a:edit.a,h:edit.h,not:edit.not,cls:edit.cls,_ordemBase:i});
+      }else{
+        lista.push({...t,_ordemBase:i});
+      }
+    });
+  }
 
   // Adições exclusivas do mês. Novas adições (>=1000) entram agrupadas.
   overrides.filter(o=>o.acao==='add').sort((a,b)=>a.ordem-b.ordem).forEach(a=>{
@@ -5817,13 +5934,43 @@ async function editarTurnoBase(ordem,label,area,horas,noturno,cls){
 
 async function removerTurnoBase(ordem){
   try{
+    // 1. Remove a definição da linha. Meses já gerados permanecem independentes
+    // porque usam o snapshot estrutural salvo em turnos_mes.
     const {error}=await sb.from('turnos_base').delete().eq('ordem',ordem);
     if(error)throw error;
     TURNOS_BASE.splice(ordem,1);
-    // Reindexar ordens no banco
+
+    // 2. Reindexa as definições restantes.
     for(let i=ordem;i<TURNOS_BASE.length;i++){
-      await sb.from('turnos_base').update({ordem:i}).eq('ordem',i+1);
-      TURNOS_BASE[i]._ordem=i;
+      const t=TURNOS_BASE[i];
+      const {error:eIdx}=t._id
+        ?await sb.from('turnos_base').update({ordem:i}).eq('id',t._id)
+        :await sb.from('turnos_base').update({ordem:i}).eq('ordem',i+1);
+      if(eIdx)throw eIdx;
+      t._ordem=i;
+    }
+
+    // 3. CRÍTICO: remove a MESMA posição dos profissionais da Escala Base.
+    // Sem isso, os nomes das linhas seguintes sobem e passam para funções erradas.
+    ['A','B'].forEach(sem=>{
+      DA.forEach(ab=>{
+        if(!Array.isArray(EB[sem][ab]))EB[sem][ab]=[];
+        EB[sem][ab].splice(ordem,1);
+      });
+    });
+
+    // 4. Persiste a Escala Base inteira já reindexada.
+    const slots=[];
+    ['A','B'].forEach(sem=>DA.forEach(ab=>{
+      for(let ti=0;ti<TURNOS_BASE.length;ti++){
+        slots.push({semana:sem,dia_semana:ab,turno_idx:ti,valor:(EB[sem][ab]||[])[ti]||''});
+      }
+    }));
+    const {error:eDel}=await sb.from('escala_base').delete().gte('turno_idx',0);
+    if(eDel)throw eDel;
+    for(let i=0;i<slots.length;i+=100){
+      const {error:eSlots}=await sb.from('escala_base').insert(slots.slice(i,i+100));
+      if(eSlots)throw eSlots;
     }
     return true;
   }catch(e){
@@ -5889,51 +6036,30 @@ async function removerTurnoMes(mes,ano,ordem,isAdd){
   const k=keyMes(mes,ano);
   try{
     if(isAdd){
-      // É uma adição feita só nesse mês — deleta o registro.
-      // Para as novas adições agrupadas (ordem >= 1000), também remove
-      // a posição correspondente do snapshot para manter os índices alinhados.
       const idxVisual=TURNOS.findIndex(t=>t._ordemAdd===ordem);
       const {error}=await sb.from('turnos_mes').delete()
         .eq('mes',mes).eq('ano',ano).eq('ordem',ordem);
       if(error)throw error;
-
-      if(ordem>=1000&&idxVisual>=0){
-        // Remove dados dessa linha e desloca as posteriores uma posição para cima.
-        await sb.from('escala_mensal').delete()
-          .eq('mes',mes).eq('ano',ano).eq('turno_idx',idxVisual);
-        const {data:rows,error:eRows}=await sb.from('escala_mensal')
-          .select('id,turno_idx').eq('mes',mes).eq('ano',ano)
-          .gt('turno_idx',idxVisual).order('turno_idx',{ascending:true});
-        if(eRows)throw eRows;
-        for(const r of (rows||[])){
-          const {error:e2}=await sb.from('escala_mensal').update({turno_idx:r.turno_idx-1}).eq('id',r.id);
-          if(e2)throw e2;
-        }
-        if(ESCMES[k]){
-          Object.keys(ESCMES[k]).forEach(chave=>{
-            if(chave==='A'||chave==='B'){
-              DA.forEach(ab=>{if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idxVisual,1);});
-            }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
-              ESCMES[k][chave].splice(idxVisual,1);
-            }
-          });
-        }
-      }
-
+      if(idxVisual>=0)await removerSlotMesNaPosicao(mes,ano,idxVisual);
       if(TURNOS_MES_OVERRIDES[k]){
         TURNOS_MES_OVERRIDES[k]=TURNOS_MES_OVERRIDES[k].filter(o=>!(o.acao==='add'&&o.ordem===ordem));
       }
     }else{
-      // É um turno da base — marca como removido para esse mês
-      const {error}=await sb.from('turnos_mes').upsert({
+      // Linha oriunda da Base dentro deste mês: identifica PRIMEIRO sua posição visual exata.
+      const idxVisual=TURNOS.findIndex(t=>t._ordemBase===ordem);
+      const {data,error}=await sb.from('turnos_mes').upsert({
         mes,ano,ordem,acao:'remove',label:null,area:null,horas:null,noturno:null,cls:null
-      },{onConflict:'mes,ano,ordem'});
+      },{onConflict:'mes,ano,ordem'}).select();
       if(error)throw error;
       if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
       const idx=TURNOS_MES_OVERRIDES[k].findIndex(o=>o.ordem===ordem);
-      const reg={ordem,acao:'remove'};
+      const reg={id:data?.[0]?.id,ordem,acao:'remove'};
       if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;
       else TURNOS_MES_OVERRIDES[k].push(reg);
+
+      // CRÍTICO: remove a mesma posição dos dados do mês para que os profissionais
+      // das linhas seguintes continuem ligados às suas funções corretas.
+      if(idxVisual>=0)await removerSlotMesNaPosicao(mes,ano,idxVisual);
     }
     aplicarTurnosDoMes(mes,ano);
     return true;
