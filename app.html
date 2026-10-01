@@ -2508,7 +2508,12 @@ function renderAll(){
 }
 
 // ══ ESCALA HTML — COLUNAS FIXAS ══
-function gerarHtmlSems(sems,canEdit){
+function gerarHtmlSems(sems,canEdit,mesCtx,anoCtx){
+  // A estrutura renderizada deve vir do próprio mês exibido, nunca do TURNOS global.
+  // Isso evita desalinhamento entre rótulos e profissionais após alterações na Escala Base.
+  const mesRender=mesCtx||mesMes;
+  const anoRender=anoCtx||mesAno;
+  const turnosRender=obterTurnosDoMes(mesRender,anoRender);
   if(!sems.length)return'<div style="color:var(--text3);padding:20px;text-align:center">Nenhuma semana</div>';
   let html='';
   sems.forEach(sem=>{
@@ -2517,7 +2522,7 @@ function gerarHtmlSems(sems,canEdit){
     const mx=Math.max(...Object.values(sem.dias));
     html+=`<div class="sem-wrap">
       <div class="sem-label"><span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>
-        SEM.${sem.letra} &nbsp;·&nbsp; ${mn} a ${mx} de ${MP[mesMes]||MP[viewerMes]||MP[relMes]||''}</div>
+        SEM.${sem.letra} &nbsp;·&nbsp; ${mn} a ${mx} de ${MP[mesRender]||''}</div>
       <table class="sem-tbl">
         <colgroup><col style="width:120px;min-width:120px">`;
     DA.forEach(()=>html+=`<col style="width:calc((100% - 120px)/7);min-width:118px">`);
@@ -2527,7 +2532,7 @@ function gerarHtmlSems(sems,canEdit){
       html+=`<th class="col-d">${DN[i]}<br><span style="font-size:8px;opacity:.5;font-weight:400">${n!==undefined?n:''}</span></th>`;
     });
     html+=`</tr></thead><tbody>`;
-    TURNOS.forEach((t,ti)=>{
+    turnosRender.forEach((t,ti)=>{
       html+=`<tr class="trow ${t.cls}"><td class="col-h">${t.l}</td>`;
       DA.forEach(ab=>{
         if(sem.dias[ab]===undefined){html+=`<td class="nd"></td>`;return}
@@ -2535,7 +2540,7 @@ function gerarHtmlSems(sems,canEdit){
         const arr=EB[sem.letra][ab]||[];
         const diaMes=sem.dias[ab]||0;
         const click=canEdit?`onclick="abrirEditarMes('${sem.letra}','${ab}',${ti},'${t.l}',${diaMes},this)"`:'';
-        const val=getSlotValDia(mesMes||viewerMes,mesAno||viewerAno,sem.letra,ab,ti,diaMes);
+        const val=getSlotValDia(mesRender,anoRender,sem.letra,ab,ti,diaMes);
         let cellHTML='<span class="cn vz">—</span>';
         if(val){
           // ═══ MEIO PLANTÃO: separador "|" — usa MESMAS classes (cn, cn-sub) das outras células
@@ -2615,12 +2620,12 @@ function renderEscala(){
     const mn=Math.min(...Object.values(s.dias)),mx=Math.max(...Object.values(s.dias));
     sf.innerHTML+=`<button class="sf-b" onclick="filtrarSem(${i},this)">Sem.${i+1} (${mn}–${mx})</button>`;
   });
-  document.getElementById('sem-all').innerHTML=gerarHtmlSems(sems,canEdit);
+  document.getElementById('sem-all').innerHTML=gerarHtmlSems(sems,canEdit,mesMes,mesAno);
 }
 function filtrarSem(idx,btn){
   document.querySelectorAll('#sf-btns .sf-b').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   const sems=gerarSemanas(mesMes,mesAno);
-  document.getElementById('sem-all').innerHTML=gerarHtmlSems(idx==='todos'?sems:[sems[idx]].filter(Boolean),curRole==='gestor');
+  document.getElementById('sem-all').innerHTML=gerarHtmlSems(idx==='todos'?sems:[sems[idx]].filter(Boolean),curRole==='gestor',mesMes,mesAno);
 }
 // ═══════════════════════════════════════════════════════
 // VISIBILIDADE TEMPORAL
@@ -2738,6 +2743,9 @@ async function gerarEscala(){
   showToast('Gerando escala de '+MP[m]+' '+a+'...');
   const ok=await criarSnapshotMes(m,a);
   if(!ok){showToast('Erro ao gerar escala',true);return}
+  // Se o mês gerado é o que está aberto, atualiza imediatamente sua estrutura visual.
+  // Sem isso, TURNOS poderia manter a estrutura anterior até uma nova navegação.
+  if(mesMes===m&&mesAno===a)aplicarTurnosDoMes(m,a);
   // Marca como bloqueada explicitamente (não publicada)
   const k=keyM(m,a);
   PUB[k]={ok:false,d:null};
@@ -7068,12 +7076,12 @@ function renderViewer(){
     const mn=Math.min(...Object.values(s.dias)),mx=Math.max(...Object.values(s.dias));
     sf.innerHTML+=`<button class="sf-b" onclick="viewerFiltrar(${i},this)">Sem.${i+1} (${mn}–${mx})</button>`;
   });
-  document.getElementById('v-content').innerHTML=gerarHtmlSems(sems,false);
+  document.getElementById('v-content').innerHTML=gerarHtmlSems(sems,false,viewerMes,viewerAno);
 }
 function viewerFiltrar(idx,btn){
   document.querySelectorAll('#v-sf .sf-b').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   const sems=gerarSemanas(viewerMes,viewerAno);
-  document.getElementById('v-content').innerHTML=gerarHtmlSems(idx==='todos'?sems:[sems[idx]].filter(Boolean),false);
+  document.getElementById('v-content').innerHTML=gerarHtmlSems(idx==='todos'?sems:[sems[idx]].filter(Boolean),false,viewerMes,viewerAno);
 }
 
 // ══════════════════════════════════════
