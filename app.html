@@ -566,6 +566,16 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
             <div id="d-externos"></div>
           </div>
         </div>
+
+        <!-- HISTÓRICO DE DECLARAÇÕES -->
+        <div class="card" id="d-decl-hist-card" style="margin-bottom:12px">
+          <div class="ct" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <span>📚 Histórico de Declarações — meses anteriores</span>
+            <span style="font-size:10px;color:var(--text3);font-weight:500">Últimos 12 meses</span>
+          </div>
+          <div class="ps" style="margin-bottom:8px">Acompanhe declarações enviadas e pendentes de profissionais externos em meses já encerrados.</div>
+          <div id="d-decl-hist"></div>
+        </div>
       </div>
 
       <!-- ══ ESCALA DO MÊS ══ -->
@@ -902,6 +912,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="two-col">
           <div><div class="stitle">✅ Realizados</div><div id="meu-real"></div></div>
           <div><div class="stitle">🔜 Próximos</div><div id="meu-prox"></div></div>
+        </div>
+
+        <!-- Aniversariantes do mês -->
+        <div class="card" style="margin-top:12px">
+          <div class="ct">🎂 Aniversariantes do Mês</div>
+          <div id="meu-aniversariantes"></div>
         </div>
 
         <!-- Trocas Enviadas -->
@@ -2122,12 +2138,15 @@ function letraSemanaDoDia(mes,ano,diaMes){
 function gerarPlantoesMes(mes,ano){
   const sems=gerarSemanas(mes,ano);
   const plantoes=[];
+  // CRÍTICO: nunca usar o TURNOS global aqui. Dashboards/relatórios podem consultar
+  // um mês diferente do que está aberto na tela principal.
+  const turnosDoMes=obterTurnosDoMes(mes,ano);
   sems.forEach(sem=>{
     DA.forEach(ab=>{
       if(sem.dias[ab]===undefined)return;
       const dt=sem.dts[ab];const fds=isFDS(dt);
       const diaMes=sem.dias[ab];
-      TURNOS.forEach((t,ti)=>{
+      turnosDoMes.forEach((t,ti)=>{
         const val=getSlotValDia(mes,ano,sem.letra,ab,ti,diaMes);
         if(!val)return;
         // ═══ MEIO PLANTÃO: separador "|" ═══
@@ -3467,20 +3486,63 @@ function temSnapshot(mes,ano){
 function initESCMES(mes,ano){
   const k=keyMes(mes,ano);
   if(!ESCMES[k])ESCMES[k]={A:{},B:{}};
+  const tam=Math.max(16,obterTurnosDoMes(mes,ano).length,TURNOS_BASE.length);
   ['A','B'].forEach(s=>{
     if(!ESCMES[k][s])ESCMES[k][s]={};
-    DA.forEach(ab=>{if(!ESCMES[k][s][ab])ESCMES[k][s][ab]=Array(16).fill(undefined);});
+    DA.forEach(ab=>{if(!ESCMES[k][s][ab])ESCMES[k][s][ab]=Array(tam).fill(undefined);});
   });
+}
+
+// Salva também a ESTRUTURA dos turnos da Base dentro do mês gerado.
+// Assim, o mês nasce como espelho fiel da Base naquele momento e deixa de depender
+// de alterações futuras em rótulo/área/horário/classe da Escala Base.
+async function snapshotEstruturaTurnosMes(mes,ano){
+  const k=keyMes(mes,ano);
+  try{
+    // Para uma nova geração, a parte estrutural correspondente aos turnos da Base
+    // é recriada exatamente conforme TURNOS_BASE. Adições mensais (ordem >=100) são preservadas.
+    const ovs=TURNOS_MES_OVERRIDES[k]||[];
+    const baseOvs=ovs.filter(o=>o.ordem<100);
+    for(const o of baseOvs){
+      let q=sb.from('turnos_mes').delete().eq('mes',mes).eq('ano',ano).eq('ordem',o.ordem);
+      const {error}=await q;
+      if(error)throw error;
+    }
+    TURNOS_MES_OVERRIDES[k]=ovs.filter(o=>o.ordem>=100);
+
+    for(let i=0;i<TURNOS_BASE.length;i++){
+      const t=TURNOS_BASE[i];
+      const payload={
+        mes,ano,ordem:i,acao:'edit',
+        label:t.l,area:t.a,horas:t.h,noturno:t.not===true,cls:t.cls
+      };
+      const {data,error}=await sb.from('turnos_mes')
+        .upsert(payload,{onConflict:'mes,ano,ordem'}).select();
+      if(error)throw error;
+      TURNOS_MES_OVERRIDES[k].push({
+        id:data?.[0]?.id,ordem:i,acao:'edit',
+        l:t.l,a:t.a,h:t.h,not:t.not===true,cls:t.cls
+      });
+    }
+    return true;
+  }catch(e){
+    console.error('snapshotEstruturaTurnosMes:',e);
+    return false;
+  }
 }
 
 // Cria snapshot do mês a partir da Escala Base — chamado ao publicar/gerar.
 // IMPORTANTE: usa somente a quantidade de linhas de TURNOS_BASE.
 // Turnos criados exclusivamente em outro mês (turnos_mes) nunca são copiados para o novo mês.
 async function criarSnapshotMes(mes,ano){
+  // 1. Congela a estrutura da Escala Base no mês gerado
+  const estruturaOk=await snapshotEstruturaTurnosMes(mes,ano);
+  if(!estruturaOk)return false;
+
   initESCMES(mes,ano);
   const k=keyMes(mes,ano);
   const qtdTurnosBase=TURNOS_BASE.length;
-  // Copia exclusivamente a Escala Base para o mês
+  // 2. Copia exclusivamente os profissionais/slots da Escala Base para o mês
   ['A','B'].forEach(s=>{
     DA.forEach(ab=>{
       const arr=EB[s][ab]||[];
@@ -3521,11 +3583,11 @@ async function salvarSlotMes(mes,ano,semLetra,ab,ti,valor,diaMes){
   const k=keyMes(mes,ano);
   // Atualizar estado local primeiro
   if(diaMes){
-    if(!ESCMES[k]['DIA_'+diaMes])ESCMES[k]['DIA_'+diaMes]=Array(16).fill(undefined);
+    if(!ESCMES[k]['DIA_'+diaMes])ESCMES[k]['DIA_'+diaMes]=Array(Math.max(16,obterTurnosDoMes(mes,ano).length)).fill(undefined);
     ESCMES[k]['DIA_'+diaMes][ti]=valor;
   } else {
     if(!ESCMES[k][semLetra])ESCMES[k][semLetra]={};
-    if(!ESCMES[k][semLetra][ab])ESCMES[k][semLetra][ab]=Array(16).fill(undefined);
+    if(!ESCMES[k][semLetra][ab])ESCMES[k][semLetra][ab]=Array(Math.max(16,obterTurnosDoMes(mes,ano).length)).fill(undefined);
     ESCMES[k][semLetra][ab][ti]=valor;
   }
   console.log('[salvarSlotMes]',{mes,ano,semLetra,ab,ti,valor:(valor||'').slice(0,40),diaMes});
@@ -3720,14 +3782,14 @@ async function carregarESCMES(){
       const dm=r.dia_mes!=null?parseInt(r.dia_mes):null;
       if(dm&&r.origem==='manual'){
         const dk='DIA_'+dm;
-        if(!ESCMES[k][dk])ESCMES[k][dk]=Array(16).fill(undefined);
+        if(!ESCMES[k][dk])ESCMES[k][dk]=Array(Math.max(16,TURNOS_BASE.length,r.turno_idx+1)).fill(undefined);
         ESCMES[k][dk][r.turno_idx]=r.valor||'';
         manualCount++;
       } else {
         // Snapshot por semana (origem='snapshot' ou 'troca')
         if(!ESCMES[k][r.semana_letra])ESCMES[k][r.semana_letra]={};
         if(!ESCMES[k][r.semana_letra][r.dia_semana])
-          ESCMES[k][r.semana_letra][r.dia_semana]=Array(16).fill(undefined);
+          ESCMES[k][r.semana_letra][r.dia_semana]=Array(Math.max(16,TURNOS_BASE.length,r.turno_idx+1)).fill(undefined);
         ESCMES[k][r.semana_letra][r.dia_semana][r.turno_idx]=r.valor||'';
         if(r.origem==='snapshot')snapCount++;
         else if(r.origem==='troca')trocaCount++;
@@ -4720,6 +4782,29 @@ async function despublicar(k){
 function renderMeusPlantoes(){
   const crm=curUser.c;const mes=meuMes,ano=meuAno;
   document.getElementById('mc-meu').textContent=MP[mes]+' '+ano;
+
+  // Aniversariantes são independentes da publicação da escala.
+  const elAniv=document.getElementById('meu-aniversariantes');
+  if(elAniv){
+    const anivers=MEDICOS
+      .filter(m=>m.a!=='GESTOR'&&m.data_nascimento)
+      .map(m=>{
+        const p=String(m.data_nascimento).split('-');
+        if(p.length!==3||parseInt(p[1])!==mes)return null;
+        return {n:m.n,dia:parseInt(p[2]),crm:m.c};
+      })
+      .filter(Boolean)
+      .sort((a,b)=>a.dia-b.dia);
+    elAniv.innerHTML=anivers.length?anivers.map(a=>`
+      <div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:6px;margin-bottom:4px">
+        <span style="font-size:17px">🎉</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:#581c87">${nomeCurto(a.n)}</div>
+          <div style="font-size:10px;color:#7e22ce">CRM ${a.crm}</div>
+        </div>
+        <span style="font-size:12px;font-weight:800;color:#9333ea">${String(a.dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}</span>
+      </div>`).join(''):'<div style="color:var(--text3);font-size:12px;text-align:center;padding:10px">Nenhum aniversariante neste mês</div>';
+  }
   document.getElementById('meu-sub').textContent=MP[mes]+' '+ano;
   document.getElementById('meu-mes-lbl').textContent=MP[mes]+' '+ano;
   document.getElementById('fin-mes-lbl').textContent=MP[mes]+' '+ano;
@@ -4989,7 +5074,8 @@ function _renderDashboardImpl(){
     const dt=new Date(mesAno,mesMes-1,d);
     const ciclo=getCiclo(dt);
     const ab=DA[JTC[dt.getDay()]];
-    for(let ti=0;ti<16;ti++){
+    const qtdTurnosDia=obterTurnosDoMes(mesMes,mesAno).length;
+    for(let ti=0;ti<qtdTurnosDia;ti++){
       const v=getSlotValDia(mesMes,mesAno,ciclo,ab,ti,d);
       vagasTotais++;
       if(!v||v.trim()==='')vagasVazias++;
@@ -5003,6 +5089,17 @@ function _renderDashboardImpl(){
     const st=decsPendentesExterno(x.med.c,mesMes,mesAno);
     return st.pendentes>0;
   });
+
+  // Pendências acumuladas em meses anteriores (últimos 12 meses com snapshot).
+  let decPendAnteriores=0;
+  let _hm=mesMes,_ha=mesAno;
+  for(let _i=0;_i<12;_i++){
+    _hm--;if(_hm<1){_hm=12;_ha--;}
+    if(!temSnapshot(_hm,_ha))continue;
+    coletarExternosMes(_hm,_ha).forEach(x=>{
+      decPendAnteriores+=decsPendentesExterno(x.med.c,_hm,_ha).pendentes;
+    });
+  }
 
   // ─── LINHA 1: ALERTAS ───
   // Coletar aniversariantes do mês (precisa do campo data_nascimento — vai vir vazio até cadastrarem)
@@ -5068,6 +5165,13 @@ function _renderDashboardImpl(){
     alertas.push({tipo:'num',icon:'📄',cor:'#1e40af',bg:'#dbeafe',label:'Declarações pendentes',val:decsPend.length,
       sub:'Externos sem declaração — clique para ver',action:()=>{
         const alvo=document.getElementById('d-externos-card');
+        if(alvo)alvo.scrollIntoView({behavior:'smooth',block:'start'});
+      }});
+  }
+  if(decPendAnteriores>0){
+    alertas.push({tipo:'num',icon:'📚',cor:'#991b1b',bg:'#fee2e2',label:'Pendências anteriores',val:decPendAnteriores,
+      sub:'Declarações de meses anteriores',action:()=>{
+        const alvo=document.getElementById('d-decl-hist-card');
         if(alvo)alvo.scrollIntoView({behavior:'smooth',block:'start'});
       }});
   }
@@ -5275,7 +5379,71 @@ function _renderDashboardImpl(){
     }).join(''):
     '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">Nenhum externo neste mês</div>';
 
+  renderHistoricoDeclaracoesGestor();
   atualizarBadge();
+}
+
+// Histórico gerencial de declarações dos 12 meses anteriores ao mês aberto no Dashboard.
+function renderHistoricoDeclaracoesGestor(){
+  const el=document.getElementById('d-decl-hist');
+  if(!el)return;
+  window._declHistExp=window._declHistExp||{};
+  const meses=[];
+  let m=mesMes,a=mesAno;
+  for(let i=0;i<12;i++){
+    m--;if(m<1){m=12;a--;}
+    if(!temSnapshot(m,a))continue;
+    const externosMes=coletarExternosMes(m,a);
+    let total=0,enviadas=0,pendentes=0;
+    const detalhes=[];
+    externosMes.forEach(x=>{
+      const linhas=[];
+      x.plantoes.forEach(p=>{
+        const pk=plantaoKey(m,a,p.dia,p.turnoIdx);
+        const reg=DECLARACOES_PLANTOES[x.med.c+'|'+pk];
+        const ok=!!(reg&&reg.enviada);
+        total++; if(ok)enviadas++; else pendentes++;
+        linhas.push({p,ok,reg});
+      });
+      if(linhas.length)detalhes.push({med:x.med,linhas});
+    });
+    meses.push({m,a,total,enviadas,pendentes,detalhes});
+  }
+
+  if(!meses.length){
+    el.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center;padding:12px">Nenhum mês anterior com escala gerada.</div>';
+    return;
+  }
+
+  el.innerHTML=meses.map(x=>{
+    const key=`${x.m}-${x.a}`;
+    const exp=window._declHistExp[key]===true;
+    const cor=x.pendentes>0?'#b91c1c':'#166534';
+    const bg=x.pendentes>0?'#fef2f2':'#f0fdf4';
+    const detalhe=exp?`<div style="padding:8px 10px;border-top:1px solid var(--border);background:#fff">
+      ${x.detalhes.length?x.detalhes.map(d=>`
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:4px">${d.med.n} · CRM ${d.med.c} · ${d.med.unidade||'—'}</div>
+          ${d.linhas.map(l=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:3px;border-radius:5px;background:${l.ok?'#dcfce7':'#fee2e2'};font-size:10.5px;color:${l.ok?'#166534':'#991b1b'}">
+            <span style="font-weight:800">${l.ok?'✓ ENVIADA':'⚠ PENDENTE'}</span>
+            <span style="flex:1">${l.p.data} · ${l.p.turno}</span>
+            ${l.ok&&l.reg?.data_envio?`<span>${new Date(l.reg.data_envio+'T12:00:00').toLocaleDateString('pt-BR')}</span>`:''}
+          </div>`).join('')}
+        </div>`).join(''):'<div style="color:var(--text3);font-size:11px">Sem declarações esperadas neste mês.</div>'}
+    </div>`:'';
+    return `<div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:6px">
+      <div onclick="window._declHistExp['${key}']=!window._declHistExp['${key}'];renderHistoricoDeclaracoesGestor()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:${bg};cursor:pointer;flex-wrap:wrap">
+        <span style="font-size:13px;color:${cor}">${exp?'▼':'▶'}</span>
+        <div style="min-width:120px;font-size:12px;font-weight:800;color:${cor}">${MP[x.m]} ${x.a}</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-left:auto;font-size:10.5px">
+          <span style="padding:3px 7px;border-radius:5px;background:#fff;color:#166534;font-weight:700">✓ ${x.enviadas} enviadas</span>
+          <span style="padding:3px 7px;border-radius:5px;background:#fff;color:#991b1b;font-weight:700">⚠ ${x.pendentes} pendentes</span>
+          <span style="padding:3px 7px;border-radius:5px;background:#fff;color:var(--text2)">Total ${x.total}</span>
+        </div>
+      </div>
+      ${detalhe}
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5426,36 +5594,43 @@ async function preservarMesesExistentesAoInserirTurnoBase(idx){
   }
 }
 
-// Aplica overrides do mês ao array global TURNOS.
-// Chamado quando muda o mês visualizado.
-function aplicarTurnosDoMes(mes,ano){
+// Retorna a estrutura de turnos de um mês SEM depender do mês atualmente aberto na tela.
+// Fonte: Escala Base vigente + overrides/snapshot estrutural de turnos_mes daquele mês.
+function obterTurnosDoMes(mes,ano){
   const k=keyMes(mes,ano);
-  TURNOS.length=0;
-  // 1. Começa com TURNOS_BASE
+  const lista=[];
   const base=TURNOS_BASE.map(t=>({...t}));
-  // 2. Aplica overrides
   const overrides=TURNOS_MES_OVERRIDES[k]||[];
   const ordensRemovidas=new Set(overrides.filter(o=>o.acao==='remove').map(o=>o.ordem));
+
   base.forEach((t,i)=>{
-    if(ordensRemovidas.has(i))return;// removido
+    if(ordensRemovidas.has(i))return;
     const edit=overrides.find(o=>o.acao==='edit'&&o.ordem===i);
     if(edit){
-      TURNOS.push({l:edit.l,a:edit.a,h:edit.h,not:edit.not,cls:edit.cls,_ordemBase:i});
+      lista.push({l:edit.l,a:edit.a,h:edit.h,not:edit.not,cls:edit.cls,_ordemBase:i});
     }else{
-      TURNOS.push({...t,_ordemBase:i});
+      lista.push({...t,_ordemBase:i});
     }
   });
-  // 3. Adições antigas (ordem 100–999) permanecem no fim para não alterar
-  //    snapshots já existentes. Novas adições (ordem >= 1000) são agrupadas.
+
+  // Adições exclusivas do mês. Novas adições (>=1000) entram agrupadas.
   overrides.filter(o=>o.acao==='add').sort((a,b)=>a.ordem-b.ordem).forEach(a=>{
     const item={l:a.l,a:a.a,h:a.h,not:a.not,cls:a.cls,_ordemAdd:a.ordem};
     if(a.ordem>=1000){
-      const pos=indiceInsercaoTurno(TURNOS,a.cls);
-      TURNOS.splice(pos,0,item);
+      const pos=indiceInsercaoTurno(lista,a.cls);
+      lista.splice(pos,0,item);
     }else{
-      TURNOS.push(item);
+      lista.push(item);
     }
   });
+  return lista;
+}
+
+// Aplica a estrutura do mês ao array global usado apenas para renderização da tela corrente.
+function aplicarTurnosDoMes(mes,ano){
+  const lista=obterTurnosDoMes(mes,ano);
+  TURNOS.length=0;
+  lista.forEach(t=>TURNOS.push(t));
 }
 
 // Quando o mês muda, reaplica overrides
@@ -6154,6 +6329,9 @@ function mudarAbaRel(aba,btn){
 // Coleta TODOS os externos que cobriram plantões num mês — 3 fontes (manual + snapshot + trocas)
 // Retorna array com {med, plantoes:[{dia,dt,turnoIdx,data,turno,area,h,fds,not,valor}], totalH, totalValor}
 function coletarExternosMes(mes,ano){
+  // Sempre usa a estrutura do PRÓPRIO mês consultado, independentemente
+  // do mês que esteja aberto na tela principal.
+  const turnosDoMes=obterTurnosDoMes(mes,ano);
   // ══════════════════════════════════════════════════════════════
   // NOVA ABORDAGEM (v2026.07.02.02):
   // Fonte única da verdade = valor atual na célula da escala.
@@ -6175,7 +6353,7 @@ function coletarExternosMes(mes,ano){
     const letra=letraSemanaDoDia(mes,ano,dia);
 
     // Para cada turno cadastrado, verifica quem está na célula
-    TURNOS.forEach((t,ti)=>{
+    turnosDoMes.forEach((t,ti)=>{
       const val=getSlotValDia(mes,ano,letra,ab,ti,dia);
       if(!val)return;
 
