@@ -945,13 +945,33 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
   <div class="m-box">
     <div class="m-t">Editar Plantonista na Escala</div>
     <div class="m-s" id="mo-ed-ctx"></div>
-    <div class="fg"><label class="fl">Profissional</label>
+    <div class="fg" id="ed-med-inteiro-wrap"><label class="fl">Profissional</label>
       <div style="position:relative">
         <input type="text" class="fi" id="ed-med-busca" placeholder="Digite o nome ou CRM..." oninput="filtrarEdMed()" onfocus="filtrarEdMed()" autocomplete="off" style="padding-right:30px">
         <span style="position:absolute;right:14px;top:11px;color:#9aa3bf;font-size:14px;pointer-events:none">🔍</span>
       </div>
       <input type="hidden" id="ed-med" value="">
       <div id="ed-med-sug" style="display:none;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:260px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.08);margin-top:4px"></div>
+    </div>
+    <div id="ed-meio-manual-wrap" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r2);padding:11px 12px;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;color:#9a3412">
+        <input type="checkbox" id="ed-meio-manual-check" onchange="toggleEdMeioManual()" style="width:16px;height:16px;accent-color:var(--purple)">
+        Dividir este plantão de 12h entre dois médicos (6h + 6h)
+      </label>
+      <div id="ed-meio-manual-fields" style="display:none;margin-top:10px">
+        <div class="fg" style="position:relative">
+          <label class="fl">1ª metade · <span id="ed-met1-label">primeiras 6h</span></label>
+          <input type="text" class="fi" id="ed-med1-busca" placeholder="Digite nome ou CRM..." oninput="filtrarEdMedMetade(1)" onfocus="filtrarEdMedMetade(1)" autocomplete="off">
+          <input type="hidden" id="ed-med1" value="">
+          <div id="ed-med1-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:220px;overflow-y:auto;z-index:80;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
+        </div>
+        <div class="fg" style="position:relative;margin-bottom:0">
+          <label class="fl">2ª metade · <span id="ed-met2-label">últimas 6h</span></label>
+          <input type="text" class="fi" id="ed-med2-busca" placeholder="Digite nome ou CRM..." oninput="filtrarEdMedMetade(2)" onfocus="filtrarEdMedMetade(2)" autocomplete="off">
+          <input type="hidden" id="ed-med2" value="">
+          <div id="ed-med2-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border2);border-radius:var(--r2);max-height:220px;overflow-y:auto;z-index:80;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
+        </div>
+      </div>
     </div>
     <div id="ed-vinc-info" style="background:var(--blue-bg);border:1px solid rgba(27,77,111,.2);border-radius:var(--r2);padding:9px 12px;font-size:11px;color:var(--blue);margin-bottom:8px;display:none">
       ℹ️ Vínculo: <strong id="ed-vinc-label">—</strong> · definido pelo cadastro do profissional
@@ -1232,6 +1252,29 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div class="fg"><label class="fl" id="tr-plantao-lbl">Meu Plantão</label>
       <select class="fs" id="tr-plantao" onchange="atualizarTrTurno()"><option value="">— Selecione —</option></select>
     </div>
+    <!-- ═══ MEIO PLANTÃO (apenas para turnos de 12h) — logo abaixo do Plantão do solicitante ═══ -->
+    <div id="tr-meio-wrap" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r2);padding:11px 13px;margin:-4px 0 12px;display:none">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text)">
+        <input type="checkbox" id="tr-meio-check" onchange="toggleMeioPlantao()" style="accent-color:var(--purple);width:16px;height:16px">
+        ⇄ Trocar apenas metade do plantão (6h)
+      </label>
+      <div id="tr-meio-opcoes" style="display:none;margin-top:10px;padding-left:24px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:7px">Qual metade você quer trocar (que o substituto vai cobrir)?</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 9px;background:var(--bg3);border-radius:var(--r2)">
+            <input type="radio" name="tr-metade" value="1" id="tr-met-1" style="accent-color:var(--purple)">
+            <span><strong>Primeira metade</strong> — <span id="tr-met-1-label">primeiras 6h</span> (substituto cobre o início)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 9px;background:var(--bg3);border-radius:var(--r2)">
+            <input type="radio" name="tr-metade" value="2" id="tr-met-2" checked style="accent-color:var(--purple)">
+            <span><strong>Segunda metade</strong> — <span id="tr-met-2-label">últimas 6h</span> (substituto cobre o final)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div id="tr-retro-aviso" style="display:none;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:var(--r2);padding:9px 11px;margin:-4px 0 12px;font-size:11px;font-weight:600">
+      ⚠️ Este plantão já ocorreu. A solicitação será registrada como <strong>TROCA RETROATIVA</strong> e exigirá confirmação antes do envio.
+    </div>
     <div class="fg"><label class="fl">Turno</label><input type="text" class="fi" id="tr-turno" readonly style="color:var(--text2)"></div>
     <div class="fg"><label class="fl">Área</label><input type="text" class="fi" id="tr-area" readonly style="color:var(--text2)"></div>
     <div class="fg" id="tr-sub-container" style="position:relative">
@@ -1272,26 +1315,6 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       </div>
     </div>
     <div class="fg"><label class="fl">Motivo (opcional)</label><textarea class="fta" id="tr-motivo" placeholder="Opcional..."></textarea></div>
-    <!-- ═══ MEIO PLANTÃO (apenas para turnos de 12h) ═══ -->
-    <div id="tr-meio-wrap" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r2);padding:11px 13px;margin-bottom:12px;display:none">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text)">
-        <input type="checkbox" id="tr-meio-check" onchange="toggleMeioPlantao()" style="accent-color:var(--purple);width:16px;height:16px">
-        ⇄ Trocar apenas metade do plantão (6h)
-      </label>
-      <div id="tr-meio-opcoes" style="display:none;margin-top:10px;padding-left:24px">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:7px">Qual metade você quer trocar (que o substituto vai cobrir)?</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 9px;background:var(--bg3);border-radius:var(--r2)">
-            <input type="radio" name="tr-metade" value="1" id="tr-met-1" style="accent-color:var(--purple)">
-            <span><strong>Primeira metade</strong> — <span id="tr-met-1-label">primeiras 6h</span> (substituto cobre o início)</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;padding:6px 9px;background:var(--bg3);border-radius:var(--r2)">
-            <input type="radio" name="tr-metade" value="2" id="tr-met-2" checked style="accent-color:var(--purple)">
-            <span><strong>Segunda metade</strong> — <span id="tr-met-2-label">últimas 6h</span> (substituto cobre o final)</span>
-          </label>
-        </div>
-      </div>
-    </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="fecharMo('mo-troca')">Cancelar</button>
       <button class="btn btn-p" onclick="enviarTroca()">📤 Enviar</button>
@@ -1983,7 +2006,7 @@ async function carregarSupabase(){
         turno:t.turno,area:t.area,motivo:t.motivo||'',
         metade:metadeSan,
         status:t.status,mes:t.mes,ano:t.ano,
-        turnoIdx:extrairTurnoIdxTroca(visRaw),linhaRef:extrairLinhaRefTroca(visRaw),vis:limparVisTroca(visRaw)
+        turnoIdx:extrairTurnoIdxTroca(visRaw),linhaRef:extrairLinhaRefTroca(visRaw),retroativa:extrairRetroativaTroca(visRaw),vis:limparVisTroca(visRaw)
       });
     });
 
@@ -2038,6 +2061,7 @@ async function salvarPublicacao(mes,ano,publicado,gestor_crm){
 // Evita alteração de schema no Supabase e mantém compatibilidade com trocas antigas.
 const TROCA_TIDX_PREFIX='__KOS_TIDX__:';
 const TROCA_LINHA_PREFIX='__KOS_LINHA__:';
+const TROCA_RETRO_PREFIX='__KOS_RETRO__:';
 function extrairTurnoIdxTroca(vis){
   if(!Array.isArray(vis))return null;
   const mk=vis.find(v=>typeof v==='string'&&v.startsWith(TROCA_TIDX_PREFIX));
@@ -2051,13 +2075,18 @@ function extrairLinhaRefTroca(vis){
   if(!mk)return null;
   try{return decodeURIComponent(mk.slice(TROCA_LINHA_PREFIX.length))||null;}catch(e){return null;}
 }
-function limparVisTroca(vis){
-  return (Array.isArray(vis)?vis:[]).filter(v=>!(typeof v==='string'&&(v.startsWith(TROCA_TIDX_PREFIX)||v.startsWith(TROCA_LINHA_PREFIX))));
+function extrairRetroativaTroca(vis){
+  if(!Array.isArray(vis))return false;
+  return vis.some(v=>typeof v==='string'&&v===TROCA_RETRO_PREFIX+'1');
 }
-function visTrocaComMeta(vis,turnoIdx,linhaRef){
+function limparVisTroca(vis){
+  return (Array.isArray(vis)?vis:[]).filter(v=>!(typeof v==='string'&&(v.startsWith(TROCA_TIDX_PREFIX)||v.startsWith(TROCA_LINHA_PREFIX)||v.startsWith(TROCA_RETRO_PREFIX))));
+}
+function visTrocaComMeta(vis,turnoIdx,linhaRef,retroativa){
   const arr=limparVisTroca(vis);
   if(Number.isInteger(turnoIdx)&&turnoIdx>=0)arr.push(TROCA_TIDX_PREFIX+turnoIdx);
   if(linhaRef)arr.push(TROCA_LINHA_PREFIX+encodeURIComponent(String(linhaRef)));
+  if(retroativa===true)arr.push(TROCA_RETRO_PREFIX+'1');
   return arr;
 }
 
@@ -2072,7 +2101,7 @@ async function salvarTroca(troca){
     (troca.dt.getFullYear()+'-'+String(troca.dt.getMonth()+1).padStart(2,'0')+'-'+String(troca.dt.getDate()).padStart(2,'0')):null,
     turno:troca.turno,area:troca.area,motivo:troca.motivo||'',
     status:troca.status,mes:troca.mes,ano:troca.ano,
-    visivel_para:visTrocaComMeta(troca.vis||[],troca.turnoIdx,troca.linhaRef),
+    visivel_para:visTrocaComMeta(troca.vis||[],troca.turnoIdx,troca.linhaRef,troca.retroativa===true),
     metade:metadeLimpa
   };
   try{
@@ -2784,7 +2813,8 @@ function abrirEditarBase(letra,ab,ti,turnoL,el){
 
 function abrirEditarMes(letra,ab,ti,turnoL,diaMes,el){
   // Edita SOMENTE este dia específico — não propaga para outras semanas
-  editCtx={letra,ab,ti,el,diaMes,contexto:'escala_mensal',mes:mesMes,ano:mesAno};
+  const turnoAtual=obterTurnosDoMes(mesMes,mesAno)[ti]||{};
+  editCtx={letra,ab,ti,el,diaMes,contexto:'escala_mensal',mes:mesMes,ano:mesAno,turnoHoras:turnoAtual.h||0,turnoNoturno:turnoAtual.not===true};
   const valAtual=getSlotValDia(mesMes,mesAno,letra,ab,ti,diaMes);
   document.getElementById('mo-ed-ctx').textContent=`📅 ${MP[mesMes]} ${mesAno} — Dia ${diaMes} · ${turnoL}`;
   preencherEdMedModal(valAtual);
@@ -2808,22 +2838,100 @@ function getSlotValDia(mes,ano,semLetra,ab,ti,diaMes){
   return (EB[semLetra][ab]||[])[ti]||'';
 }
 
+function valorMedicoComVinculo(abrev){
+  if(!abrev)return '';
+  let vinc='CR';
+  const mCRM=String(abrev).match(/\((\d+)\)/);
+  if(mCRM){
+    const m=MEDICOS.find(x=>x.c===parseInt(mCRM[1]));
+    if(m)vinc=getVinc(m.n);
+  }
+  return `${abrev} ${vinc}`;
+}
+function preencherCampoMedicoEdicao(hiddenId,buscaId,raw){
+  const limpo=String(raw||'').replace(/\s*#(?:1|2)\s*$/,'').trim().replace(/\s+(CR|EF)$/,'').trim();
+  document.getElementById(hiddenId).value=limpo;
+  const mCRM=limpo.match(/\((\d+)\)/);
+  const med=mCRM?MEDICOS.find(m=>m.c===parseInt(mCRM[1])):null;
+  document.getElementById(buscaId).value=med?formatarNome(med.n):(limpo||'');
+}
 function preencherEdMedModal(cur){
-  const vm=cur.replace(/ (CR|EF)$/,'');
-  document.getElementById('ed-med').value=vm;
-  const mAtual=MEDICOS.find(m=>{const p=m.n.split(' ');return `${p[0]} ${p[p.length-1]} (${m.c})`===vm});
-  document.getElementById('ed-med-busca').value=mAtual?formatarNome(mAtual.n):(vm||'');
-  // Mostrar vínculo apenas informativo (do cadastro do profissional)
-  const info=document.getElementById('ed-vinc-info');
-  const lbl=document.getElementById('ed-vinc-label');
-  if(mAtual){
-    const v=getVinc(mAtual.n);
-    lbl.textContent=v+' — '+(v==='EF'?'Efetivo':'Credenciado');
-    info.style.display='block';
-  } else {
-    info.style.display='none';
+  const isMensal12=editCtx&&editCtx.contexto==='escala_mensal'&&editCtx.turnoHoras===12;
+  const wrapMeio=document.getElementById('ed-meio-manual-wrap');
+  const ckMeio=document.getElementById('ed-meio-manual-check');
+  const fieldsMeio=document.getElementById('ed-meio-manual-fields');
+  const wrapInteiro=document.getElementById('ed-med-inteiro-wrap');
+  const dividido=isMensal12&&String(cur||'').includes('|');
+
+  if(wrapMeio)wrapMeio.style.display=isMensal12?'block':'none';
+  if(ckMeio)ckMeio.checked=dividido;
+  if(fieldsMeio)fieldsMeio.style.display=dividido?'block':'none';
+  if(wrapInteiro)wrapInteiro.style.display=dividido?'none':'block';
+
+  if(isMensal12){
+    document.getElementById('ed-met1-label').textContent=editCtx.turnoNoturno?'19:00 às 01:00':'07:00 às 13:00';
+    document.getElementById('ed-met2-label').textContent=editCtx.turnoNoturno?'01:00 às 07:00':'13:00 às 19:00';
+  }
+
+  if(dividido){
+    const partes=String(cur).split('|').map(x=>x.trim());
+    const p1=partes.find(x=>/#1\s*$/.test(x))||partes[0]||'';
+    const p2=partes.find(x=>/#2\s*$/.test(x))||partes[1]||'';
+    preencherCampoMedicoEdicao('ed-med1','ed-med1-busca',p1);
+    preencherCampoMedicoEdicao('ed-med2','ed-med2-busca',p2);
+    document.getElementById('ed-med').value='';
+    document.getElementById('ed-med-busca').value='';
+    document.getElementById('ed-vinc-info').style.display='none';
+  }else{
+    preencherCampoMedicoEdicao('ed-med','ed-med-busca',cur||'');
+    document.getElementById('ed-med1').value='';document.getElementById('ed-med1-busca').value='';
+    document.getElementById('ed-med2').value='';document.getElementById('ed-med2-busca').value='';
+    const vm=document.getElementById('ed-med').value;
+    const mCRM=vm.match(/\((\d+)\)/);
+    const mAtual=mCRM?MEDICOS.find(m=>m.c===parseInt(mCRM[1])):null;
+    const info=document.getElementById('ed-vinc-info');
+    const lbl=document.getElementById('ed-vinc-label');
+    if(mAtual){
+      const v=getVinc(mAtual.n);
+      lbl.textContent=v+' — '+(v==='EF'?'Efetivo':'Credenciado');
+      info.style.display='block';
+    }else info.style.display='none';
   }
   abrirMo('mo-editar');
+}
+function toggleEdMeioManual(){
+  const ck=document.getElementById('ed-meio-manual-check');
+  const on=!!(ck&&ck.checked);
+  document.getElementById('ed-meio-manual-fields').style.display=on?'block':'none';
+  document.getElementById('ed-med-inteiro-wrap').style.display=on?'none':'block';
+  document.getElementById('ed-vinc-info').style.display=on?'none':document.getElementById('ed-med').value?'block':'none';
+  if(on){
+    const medAtual=document.getElementById('ed-med').value;
+    const nomeAtual=document.getElementById('ed-med-busca').value;
+    if(medAtual&&!document.getElementById('ed-med1').value){
+      document.getElementById('ed-med1').value=medAtual;
+      document.getElementById('ed-med1-busca').value=nomeAtual;
+    }
+  }else if(!document.getElementById('ed-med').value&&document.getElementById('ed-med1').value){
+    document.getElementById('ed-med').value=document.getElementById('ed-med1').value;
+    document.getElementById('ed-med-busca').value=document.getElementById('ed-med1-busca').value;
+    atualizarVincInfo();
+  }
+}
+function filtrarEdMedMetade(num){
+  const inp=document.getElementById(`ed-med${num}-busca`);
+  const sug=document.getElementById(`ed-med${num}-sug`);
+  const q=semAcento(inp.value.trim());
+  const todos=MEDICOS.filter(m=>m.a!=='GESTOR').map(m=>{const p=m.n.split(' ');return {c:m.c,n:m.n,fmt:formatarNome(m.n),ext:!!m.ext,abrev:`${p[0]} ${p[p.length-1]} (${m.c})`};});
+  let lista=q?todos.filter(p=>semAcento(p.fmt).includes(q)||String(p.c).includes(q)):todos;
+  lista.sort((a,b)=>(a.ext?1:0)-(b.ext?1:0));
+  sug.innerHTML=lista.slice(0,40).map(p=>`<div onclick="selecionarEdMedMetade(${num},'${p.abrev.replace(/'/g,"\\'")}','${p.fmt.replace(/'/g,"\\'")}')" style="padding:8px 11px;cursor:pointer;border-bottom:1px solid #eef0f6;font-size:12px" onmouseover="this.style.background='#eff4ff'" onmouseout="this.style.background='#fff'"><div style="font-weight:600">${p.fmt}${p.ext?' <span style="background:var(--purple);color:#fff;font-size:8px;padding:1px 5px;border-radius:6px;font-weight:700">EXTERNO</span>':''}</div><div style="font-size:10px;color:#9aa3bf">CRM ${p.c}</div></div>`).join('')||'<div style="padding:10px;font-size:12px;color:var(--text3)">Nenhum profissional</div>';
+  sug.style.display='block';
+}
+function selecionarEdMedMetade(num,abrev,fmt){
+  document.getElementById(`ed-med${num}`).value=abrev;
+  document.getElementById(`ed-med${num}-busca`).value=fmt;
+  document.getElementById(`ed-med${num}-sug`).style.display='none';
 }
 
 // Atualizar label de vínculo quando o profissional for selecionado
@@ -2883,6 +2991,13 @@ document.addEventListener('click',function(e){
     const s=document.getElementById('ed-med-sug');if(s)s.style.display='none';
   }
 });
+document.addEventListener('click',function(e){
+  [1,2].forEach(n=>{
+    if(!e.target.closest(`#ed-med${n}-busca`)&&!e.target.closest(`#ed-med${n}-sug`)){
+      const s=document.getElementById(`ed-med${n}-sug`);if(s)s.style.display='none';
+    }
+  });
+});
 // Atalho: limpa a célula da escala (deixa vaga)
 async function deixarVagaSlot(){
   if(!editCtx){showToast('Erro: slot não identificado',true);return}
@@ -2929,16 +3044,14 @@ async function salvarEdicao(){
   if(!editCtx)return;
   const{letra,ab,ti,el,contexto,mes,ano}=editCtx;
   const med=document.getElementById('ed-med').value;
-  // ═══ VÍNCULO VEM DO CADASTRO DO PROFISSIONAL — NÃO É EDITÁVEL ═══
-  let vinc='CR';// padrão se não achar
-  if(med){
-    const mCRM=med.match(/\((\d+)\)/);
-    if(mCRM){
-      const m=MEDICOS.find(x=>x.c===parseInt(mCRM[1]));
-      if(m)vinc=getVinc(m.n);
-    }
+  let val=valorMedicoComVinculo(med);
+  // Na escala mensal, turnos de 12h podem ser lançados manualmente em duas metades de 6h.
+  if(contexto==='escala_mensal'&&editCtx.turnoHoras===12&&document.getElementById('ed-meio-manual-check')?.checked){
+    const med1=document.getElementById('ed-med1').value;
+    const med2=document.getElementById('ed-med2').value;
+    if(!med1||!med2){showToast('Selecione um profissional para cada metade do plantão',true);return;}
+    val=`${valorMedicoComVinculo(med1)} #1 | ${valorMedicoComVinculo(med2)} #2`;
   }
-  const val=med?`${med} ${vinc}`:'';
   // ROTEAMENTO: Escala Base (template) vs Escala Mensal (snapshot)
   if(contexto==='escala_base'){
     try{
@@ -2984,51 +3097,55 @@ async function salvarEdicao(){
 
 // Gera troca automática quando gestor edita escala publicada
 async function gerarTrocaAutoEdicao(valAntes,valDepois,mes,ano,semLetra,ab,ti,diaMes){
-  // Extrair CRMs do antes e depois
-  const crmAntes=(valAntes.match(/\((\d+)\)/)||[])[1];
-  const crmDepois=(valDepois.match(/\((\d+)\)/)||[])[1];
-  // Se nenhum dos dois é válido OU são o mesmo profissional → não gera troca
-  if(!crmAntes&&!crmDepois)return;
-  if(crmAntes===crmDepois)return;
-  // Se "antes" estava vaga e agora preencheu, ou vice-versa → também não gera (não é troca)
-  if(!crmAntes||!crmDepois){
-    console.log('[trocaAuto] Não é troca (vaga ⇄ preenchido), nada a registrar.');
-    return;
-  }
-  const sCRM=parseInt(crmAntes),bCRM=parseInt(crmDepois);
-  const mSol=MEDICOS.find(x=>x.c===sCRM);
-  const mSub=MEDICOS.find(x=>x.c===bCRM);
-  if(!mSol||!mSub){console.warn('[trocaAuto] Profissional não encontrado:',sCRM,bCRM);return}
-  // Reconstruir turno a partir do TURNOS[ti]
-  const turno=TURNOS[ti]?TURNOS[ti].l:`Turno ${ti}`;
-  const area=TURNOS[ti]?TURNOS[ti].a:'';
+  const turnoObj=obterTurnosDoMes(mes,ano)[ti]||TURNOS[ti]||{};
+  const turnoBase=turnoObj.l||`Turno ${ti}`;
+  const area=turnoObj.a||'';
   const dtPlantao=new Date(ano,mes-1,diaMes,12,0,0);
   const dataStr=`${String(diaMes).padStart(2,'0')}/${MA[mes]}/${ano}`;
-  const solNome=mSol.n.toUpperCase();
-  const subNome=mSub.n.toUpperCase();
-  // Detectar meio plantão (se valDepois ou valAntes contém #1/#2)
-  let metade=null;
-  const tagDepois=valDepois.match(/#([12])/);
-  if(tagDepois)metade=tagDepois[1];
-  const nova={
-    id:'',sol:solNome,sCRM:sCRM,sub:subNome,bCRM:bCRM,
-    data:dataStr,dt:dtPlantao,turno:turno,area:area,
-    metade,motivo:'Alteração manual pelo gestor (escala publicada)',
-    status:'aprovado',// já aprovada porque foi o gestor que fez
-    mes:mes,ano:ano,vis:[solNome,subNome]
+
+  const crmParte=v=>{const m=String(v||'').match(/\((\d+)\)/);return m?parseInt(m[1]):null;};
+  const partes12=v=>{
+    if(String(v||'').includes('|')){
+      const ps=String(v).split('|').map(x=>x.trim());
+      const p1=ps.find(x=>/#1\s*$/.test(x))||ps[0]||'';
+      const p2=ps.find(x=>/#2\s*$/.test(x))||ps[1]||'';
+      return [p1,p2];
+    }
+    return [v||'',v||''];
   };
-  nova.id=gerarCodigoTroca(nova);
-  let baseId=nova.id,ctr=2;
-  while(TROCAS.find(t=>t.id===nova.id)){nova.id=baseId+'-v'+ctr;ctr++;}
-  const r=await salvarTroca(nova);
-  if(r.ok){
-    TROCAS.unshift(nova);
-    showToast('✓ Troca automática registrada: O.S. '+nova.id);
-    console.log('[trocaAuto] Troca registrada:',nova.id,solNome,'→',subNome);
-  } else {
-    console.error('[trocaAuto] FALHA ao registrar troca automática:',r.error);
-    showToast('⚠ Plantão salvo, mas falhou em registrar troca: '+r.error,true);
+  const temDivisao=String(valAntes||'').includes('|')||String(valDepois||'').includes('|');
+
+  async function registrarAuto(sCRM,bCRM,metade){
+    if(!sCRM||!bCRM||sCRM===bCRM)return;
+    const mSol=MEDICOS.find(x=>x.c===sCRM),mSub=MEDICOS.find(x=>x.c===bCRM);
+    if(!mSol||!mSub)return;
+    let turno=turnoBase;
+    if(metade==='1')turno=turnoObj.not?'19:00–01:00 (1ª metade)':'07:00–13:00 (1ª metade)';
+    if(metade==='2')turno=turnoObj.not?'01:00–07:00 (2ª metade)':'13:00–19:00 (2ª metade)';
+    const solNome=mSol.n.toUpperCase(),subNome=mSub.n.toUpperCase();
+    const nova={id:'',sol:solNome,sCRM,sub:subNome,bCRM,data:dataStr,dt:dtPlantao,turno,area,
+      turnoIdx:ti,linhaRef:turnoBase,metade:metade||null,retroativa:dtPlantao<hoje(),
+      motivo:'Alteração manual pelo gestor (escala publicada)',status:'aprovado',mes,ano,vis:[solNome,subNome]};
+    nova.id=gerarCodigoTroca(nova);let baseId=nova.id,ctr=2;
+    while(TROCAS.find(t=>t.id===nova.id)){nova.id=baseId+'-v'+ctr;ctr++;}
+    const r=await salvarTroca(nova);
+    if(r.ok){TROCAS.unshift(nova);console.log('[trocaAuto] Troca registrada:',nova.id,solNome,'→',subNome);}
+    else{console.error('[trocaAuto] FALHA:',r.error);showToast('⚠ Plantão salvo, mas falhou em registrar troca: '+r.error,true);}
   }
+
+  if(temDivisao&&turnoObj.h===12){
+    const antes=partes12(valAntes),depois=partes12(valDepois);
+    for(let i=0;i<2;i++){
+      const a=crmParte(antes[i]),d=crmParte(depois[i]);
+      // Vaga⇄preenchido não é registrada como troca automática.
+      if(a&&d&&a!==d)await registrarAuto(a,d,String(i+1));
+    }
+    return;
+  }
+
+  const crmAntes=crmParte(valAntes),crmDepois=crmParte(valDepois);
+  if(!crmAntes||!crmDepois||crmAntes===crmDepois)return;
+  await registrarAuto(crmAntes,crmDepois,null);
 }
 
 // ══ ESCALA BASE ══
@@ -4126,7 +4243,7 @@ function renderTrocas(filtro=trFiltro){
       <div class="tr-dot ${t.status}"></div>
       <div class="tr-b">
         <div class="tr-t">${nomeCurto(t.sol)} → ${nomeCurto(t.sub)}</div>
-        <div class="tr-m">📅 ${t.data} · ${t.turno}<br><span class="${ac[t.area]||'ch-cm'}" style="margin-top:2px">${t.area}</span>${t.motivo?` · 💬 ${t.motivo}`:''}</div>
+        <div class="tr-m">📅 ${t.data} · ${t.turno}<br><span class="${ac[t.area]||'ch-cm'}" style="margin-top:2px">${t.area}</span>${t.retroativa?'<span style="display:inline-block;margin-left:5px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:5px;padding:1px 6px;font-size:9px;font-weight:800">⚠ RETROATIVA</span>':''}${t.motivo?` · 💬 ${t.motivo}`:''}</div>
         <div style="font-family:monospace;font-size:10px;color:var(--text3);margin-top:4px;padding:2px 6px;background:var(--bg3);border-radius:4px;display:inline-block" title="Código da troca (copie para buscar no banco)">O.S. ${t.id||'—'}</div>
         ${isSub&&t.status==='pendente'?'<div class="tr-tag">⚠️ Você é o substituto indicado</div>':''}
         ${ehSolicitante&&t.status==='pendente'?'<div style="font-size:10px;color:var(--amber);margin-top:2px">⏳ Aguardando aprovação do gestor</div>':''}
@@ -4178,7 +4295,7 @@ async function recarregarTrocas(){
         data:dt.toLocaleDateString('pt-BR'),dt:dt,
         turno:t.turno,area:t.area,motivo:t.motivo||'',metade:metadeSan,
         status:t.status,mes:t.mes,ano:t.ano,
-        turnoIdx:extrairTurnoIdxTroca(visRaw),linhaRef:extrairLinhaRefTroca(visRaw),vis:limparVisTroca(visRaw)
+        turnoIdx:extrairTurnoIdxTroca(visRaw),linhaRef:extrairLinhaRefTroca(visRaw),retroativa:extrairRetroativaTroca(visRaw),vis:limparVisTroca(visRaw)
       });
     });
     renderTrocas();
@@ -4461,6 +4578,9 @@ function atualizarBadge(){
 let trSolGestor=null;// {crm, nome} quando gestor escolhe solicitante; null = próprio usuário
 function abrirMoTroca(){
   trSolGestor=null;
+  const naPaginaTrocas=document.getElementById('page-trocas')?.classList.contains('active');
+  trCtxMes=naPaginaTrocas?trMes:meuMes;
+  trCtxAno=naPaginaTrocas?trAno:meuAno;
   // Mostrar campo solicitante apenas para gestor
   const solWrap=document.getElementById('tr-sol-wrap');
   const titulo=document.getElementById('mo-tr-titulo');
@@ -4488,25 +4608,31 @@ function abrirMoTroca(){
   const meioCk=document.getElementById('tr-meio-check');if(meioCk)meioCk.checked=false;
   const meioOpc=document.getElementById('tr-meio-opcoes');if(meioOpc)meioOpc.style.display='none';
   const meioWrap=document.getElementById('tr-meio-wrap');if(meioWrap)meioWrap.style.display='none';
+  const retroAviso=document.getElementById('tr-retro-aviso');if(retroAviso)retroAviso.style.display='none';
   abrirMo('mo-troca');
 }
 
 // Popula o select de plantões para um CRM (interno) específico
+let trCtxMes=null,trCtxAno=null;
 function popularPlantoesTroca(crm){
-  const pts=plantoesDe(crm,meuMes,meuAno);
+  const mesCtx=trCtxMes||meuMes,anoCtx=trCtxAno||meuAno;
+  const pts=plantoesDe(crm,mesCtx,anoCtx);
   const hj=hoje();
-  const futuros=pts.filter(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d>=hj});
   const sel=document.getElementById('tr-plantao');
   sel.innerHTML='<option value="">— Selecione o plantão —</option>';
-  futuros.forEach(p=>{
+  pts.forEach(p=>{
+    const dt0=new Date(p.dt);dt0.setHours(0,0,0,0);
+    const retro=dt0<hj;
     const o=document.createElement('option');
-    o.value=JSON.stringify({dia:p.dia,turno:p.turno,linhaRef:p.linhaRef||p.turno,area:p.area,not:p.not,h:p.h,turnoIdx:p.turnoIdx,mes:meuMes,ano:meuAno});
+    o.value=JSON.stringify({dia:p.dia,turno:p.turno,linhaRef:p.linhaRef||p.turno,area:p.area,not:p.not,h:p.h,turnoIdx:p.turnoIdx,mes:mesCtx,ano:anoCtx,retroativa:retro,meioPlantao:p.meioPlantao===true,metade:p.metade||null});
     o.dataset.turno=p.turno;o.dataset.area=p.area;
-    o.dataset.horas=p.h;o.dataset.not=p.not?'1':'0';
-    o.textContent=`${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${meuMes.toString().padStart(2,'0')} · ${p.turno}`;
+    o.dataset.horas=p.h;o.dataset.not=p.not?'1':'0';o.dataset.retro=retro?'1':'0';
+    o.dataset.meio=p.meioPlantao?'1':'0';o.dataset.metade=p.metade||'';
+    o.textContent=`${retro?'⚠ PASSADO · ':''}${diaS(p.dt)} ${p.dia.toString().padStart(2,'0')}/${mesCtx.toString().padStart(2,'0')} · ${p.turno}${p.meioPlantao?' · 6h':''}`;
     sel.appendChild(o);
   });
-  document.getElementById('mo-tr-sub').textContent=futuros.length?`${futuros.length} plantão(ões) disponíveis`:'Nenhum plantão futuro este mês';
+  const passados=pts.filter(p=>{const d=new Date(p.dt);d.setHours(0,0,0,0);return d<hj}).length;
+  document.getElementById('mo-tr-sub').textContent=pts.length?`${pts.length} plantão(ões) neste mês${passados?` · ${passados} já realizado(s)`:''}`:'Nenhum plantão encontrado neste mês';
 }
 
 // Autocomplete do solicitante (apenas gestor)
@@ -4541,6 +4667,9 @@ function atualizarTrTurno(){
   // Mostrar opção de meio plantão APENAS se o plantão é de 12h
   const horas=o&&o.dataset.horas?parseInt(o.dataset.horas):0;
   const not=o&&o.dataset.not==='1';
+  const retro=o&&o.dataset.retro==='1';
+  const retroAviso=document.getElementById('tr-retro-aviso');
+  if(retroAviso)retroAviso.style.display=retro?'block':'none';
   const wrap=document.getElementById('tr-meio-wrap');
   if(horas===12){
     wrap.style.display='block';
@@ -4575,6 +4704,13 @@ async function enviarTroca(){
   // ═══ VALIDAÇÃO DE DUPLICIDADE ═══
   // Bloquear se já existe troca pendente do mesmo solicitante para este plantão
   const piPre=JSON.parse(pv);
+  const dtSelecionado=new Date(piPre.ano||trCtxAno||meuAno,(piPre.mes||trCtxMes||meuMes)-1,piPre.dia,12,0,0);
+  const dtSel0=new Date(dtSelecionado);dtSel0.setHours(0,0,0,0);
+  const retroativa=dtSel0<hoje();
+  if(retroativa){
+    const okRetro=confirm(`⚠️ TROCA RETROATIVA\n\nO plantão selecionado ocorreu em ${String(piPre.dia).padStart(2,'0')}/${String(piPre.mes||trCtxMes||meuMes).padStart(2,'0')}/${piPre.ano||trCtxAno||meuAno}.\n\nDeseja realmente registrar esta troca após a data do plantão?\n\nA solicitação ficará identificada como RETROATIVA para conferência do gestor.`);
+    if(!okRetro)return;
+  }
   const dataKey=`${(piPre.ano||meuAno)}-${String(piPre.mes||meuMes).padStart(2,'0')}-${String(piPre.dia).padStart(2,'0')}`;
   const turnoBase=piPre.turno;
   // SOLICITANTE: se gestor escolheu outro plantonista, usa esse; senão, próprio usuário
@@ -4616,7 +4752,11 @@ async function enviarTroca(){
     if(tDataKey!==dataKey)return false;
     // Para trocas novas, a duplicidade é do plantão EXATO (mesma linha/turno_idx).
     if(Number.isInteger(t.turnoIdx)&&Number.isInteger(piPre.turnoIdx)){
-      return t.turnoIdx===piPre.turnoIdx;
+      if(t.turnoIdx!==piPre.turnoIdx)return false;
+      const metadeNova=piPre.meioPlantao?String(piPre.metade||''):'';
+      const metadeExist=String(t.metade||'');
+      if(metadeNova||metadeExist)return metadeNova===metadeExist;
+      return true;
     }
     // Compatibilidade com trocas antigas, que não possuíam turno_idx persistido.
     const turnoTroca=String(t.turno||'').replace(/\s*\([1-2]ª metade\)/,'').trim();
@@ -4703,16 +4843,17 @@ async function enviarTroca(){
   const sNomeFinal=solNome;
   const df=`${pi.dia.toString().padStart(2,'0')}/${MA[pi.mes||meuMes]}/${pi.ano||meuAno}`;
   const dtPlantao=new Date(pi.ano||meuAno,(pi.mes||meuMes)-1,pi.dia,12,0,0);
-  // Capturar meio plantão se marcado
+  // Capturar meio plantão. Se o plantão já está dividido manualmente, a metade vem da própria escala.
   const meioCk=document.getElementById('tr-meio-check');
-  const isMeio=meioCk&&meioCk.checked;
-  let metade=null;
-  if(isMeio){
+  const meioJaExistente=pi.meioPlantao===true&&(pi.metade==='1'||pi.metade==='2');
+  const isMeio=meioJaExistente||!!(meioCk&&meioCk.checked);
+  let metade=meioJaExistente?pi.metade:null;
+  if(isMeio&&!meioJaExistente){
     const radioSel=document.querySelector('input[name="tr-metade"]:checked');
     metade=radioSel?radioSel.value:'2';
   }
   let turnoExibir=pi.turno;
-  if(isMeio){
+  if(isMeio&&!meioJaExistente){
     const not=pi.not===true;
     if(metade==='1'){
       turnoExibir=not?'19:00–01:00 (1ª metade)':'07:00–13:00 (1ª metade)';
@@ -4724,7 +4865,7 @@ async function enviarTroca(){
     data:df,dt:dtPlantao,turno:turnoExibir,area:pi.area,
     turnoIdx:Number.isInteger(pi.turnoIdx)?pi.turnoIdx:null,
     linhaRef:pi.linhaRef||pi.turno,
-    metade,
+    metade,retroativa,
     motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[sNomeFinal,subNome]};
   nova.id=gerarCodigoTroca(nova);
   let baseId=nova.id,ctr=2;
@@ -4740,7 +4881,8 @@ async function enviarTroca(){
   TROCAS.unshift(nova);
   const uniLinhaExt=isExt?'\nUnidade de origem: '+document.getElementById('tr-ext-uni').value:'';
   const tagMeio=isMeio?'\n⇄ MEIO PLANTÃO ('+(metade==='1'?'1ª':'2ª')+' metade — 6h)':'';
-  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${sNomeFinal}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${turnoExibir}${tagMeio}\n\nO.S. ${nova.id}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
+  const tagRetro=retroativa?'\n⚠ TROCA RETROATIVA — registrada após a data do plantão':'';
+  const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${sNomeFinal}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${turnoExibir}${tagMeio}${tagRetro}\n\nO.S. ${nova.id}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
   document.getElementById('wpp-msg').textContent=msg;
   document.getElementById('btn-cp').textContent='Copiar';document.getElementById('btn-cp').classList.remove('ok');
   fecharMo('mo-troca');abrirMo('mo-conf');renderAll();
