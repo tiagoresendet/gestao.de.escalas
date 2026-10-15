@@ -9,6 +9,7 @@
 <title>Kos App — Gestão de Plantões</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -1275,6 +1276,9 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     <div id="tr-retro-aviso" style="display:none;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:var(--r2);padding:9px 11px;margin:-4px 0 12px;font-size:11px;font-weight:600">
       ⚠️ Este plantão já ocorreu. A solicitação será registrada como <strong>TROCA RETROATIVA</strong> e exigirá confirmação antes do envio.
     </div>
+    <div id="tr-futuro-aviso" style="display:none;background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:var(--r2);padding:9px 11px;margin:-4px 0 12px;font-size:11px;font-weight:600">
+      ⚠️ <strong>Escala do mês seguinte:</strong> esta escala ainda é passível de alterações pela Gestão. As trocas poderão ser suspensas caso haja necessidade de adequação da escala.
+    </div>
     <div class="fg"><label class="fl">Turno</label><input type="text" class="fi" id="tr-turno" readonly style="color:var(--text2)"></div>
     <div class="fg"><label class="fl">Área</label><input type="text" class="fi" id="tr-area" readonly style="color:var(--text2)"></div>
     <div class="fg" id="tr-sub-container" style="position:relative">
@@ -1330,7 +1334,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
       <button class="btn-cp" id="btn-cp" onclick="copiarMsg()">Copiar</button>
       <div class="wpp-msg" id="wpp-msg"></div>
     </div>
-    <div class="m-act"><button class="btn btn-g" onclick="fecharMo('mo-conf')">Fechar</button></div>
+    <div class="m-act">
+      <button class="btn btn-g" onclick="fecharMo('mo-conf')">Fechar</button>
+      <button class="btn btn-p" id="btn-doc-troca" onclick="gerarDocumentoTroca()">📄 Gerar documento de troca</button>
+    </div>
   </div>
 </div>
 
@@ -4576,6 +4583,14 @@ function atualizarBadge(){
 // ══ SOLICITAR TROCA ══
 // Estado para gestor lançando troca em nome de outro
 let trSolGestor=null;// {crm, nome} quando gestor escolhe solicitante; null = próprio usuário
+let ultimaTrocaEnviada=null;// usada apenas para gerar o documento/PDF após o envio
+
+function ehMesSeguinte(mes,ano){
+  const h=hoje();
+  let m=h.getMonth()+2,a=h.getFullYear();
+  if(m>12){m=1;a++;}
+  return Number(mes)===m&&Number(ano)===a;
+}
 function abrirMoTroca(){
   trSolGestor=null;
   const naPaginaTrocas=document.getElementById('page-trocas')?.classList.contains('active');
@@ -4609,6 +4624,7 @@ function abrirMoTroca(){
   const meioOpc=document.getElementById('tr-meio-opcoes');if(meioOpc)meioOpc.style.display='none';
   const meioWrap=document.getElementById('tr-meio-wrap');if(meioWrap)meioWrap.style.display='none';
   const retroAviso=document.getElementById('tr-retro-aviso');if(retroAviso)retroAviso.style.display='none';
+  const futuroAviso=document.getElementById('tr-futuro-aviso');if(futuroAviso)futuroAviso.style.display='none';
   abrirMo('mo-troca');
 }
 
@@ -4616,9 +4632,14 @@ function abrirMoTroca(){
 let trCtxMes=null,trCtxAno=null;
 function popularPlantoesTroca(crm){
   const mesCtx=trCtxMes||meuMes,anoCtx=trCtxAno||meuAno;
+  const sel=document.getElementById('tr-plantao');
+  if(!ePub(mesCtx,anoCtx)){
+    sel.innerHTML='<option value="">— Escala ainda não liberada —</option>';
+    document.getElementById('mo-tr-sub').textContent=`A escala de ${MP[mesCtx]}/${anoCtx} ainda não foi liberada. As trocas serão habilitadas após a publicação.`;
+    return;
+  }
   const pts=plantoesDe(crm,mesCtx,anoCtx);
   const hj=hoje();
-  const sel=document.getElementById('tr-plantao');
   sel.innerHTML='<option value="">— Selecione o plantão —</option>';
   pts.forEach(p=>{
     const dt0=new Date(p.dt);dt0.setHours(0,0,0,0);
@@ -4670,6 +4691,11 @@ function atualizarTrTurno(){
   const retro=o&&o.dataset.retro==='1';
   const retroAviso=document.getElementById('tr-retro-aviso');
   if(retroAviso)retroAviso.style.display=retro?'block':'none';
+  let piSel=null;
+  try{piSel=o&&o.value?JSON.parse(o.value):null}catch(e){}
+  const futuro=!!(piSel&&ehMesSeguinte(piSel.mes,piSel.ano));
+  const futuroAviso=document.getElementById('tr-futuro-aviso');
+  if(futuroAviso)futuroAviso.style.display=futuro?'block':'none';
   const wrap=document.getElementById('tr-meio-wrap');
   if(horas===12){
     wrap.style.display='block';
@@ -4707,9 +4733,19 @@ async function enviarTroca(){
   const dtSelecionado=new Date(piPre.ano||trCtxAno||meuAno,(piPre.mes||trCtxMes||meuMes)-1,piPre.dia,12,0,0);
   const dtSel0=new Date(dtSelecionado);dtSel0.setHours(0,0,0,0);
   const retroativa=dtSel0<hoje();
+  const mesTroca=piPre.mes||trCtxMes||meuMes,anoTroca=piPre.ano||trCtxAno||meuAno;
+  if(!ePub(mesTroca,anoTroca)){
+    showToast('A escala deste mês ainda não foi liberada para trocas.',true);
+    return;
+  }
   if(retroativa){
-    const okRetro=confirm(`⚠️ TROCA RETROATIVA\n\nO plantão selecionado ocorreu em ${String(piPre.dia).padStart(2,'0')}/${String(piPre.mes||trCtxMes||meuMes).padStart(2,'0')}/${piPre.ano||trCtxAno||meuAno}.\n\nDeseja realmente registrar esta troca após a data do plantão?\n\nA solicitação ficará identificada como RETROATIVA para conferência do gestor.`);
+    const okRetro=confirm(`⚠️ TROCA RETROATIVA\n\nO plantão selecionado ocorreu em ${String(piPre.dia).padStart(2,'0')}/${String(mesTroca).padStart(2,'0')}/${anoTroca}.\n\nDeseja realmente registrar esta troca após a data do plantão?\n\nA solicitação ficará identificada como RETROATIVA para conferência do gestor.`);
     if(!okRetro)return;
+  }
+  const mesSeguinte=ehMesSeguinte(mesTroca,anoTroca);
+  if(mesSeguinte){
+    const okFuturo=confirm(`⚠️ ESCALA DO MÊS SEGUINTE\n\nA escala de ${MP[mesTroca]}/${anoTroca} já está liberada, porém ainda é passível de alterações pela Gestão.\n\nAs trocas solicitadas para este mês poderão ser suspensas caso seja necessária alguma adequação da escala.\n\nDeseja prosseguir com a solicitação de troca?`);
+    if(!okFuturo)return;
   }
   const dataKey=`${(piPre.ano||meuAno)}-${String(piPre.mes||meuMes).padStart(2,'0')}-${String(piPre.dia).padStart(2,'0')}`;
   const turnoBase=piPre.turno;
@@ -4865,7 +4901,8 @@ async function enviarTroca(){
     data:df,dt:dtPlantao,turno:turnoExibir,area:pi.area,
     turnoIdx:Number.isInteger(pi.turnoIdx)?pi.turnoIdx:null,
     linhaRef:pi.linhaRef||pi.turno,
-    metade,retroativa,
+    metade,retroativa,alertaMesSeguinte:mesSeguinte,meioPlantao:isMeio,
+    unidadeSub:isExt?document.getElementById('tr-ext-uni').value:'',
     motivo:document.getElementById('tr-motivo').value.trim(),status:'pendente',mes:pi.mes||meuMes,ano:pi.ano||meuAno,vis:[sNomeFinal,subNome]};
   nova.id=gerarCodigoTroca(nova);
   let baseId=nova.id,ctr=2;
@@ -4885,8 +4922,50 @@ async function enviarTroca(){
   const msg=`🚨🚨🚨🚨🚨🚨🚨🚨🚨\nCOMUNICO PASSAGEM DE PLANTÃO\nUnidade: CAIS Campinas\n\nPLANTONISTA\n${sNomeFinal}\n\nSUBSTITUTO\n${subNome}${uniLinhaExt}\n\nDATA: ${df}\nHORÁRIO: ${turnoExibir}${tagMeio}${tagRetro}\n\nO.S. ${nova.id}\n🚨🚨🚨🚨🚨🚨🚨🚨🚨`;
   document.getElementById('wpp-msg').textContent=msg;
   document.getElementById('btn-cp').textContent='Copiar';document.getElementById('btn-cp').classList.remove('ok');
+  ultimaTrocaEnviada={...nova,mensagemWhatsApp:msg};
   fecharMo('mo-troca');abrirMo('mo-conf');renderAll();
 }
+
+function gerarDocumentoTroca(){
+  const t=ultimaTrocaEnviada;
+  if(!t){showToast('Nenhuma troca recente disponível para gerar o documento.',true);return;}
+  if(!window.jspdf||!window.jspdf.jsPDF){showToast('Não foi possível carregar o gerador de PDF. Verifique a conexão e tente novamente.',true);return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const margem=18,larg=210-(margem*2);
+  let y=20;
+  const add=(txt,size=10,bold=false,space=6)=>{
+    doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);
+    const linhas=doc.splitTextToSize(String(txt||''),larg);doc.text(linhas,margem,y);
+    y+=linhas.length*(size*0.36)+space;
+  };
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('TERMO DE TROCA DE PLANTÃO',105,y,{align:'center'});y+=9;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text('CAIS Campinas — Gestão de Plantões',105,y,{align:'center'});y+=12;
+  doc.setDrawColor(180);doc.line(margem,y,210-margem,y);y+=8;
+  add(`O.S.: ${t.id}`,10,true,4);
+  add(`Data do plantão: ${t.data}`,10,false,4);
+  add(`Horário: ${t.turno}`,10,false,4);
+  add(`Área: ${t.area||'-'}`,10,false,7);
+  if(t.retroativa)add('ATENÇÃO: TROCA RETROATIVA — solicitação registrada após a data do plantão.',9,true,5);
+  if(t.alertaMesSeguinte)add('AVISO: escala do mês seguinte passível de alterações pela Gestão; a troca poderá ser suspensa se houver necessidade de adequação da escala.',9,true,7);
+  add('PLANTONISTA QUE CEDE O PLANTÃO',10,true,4);
+  add(`${t.sol} — CRM ${t.sCRM||'-'}`,11,false,8);
+  add('PROFISSIONAL SUBSTITUTO',10,true,4);
+  add(`${t.sub} — CRM ${t.bCRM||'-'}${t.unidadeSub?` — Origem: ${t.unidadeSub}`:''}`,11,false,8);
+  if(t.motivo)add(`Motivo informado: ${t.motivo}`,10,false,8);
+  add('Declaro que estou de acordo com a troca de plantão acima identificada, responsabilizando-me pelas informações prestadas e pelo cumprimento do plantão conforme descrito neste documento.',9,false,16);
+  const yAss=Math.max(y,190);
+  doc.line(margem,yAss,margem+70,yAss);doc.line(210-margem-70,yAss,210-margem,yAss);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Assinatura do plantonista',margem+35,yAss+5,{align:'center'});
+  doc.text('Assinatura do substituto',210-margem-35,yAss+5,{align:'center'});
+  doc.setFontSize(8);doc.text(`${t.sol} — CRM ${t.sCRM||'-'}`,margem+35,yAss+10,{align:'center'});
+  doc.text(`${t.sub} — CRM ${t.bCRM||'-'}`,210-margem-35,yAss+10,{align:'center'});
+  doc.setFontSize(8);doc.text(`Documento gerado pelo Kos App em ${new Date().toLocaleString('pt-BR')}`,105,282,{align:'center'});
+  const nome=`Troca_${String(t.id||'plantao').replace(/[^a-zA-Z0-9_-]/g,'_')}.pdf`;
+  doc.save(nome);
+}
+
 function copiarMsg(){navigator.clipboard.writeText(document.getElementById('wpp-msg').textContent).then(()=>{const b=document.getElementById('btn-cp');b.textContent='✓ Copiado!';b.classList.add('ok')})}
 
 // Verifica CRM duplicado em tempo real ao digitar
