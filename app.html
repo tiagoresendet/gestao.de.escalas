@@ -517,6 +517,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="ph">
           <div><div class="pt">Dashboard</div><div class="ps" id="dash-sub"></div></div>
           <div class="ph-r">
+            <div class="mc">
+              <button class="mc-b" onclick="mudarDashboardMes(-1)" title="Mês anterior">‹</button>
+              <span class="mc-l" id="mc-dash"></span>
+              <button class="mc-b" onclick="mudarDashboardMes(1)" title="Próximo mês">›</button>
+              <button class="mc-b" onclick="voltarDashboardMesVigente()" title="Voltar para o mês vigente" style="margin-left:6px;font-size:11px">📅 Hoje</button>
+            </div>
             <button class="btn btn-p btn-sm" onclick="abrirModalRelMensal()">📋 Relatório Mensal</button>
           </div>
         </div>
@@ -531,14 +537,14 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
         <div class="two-col" style="margin-bottom:12px">
           <div class="card" style="padding:10px 12px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;flex-wrap:wrap">
-              <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">📅 Hoje · <span id="d-hoje-data" style="color:var(--text3);font-weight:600"></span></div>
+              <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.04em">📅 <span id="d-hoje-title">Hoje</span> · <span id="d-hoje-data" style="color:var(--text3);font-weight:600"></span></div>
               <span id="d-hoje-count" style="font-size:11px;color:var(--text3);font-weight:600"></span>
             </div>
             <div id="d-hoje-list"></div>
           </div>
           <div class="card" style="padding:10px 12px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;flex-wrap:wrap">
-              <div style="font-size:11px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.04em">📅 Amanhã · <span id="d-amanha-data" style="color:var(--text3);font-weight:600"></span></div>
+              <div style="font-size:11px;font-weight:700;color:#0284c7;text-transform:uppercase;letter-spacing:.04em">📅 <span id="d-amanha-title">Amanhã</span> · <span id="d-amanha-data" style="color:var(--text3);font-weight:600"></span></div>
               <span id="d-amanha-count" style="font-size:11px;color:var(--text3);font-weight:600"></span>
             </div>
             <div id="d-amanha-list"></div>
@@ -1827,6 +1833,7 @@ let curUser={n:'Tiago Resende Telles',c:28691,ava:'TR',cargo:'Gestor de Escala',
 const _agora=new Date();
 let mesMes=_agora.getMonth()+1,mesAno=_agora.getFullYear();
 let meuMes=mesMes,meuAno=mesAno,trMes=mesMes,trAno=mesAno;
+let dashMes=mesMes,dashAno=mesAno;
 let relMes=mesMes,relAno=mesAno,viewerMes=mesMes,viewerAno=mesAno,calMes=mesMes,calAno=mesAno;
 let editCtx=null,editMedIdx=null,editSenhaIdx=null,trFiltro='pendente',relFiltroAtual='todos';
 let ccAbaAtual='int';
@@ -5352,6 +5359,17 @@ function abrirMoTrocaEsp(dia,turno,area){
 }
 
 // ══ DASHBOARD GESTOR (5 LINHAS) ══
+function mudarDashboardMes(d){
+  dashMes+=d;
+  if(dashMes>12){dashMes=1;dashAno++;}
+  if(dashMes<1){dashMes=12;dashAno--;}
+  renderDashboard();
+}
+function voltarDashboardMesVigente(){
+  const ag=new Date();
+  dashMes=ag.getMonth()+1;dashAno=ag.getFullYear();
+  renderDashboard();
+}
 function renderDashboard(){
   try {
     return _renderDashboardImpl();
@@ -5364,31 +5382,32 @@ function renderDashboard(){
 function _renderDashboardImpl(){
   const internos=MEDICOS.filter(m=>m.a!=='GESTOR'&&!m.ext);
   const externos=MEDICOS.filter(m=>m.ext);
-  document.getElementById('dash-sub').textContent=`${MP[mesMes]} ${mesAno}`;
+  document.getElementById('dash-sub').textContent=`${MP[dashMes]} ${dashAno}`;
+  const mcDash=document.getElementById('mc-dash');if(mcDash)mcDash.textContent=`${MP[dashMes]} ${dashAno}`;
 
   // ─── DADOS BASE ───
-  const todosPts=gerarPlantoesMes(mesMes,mesAno);
+  const todosPts=gerarPlantoesMes(dashMes,dashAno);
   const totalH=todosPts.reduce((s,p)=>s+(p.h||0),0);
   const totalP=todosPts.length;
   const pendList=TROCAS.filter(t=>t.status==='pendente');
-  const escPub=ePub(mesMes,mesAno);
+  const escPub=ePub(dashMes,dashAno);
 
   // Próximo mês
-  const nMes=mesMes===12?1:mesMes+1;
-  const nAno=mesMes===12?mesAno+1:mesAno;
+  const nMes=dashMes===12?1:dashMes+1;
+  const nAno=dashMes===12?dashAno+1:dashAno;
   const nMesTemEsc=ESCMES[keyMes(nMes,nAno)]?Object.keys(ESCMES[keyMes(nMes,nAno)]).length>0:false;
 
   // Vagas em branco — total de slots possíveis vs preenchidos
   // (estimativa: para cada dia do mês × 16 slots, mas só conta turnos que não sejam '—')
-  const diasNoMes=new Date(mesAno,mesMes,0).getDate();
+  const diasNoMes=new Date(dashAno,dashMes,0).getDate();
   let vagasTotais=0,vagasVazias=0;
   for(let d=1;d<=diasNoMes;d++){
-    const dt=new Date(mesAno,mesMes-1,d);
+    const dt=new Date(dashAno,dashMes-1,d);
     const ciclo=getCiclo(dt);
     const ab=DA[JTC[dt.getDay()]];
-    const qtdTurnosDia=obterTurnosDoMes(mesMes,mesAno).length;
+    const qtdTurnosDia=obterTurnosDoMes(dashMes,dashAno).length;
     for(let ti=0;ti<qtdTurnosDia;ti++){
-      const v=getSlotValDia(mesMes,mesAno,ciclo,ab,ti,d);
+      const v=getSlotValDia(dashMes,dashAno,ciclo,ab,ti,d);
       vagasTotais++;
       if(!v||v.trim()==='')vagasVazias++;
     }
@@ -5396,15 +5415,15 @@ function _renderDashboardImpl(){
   const cobPct=0;// removido do dashboard a pedido do usuário (era % cobertura)
 
   // Declarações pendentes (sistema novo: pelo menos um plantão pendente)
-  const externosNoMes=coletarExternosMes(mesMes,mesAno);
+  const externosNoMes=coletarExternosMes(dashMes,dashAno);
   const decsPend=externosNoMes.filter(x=>{
-    const st=decsPendentesExterno(x.med.c,mesMes,mesAno);
+    const st=decsPendentesExterno(x.med.c,dashMes,dashAno);
     return st.pendentes>0;
   });
 
   // Pendências acumuladas em meses anteriores (últimos 12 meses com snapshot).
   let decPendAnteriores=0;
-  let _hm=mesMes,_ha=mesAno;
+  let _hm=dashMes,_ha=dashAno;
   for(let _i=0;_i<12;_i++){
     _hm--;if(_hm<1){_hm=12;_ha--;}
     if(!temSnapshot(_hm,_ha))continue;
@@ -5421,16 +5440,19 @@ function _renderDashboardImpl(){
       const partes=String(m.data_nascimento).split('-');// formato YYYY-MM-DD
       if(partes.length!==3)return null;
       const mn=parseInt(partes[1]),dn=parseInt(partes[2]);
-      if(mn!==mesMes)return null;
+      if(mn!==dashMes)return null;
       return {n:m.n,dia:dn,med:m};
     })
     .filter(Boolean)
     .sort((a,b)=>a.dia-b.dia);
 
-  // Escala de hoje e amanhã: SEMPRE lê o mês real da data e somente a escala PUBLICADA.
-  // Não depende do mês que o gestor esteja navegando no dashboard.
-  const hj0=hoje();
-  const amanha=new Date(hj0);amanha.setDate(amanha.getDate()+1);
+  // Escala operacional do Dashboard. No mês vigente mostra Hoje/Amanhã.
+  // Em outro mês, mostra os dias 01 e 02 do próprio mês selecionado para não misturar períodos.
+  const agoraDash=new Date();
+  const ehMesVigente=dashMes===agoraDash.getMonth()+1&&dashAno===agoraDash.getFullYear();
+  const hj0=ehMesVigente?hoje():new Date(dashAno,dashMes-1,1);
+  const amanha=ehMesVigente?new Date(hj0):new Date(dashAno,dashMes-1,2);
+  if(ehMesVigente)amanha.setDate(amanha.getDate()+1);
   const plantoesPublicadosDoDia=(dt)=>{
     const m=dt.getMonth()+1,a=dt.getFullYear();
     if(!ePub(m,a))return {publicada:false,pts:[]};
@@ -5465,6 +5487,8 @@ function _renderDashboardImpl(){
     const botao=sobra>0?`<button onclick="window._dashAlertExp=window._dashAlertExp||{};window._dashAlertExp['${idExpand}']=${!exp};renderDashboard()" style="background:transparent;border:1px solid var(--border2);color:var(--blue);font-size:10px;font-weight:600;padding:3px 9px;border-radius:5px;cursor:pointer;margin-top:5px;width:100%">${exp?'▲ Recolher':`▼ Mostrar todos (${pts.length})`}</button>`:'';
     return linhas+botao;
   };
+  const elHt=document.getElementById('d-hoje-title');if(elHt)elHt.textContent=ehMesVigente?'Hoje':'Dia 01';
+  const elAt=document.getElementById('d-amanha-title');if(elAt)elAt.textContent=ehMesVigente?'Amanhã':'Dia 02';
   const elHd=document.getElementById('d-hoje-data');if(elHd)elHd.textContent=fmtData(hj0);
   const elHc=document.getElementById('d-hoje-count');if(elHc)elHc.textContent=hojePub.publicada?(ptsHoje.length+' plantões'):'escala não publicada';
   const elHl=document.getElementById('d-hoje-list');if(elHl)elHl.innerHTML=hojePub.publicada?renderListaCompacta(ptsHoje,'exp-hoje'):'<div style="color:var(--amber);font-size:11px;padding:6px 0;font-weight:600">⚠ Escala deste mês ainda não está publicada</div>';
@@ -5504,8 +5528,8 @@ function _renderDashboardImpl(){
 
   // Cards expansíveis (lista): Aniversariantes — Hoje/Amanhã ficam em seção compacta separada
   if(aniversariantes.length>0){
-    alertas.push({tipo:'lista',icon:'🎂',cor:'#9333ea',bg:'#faf5ff',label:`Aniversariantes de ${MA[mesMes]}`,
-      itens:aniversariantes.map(a=>`<div style="padding:3px 0;font-size:11.5px;color:#581c87"><span style="font-weight:700">${nomeCurto(a.n)}</span> <span style="color:#a78bfa;margin-left:6px">${String(a.dia).padStart(2,'0')}/${String(mesMes).padStart(2,'0')}</span></div>`),
+    alertas.push({tipo:'lista',icon:'🎂',cor:'#9333ea',bg:'#faf5ff',label:`Aniversariantes de ${MA[dashMes]}`,
+      itens:aniversariantes.map(a=>`<div style="padding:3px 0;font-size:11.5px;color:#581c87"><span style="font-weight:700">${nomeCurto(a.n)}</span> <span style="color:#a78bfa;margin-left:6px">${String(a.dia).padStart(2,'0')}/${String(dashMes).padStart(2,'0')}</span></div>`),
       idExpand:'exp-anive'});
   }
 
@@ -5568,19 +5592,19 @@ function _renderDashboardImpl(){
   const trocasAprMes=TROCAS.filter(t=>{
     if(t.status!=='aprovado')return false;
     if(!(t.dt instanceof Date))return false;
-    return t.dt.getMonth()+1===mesMes&&t.dt.getFullYear()===mesAno;
+    return t.dt.getMonth()+1===dashMes&&t.dt.getFullYear()===dashAno;
   });
   document.getElementById('d-trapr').textContent=trocasAprMes.length;
   const pendCount=pendList.filter(t=>{
-    if(!(t.dt instanceof Date))return t.mes===mesMes&&t.ano===mesAno;
-    return t.dt.getMonth()+1===mesMes&&t.dt.getFullYear()===mesAno;
+    if(!(t.dt instanceof Date))return t.mes===dashMes&&t.ano===dashAno;
+    return t.dt.getMonth()+1===dashMes&&t.dt.getFullYear()===dashAno;
   }).length;
   document.getElementById('d-trapr-s').textContent=pendCount>0?`${pendCount} ainda pendente${pendCount>1?'s':''}`:'Nenhuma pendente';
 
   // ─── LINHA 3: FINANCEIRO ───
   let custoTotal=0,custoGen=0,custoPed=0,custoExt=0,custoEF=0,hEF=0;
   internos.concat(externos).forEach(m=>{
-    const st=statsProf(m.c,mesMes,mesAno);
+    const st=statsProf(m.c,dashMes,dashAno);
     if(getVinc(m.n)==='EF'){custoEF+=0;hEF+=st.hTotal;return;}
     custoTotal+=st.totalFin;
     if(m.ext)custoExt+=st.totalFin;
@@ -5588,8 +5612,8 @@ function _renderDashboardImpl(){
     else custoGen+=st.totalFin;
   });
   // Comparativo com mês anterior
-  const pMes=mesMes===1?12:mesMes-1;
-  const pAno=mesMes===1?mesAno-1:mesAno;
+  const pMes=dashMes===1?12:dashMes-1;
+  const pAno=dashMes===1?dashAno-1:dashAno;
   let custoAnt=0;
   internos.concat(externos).forEach(m=>{
     if(getVinc(m.n)==='EF')return;
@@ -5658,7 +5682,7 @@ function _renderDashboardImpl(){
   el.innerHTML=externosNoMes.length?
     externosNoMes.map(x=>{
       const crm=x.med.c;
-      const status=decsPendentesExterno(crm,mesMes,mesAno);
+      const status=decsPendentesExterno(crm,dashMes,dashAno);
       const todasOk=status.pendentes===0&&status.total>0;
       const corStatus=todasOk?'var(--green)':'var(--red)';
       const labelStatus=todasOk?`✓ Todas enviadas (${status.total})`:`${status.pendentes} pendente${status.pendentes>1?'s':''} de ${status.total}`;
@@ -5666,7 +5690,7 @@ function _renderDashboardImpl(){
       const detalhe=expandido?`
         <div style="background:#fff;border-top:1px solid var(--border);padding:8px 10px;border-radius:0 0 6px 6px">
           ${x.plantoes.map(p=>{
-            const pk=plantaoKey(mesMes,mesAno,p.dia,p.turnoIdx);
+            const pk=plantaoKey(dashMes,dashAno,p.dia,p.turnoIdx);
             const decKey=crm+'|'+pk;
             const enviada=DECLARACOES_PLANTOES[decKey]&&DECLARACOES_PLANTOES[decKey].enviada;
             const corPlantao=enviada?'#dcfce7':'#fee2e2';
@@ -5674,7 +5698,7 @@ function _renderDashboardImpl(){
             const corTxt=enviada?'#166534':'#991b1b';
             const txtStatus=enviada?'✓ ENVIADA':'⚠ PENDENTE';
             return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:${corPlantao};border:1px solid ${corBorda}66;border-radius:6px;margin-bottom:4px;flex-wrap:wrap">
-              <input type="checkbox" ${enviada?'checked':''} onchange="toggleDecPlantao(${crm},${mesMes},${mesAno},'${pk}',this.checked).then(ok=>{if(ok)renderDashboard();else this.checked=!this.checked;})" style="width:17px;height:17px;cursor:pointer;accent-color:${corBorda}">
+              <input type="checkbox" ${enviada?'checked':''} onchange="toggleDecPlantao(${crm},${dashMes},${dashAno},'${pk}',this.checked).then(ok=>{if(ok)renderDashboard();else this.checked=!this.checked;})" style="width:17px;height:17px;cursor:pointer;accent-color:${corBorda}">
               <div style="flex:1;min-width:0;font-size:11.5px;color:${corTxt}">
                 <strong>${p.data}</strong> · ${p.turno}
               </div>
@@ -5682,8 +5706,8 @@ function _renderDashboardImpl(){
             </div>`;
           }).join('')}
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
-            <button onclick="marcarTodasDecExterno(${crm},${mesMes},${mesAno})" style="background:#dcfce7;border:1px solid #22a35a;color:#166534;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">✓ Confirmar Todas Enviadas</button>
-            <button onclick="gerarTextoDeclaracao(${crm},${mesMes},${mesAno})" style="background:#dbeafe;border:1px solid #2563d4;color:#1e40af;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">📄 Gerar Declaração</button>
+            <button onclick="marcarTodasDecExterno(${crm},${dashMes},${dashAno})" style="background:#dcfce7;border:1px solid #22a35a;color:#166534;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">✓ Confirmar Todas Enviadas</button>
+            <button onclick="gerarTextoDeclaracao(${crm},${dashMes},${dashAno})" style="background:#dbeafe;border:1px solid #2563d4;color:#1e40af;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;flex:1">📄 Gerar Declaração</button>
           </div>
         </div>
       `:'';
@@ -5715,7 +5739,7 @@ function renderHistoricoDeclaracoesGestor(){
   if(!el)return;
   window._declHistExp=window._declHistExp||{};
   const meses=[];
-  let m=mesMes,a=mesAno;
+  let m=dashMes,a=dashAno;
   for(let i=0;i<12;i++){
     m--;if(m<1){m=12;a--;}
     if(!temSnapshot(m,a))continue;
@@ -7004,8 +7028,9 @@ function renderRelExterno(){
 
 // ══ MODAL RELATÓRIO MENSAL (com filtros) ══
 function abrirModalRelMensal(){
-  document.getElementById('rm-mes').value=mesMes;
-  document.getElementById('rm-ano').value=mesAno;
+  const dashAtivo=document.getElementById('page-dashboard')?.classList.contains('active');
+  document.getElementById('rm-mes').value=dashAtivo?dashMes:mesMes;
+  document.getElementById('rm-ano').value=dashAtivo?dashAno:mesAno;
   abrirMo('mo-rel-mensal');
 }
 
