@@ -9392,7 +9392,7 @@ function _recValidarAssinaturaOutubro(rows){
   const por=_recAssinaturaOutubro(rows);
   const idx12=por[12]||0, idx13=por[13]||0, idx14=por[14]||0, idx15=por[15]||0;
   const especiais=(rows||[]).filter(r=>Number(r.turno_idx)===14);
-  const origens14=especiales.map(r=>String(r.origem||'')).sort();
+  const origens14=especiais.map(r=>String(r.origem||'')).sort();
   const padrao14=especiais.length===2&&origens14.includes('snapshot')&&origens14.includes('manual');
   return {
     ok:idx12===0&&idx13>0&&idx14===2&&idx15>0&&padrao14,
