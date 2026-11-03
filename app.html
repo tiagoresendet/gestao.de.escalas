@@ -9466,10 +9466,34 @@ async function previsualizarRecuperacaoOutubro(){
 }
 
 async function _recMoverIds(ids,novoIdx){
-  for(const id of ids){
-    const {error}=await sb.from('escala_mensal').update({turno_idx:novoIdx}).eq('id',id);
-    if(error)throw error;
+  if(!ids||!ids.length)return [];
+  const {data,error}=await sb.from('escala_mensal')
+    .update({turno_idx:novoIdx})
+    .in('id',ids)
+    .select('id,turno_idx');
+  if(error)throw new Error(`Falha ao mover para índice ${novoIdx}: ${error.message||error}`);
+  const got=(data||[]).map(r=>Number(r.id));
+  const faltantes=ids.map(Number).filter(id=>!got.includes(id));
+  if(faltantes.length)throw new Error(`Atualização incompleta para índice ${novoIdx}. IDs não confirmados: ${faltantes.join(', ')}`);
+  return got;
+}
+
+async function _recRestaurarDoBackup(pacote){
+  const rows=(pacote&&pacote.escala_mensal)||[];
+  const grupos={};
+  rows.forEach(r=>{
+    const idx=Number(r.turno_idx);
+    if(!grupos[idx])grupos[idx]=[];
+    grupos[idx].push(Number(r.id));
+  });
+  const erros=[];
+  for(const [idx,ids] of Object.entries(grupos)){
+    try{
+      const {error}=await sb.from('escala_mensal').update({turno_idx:Number(idx)}).in('id',ids);
+      if(error)erros.push(`idx ${idx}: ${error.message||error}`);
+    }catch(e){erros.push(`idx ${idx}: ${e.message||e}`);}
   }
+  return erros;
 }
 
 async function executarRecuperacaoOutubro(){
@@ -9513,17 +9537,27 @@ async function executarRecuperacaoOutubro(){
     const reg14Manual=rows.find(r=>Number(r.turno_idx)===14&&r.origem==='manual');
     if(!reg14Snap||!reg14Manual)throw new Error('Registros especiais do índice 14 não encontrados.');
 
-    // Fase temporária: tira todos os registros envolvidos dos índices reais.
-    await _recMoverIds(ids13,10013);
-    await _recMoverIds(ids15,10015);
-    await _recMoverIds([reg14Snap.id],10014);
-    await _recMoverIds([reg14Manual.id],10024);
-
-    // Destino definitivo comprovado pelo diagnóstico/trocas.
+    // Recuperação direta e ordenada — sem índices temporários fora da estrutura.
+    // O índice 12 está comprovadamente vazio, então primeiro liberamos o índice 13.
+    if(st)st.textContent='Etapa 1/4: movendo PED (1) para o índice 12...';
     await _recMoverIds(ids13,12);              // PED (1)
+
+    if(st)st.textContent='Etapa 2/4: restaurando snapshot especial de PED (1)...';
     await _recMoverIds([reg14Snap.id],12);     // snapshot B/SAB de PED (1)
+
+    // Agora o índice 13 ficou livre e pode receber PED (2).
+    if(st)st.textContent='Etapa 3/4: movendo PED (2) para o índice 13...';
     await _recMoverIds(ids15,13);              // PED (2)
+
+    if(st)st.textContent='Etapa 4/4: restaurando alteração manual de PED (2)...';
     await _recMoverIds([reg14Manual.id],13);   // manual 31/10 de PED (2)
+
+    // Verificação final diretamente no banco.
+    const pos=await _recCarregarPacoteOutubro();
+    const ass=_recAssinaturaOutubro(pos.escala_mensal);
+    if((ass[12]||0)!==(ids13.length+1) || (ass[13]||0)!==(ids15.length+1) || (ass[14]||0)!==0 || (ass[15]||0)!==0){
+      throw new Error(`Verificação final divergente (idx12=${ass[12]||0}, idx13=${ass[13]||0}, idx14=${ass[14]||0}, idx15=${ass[15]||0}).`);
+    }
 
     // Recarrega o estado do app sem regenerar a escala.
     if(typeof carregarESCMES==='function')await carregarESCMES();
@@ -9536,8 +9570,19 @@ async function executarRecuperacaoOutubro(){
     showToast('✓ Outubro recuperado — confira a escala');
   }catch(e){
     console.error('executarRecuperacaoOutubro:',e);
-    if(st)st.innerHTML='<strong style="color:var(--red)">ERRO:</strong> '+(e.message||e)+'<br>Não faça novas alterações. Guarde o backup baixado.';
-    showToast('Erro na recuperação — não faça novas alterações',true);
+    let rb=[];
+    try{
+      if(_recOutubroUltimoBackup){
+        if(st)st.textContent='Falha detectada. Tentando restaurar automaticamente o estado anterior...';
+        rb=await _recRestaurarDoBackup(_recOutubroUltimoBackup);
+      }
+    }catch(re){rb=[re.message||String(re)];}
+    const detalhe=e.message||String(e);
+    if(st)st.innerHTML='<strong style="color:var(--red)">ERRO:</strong> '+detalhe+'<br>'+
+      (rb.length
+        ? '<strong style="color:var(--red)">Rollback com pendências:</strong> '+rb.join(' | ')+'<br>Não execute novamente. Gere um novo diagnóstico.'
+        : '<strong style="color:var(--green)">Rollback automático executado.</strong> Gere um novo diagnóstico antes de qualquer nova tentativa.');
+    showToast('Erro na recuperação — estado anterior foi restaurado quando possível',true);
   }finally{
     if(btn)btn.disabled=!_recOutubroPreviewOk;
   }
