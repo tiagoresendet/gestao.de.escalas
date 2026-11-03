@@ -1611,7 +1611,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 // Quando o navegador detectar versão local diferente da atual, limpa cache
 // e recarrega tudo do banco. Garante que ninguém fique numa versão antiga.
 // ══════════════════════════════════════════════════
-const APP_VERSION='2026.07.02.02';
+const APP_VERSION='2026.11.03.01';
 (function checarVersao(){
   try{
     const KEY='kos_app_version';
@@ -5974,43 +5974,146 @@ function indiceInsercaoTurno(lista,cls){
   return lista.length;
 }
 
-// Move os turno_idx de um mês em duas etapas, usando um offset temporário.
-// Isso evita colisões de chave durante inserção/exclusão e impede que nomes
-// "escorreguem" para linhas diferentes.
-async function remapearTurnoIdxMes(mes,ano,filtroFn,novoIdxFn){
-  const {data:rows,error:eRows}=await sb.from('escala_mensal')
-    .select('id,turno_idx').eq('mes',mes).eq('ano',ano);
-  if(eRows)throw eRows;
-  const afetados=(rows||[]).filter(r=>Number.isInteger(r.turno_idx)&&filtroFn(r.turno_idx));
-  if(!afetados.length)return;
+// ══════════════════════════════════════════════════════
+// REMAPEAMENTO ESTRUTURAL SEGURO DE ESCALAS MENSAIS
+// Mantém o turno_idx por compatibilidade com o banco, mas NUNCA usa
+// índices temporários altos. Inserções deslocam de baixo para cima;
+// remoções deslocam de cima para baixo. Cada etapa é confirmada pelo banco.
+// ══════════════════════════════════════════════════════
+function idLogicoTurnoMes(t){
+  if(!t)return null;
+  if(t._ordemAdd!=null)return 'ADD:'+String(t._ordemAdd);
+  if(t._ordemBase!=null)return 'BASE:'+String(t._ordemBase);
+  return null;
+}
 
-  const OFFSET=10000;
-  // Fase 1: tira todos os registros da faixa real de índices.
-  for(const r of afetados){
-    const {error}=await sb.from('escala_mensal')
-      .update({turno_idx:r.turno_idx+OFFSET}).eq('id',r.id);
-    if(error)throw error;
+function _valorAtivoEscala(v){return String(v??'').trim()!=='';}
+
+function _downloadJsonEstrutural(obj,nome){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=nome;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+async function gerarBackupEstruturalMes(mes,ano,motivo){
+  const [rEM,rTM,rTR,rPUB]=await Promise.all([
+    sb.from('escala_mensal').select('*').eq('mes',mes).eq('ano',ano).order('id',{ascending:true}),
+    sb.from('turnos_mes').select('*').eq('mes',mes).eq('ano',ano).order('ordem',{ascending:true}),
+    sb.from('trocas').select('*').eq('mes',mes).eq('ano',ano).order('created_at',{ascending:true}),
+    sb.from('publicacoes').select('*').eq('mes',mes).eq('ano',ano)
+  ]);
+  const erro=[rEM,rTM,rTR,rPUB].find(r=>r.error)?.error;
+  if(erro)throw erro;
+  const pacote={
+    tipo:'backup_estrutural_kos',
+    motivo:motivo||'alteracao_estrutura',
+    gerado_em:new Date().toISOString(),
+    periodo:`${String(mes).padStart(2,'0')}/${ano}`,
+    estrutura_calculada:obterTurnosDoMes(mes,ano).map((t,i)=>({
+      idx:i,id_logico:idLogicoTurnoMes(t),label:t.l,area:t.a,horas:t.h,noturno:t.not,cls:t.cls
+    })),
+    escala_mensal:rEM.data||[],turnos_mes:rTM.data||[],trocas:rTR.data||[],publicacoes:rPUB.data||[]
+  };
+  const ts=new Date().toISOString().replace(/[:.]/g,'-');
+  _downloadJsonEstrutural(pacote,`Kos_Backup_Estrutural_${ano}_${String(mes).padStart(2,'0')}_${motivo||'alteracao'}_${ts}.json`);
+  return pacote;
+}
+
+async function _atualizarIdsTurnoIdx(ids,novoIdx){
+  if(!ids?.length)return;
+  const {data,error}=await sb.from('escala_mensal')
+    .update({turno_idx:novoIdx}).in('id',ids).select('id,turno_idx');
+  if(error)throw error;
+  const recebidos=new Set((data||[]).map(r=>Number(r.id)));
+  const faltantes=ids.map(Number).filter(id=>!recebidos.has(id));
+  if(faltantes.length)throw new Error('Banco não confirmou atualização dos IDs: '+faltantes.join(', '));
+}
+
+async function _rollbackMovimentosMensais(passos){
+  const erros=[];
+  for(const p of [...(passos||[])].reverse()){
+    try{await _atualizarIdsTurnoIdx(p.ids,p.de);}catch(e){erros.push(e.message||String(e));}
   }
-  // Fase 2: grava o índice definitivo.
-  for(const r of afetados){
-    const {error}=await sb.from('escala_mensal')
-      .update({turno_idx:novoIdxFn(r.turno_idx)}).eq('id',r.id);
+  return erros;
+}
+
+// Desloca uma faixa monotônica sem colisão de chave.
+// delta=+1: índices >= início, processados do maior para o menor.
+// delta=-1: índices > inícioRemovido, processados do menor para o maior.
+async function deslocarTurnoIdxMesSeguro(mes,ano,indices,delta){
+  const {data:rows,error}=await sb.from('escala_mensal')
+    .select('id,turno_idx').eq('mes',mes).eq('ano',ano);
+  if(error)throw error;
+  const alvoSet=new Set(indices.map(Number));
+  const grupos={};
+  (rows||[]).forEach(r=>{
+    const i=Number(r.turno_idx);
+    if(!alvoSet.has(i))return;
+    (grupos[i]||(grupos[i]=[])).push(Number(r.id));
+  });
+  const ordem=Object.keys(grupos).map(Number).sort((a,b)=>delta>0?b-a:a-b);
+  const passos=[];
+  try{
+    for(const de of ordem){
+      const para=de+delta;
+      const ids=grupos[de];
+      await _atualizarIdsTurnoIdx(ids,para);
+      passos.push({ids,de,para});
+    }
+    return passos;
+  }catch(e){
+    const rb=await _rollbackMovimentosMensais(passos);
+    if(rb.length)throw new Error((e.message||e)+' | Falha adicional no rollback: '+rb.join(' ; '));
+    throw e;
+  }
+}
+
+async function consultarLinhaMes(mes,ano,idx){
+  const {data,error}=await sb.from('escala_mensal').select('*')
+    .eq('mes',mes).eq('ano',ano).eq('turno_idx',idx).order('id',{ascending:true});
+  if(error)throw error;
+  const rows=data||[];
+  return {rows,ativos:rows.filter(r=>_valorAtivoEscala(r.valor))};
+}
+
+async function validarIntegridadeEstruturalMes(mes,ano){
+  const estrutura=obterTurnosDoMes(mes,ano);
+  const {data,error}=await sb.from('escala_mensal').select('id,turno_idx')
+    .eq('mes',mes).eq('ano',ano);
+  if(error)throw error;
+  const invalidos=(data||[]).filter(r=>{
+    const i=Number(r.turno_idx);
+    return !Number.isInteger(i)||i<0||i>=estrutura.length;
+  });
+  if(invalidos.length){
+    const amostra=invalidos.slice(0,6).map(r=>`id ${r.id}→idx ${r.turno_idx}`).join(', ');
+    throw new Error(`ALTERAÇÃO ESTRUTURAL BLOQUEADA: este mês já possui ${invalidos.length} registro(s) fora da estrutura (${amostra}). Gere o Diagnóstico da Escala antes de qualquer inclusão/exclusão.`);
+  }
+  return {ok:true,estrutura,registros:(data||[]).length};
+}
+
+async function restaurarLinhasVaziasExcluidas(rows){
+  if(!rows?.length)return;
+  const payload=rows.map(r=>({
+    mes:r.mes,ano:r.ano,semana_letra:r.semana_letra,dia_semana:r.dia_semana,
+    turno_idx:r.turno_idx,valor:r.valor??'',origem:r.origem,dia_mes:r.dia_mes??null
+  }));
+  for(let i=0;i<payload.length;i+=100){
+    const {error}=await sb.from('escala_mensal').insert(payload.slice(i,i+100));
     if(error)throw error;
   }
 }
 
-// Atualiza o cache local SOMENTE depois do banco ter sido remapeado com sucesso.
+// Atualiza o cache local SOMENTE depois do banco confirmar toda a operação.
 function inserirSlotMesCache(mes,ano,idx){
   const k=keyMes(mes,ano);
   if(!ESCMES[k])return;
   Object.keys(ESCMES[k]).forEach(chave=>{
     if(chave==='A'||chave==='B'){
-      DA.forEach(ab=>{
-        if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,0,'');
-      });
-    }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
-      ESCMES[k][chave].splice(idx,0,undefined);
-    }
+      DA.forEach(ab=>{if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,0,'');});
+    }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave]))ESCMES[k][chave].splice(idx,0,undefined);
   });
 }
 function removerSlotMesCache(mes,ano,idx){
@@ -6018,44 +6121,52 @@ function removerSlotMesCache(mes,ano,idx){
   if(!ESCMES[k])return;
   Object.keys(ESCMES[k]).forEach(chave=>{
     if(chave==='A'||chave==='B'){
-      DA.forEach(ab=>{
-        if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,1);
-      });
-    }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
-      ESCMES[k][chave].splice(idx,1);
-    }
+      DA.forEach(ab=>{if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,1);});
+    }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave]))ESCMES[k][chave].splice(idx,1);
   });
 }
 
-// Insere uma posição vazia no snapshot mensal mantendo cada profissional
-// ligado à mesma linha lógica.
+// Insere uma posição vazia sem apagar/recriar a escala.
 async function inserirSlotMesNaPosicao(mes,ano,idx){
-  try{
-    await remapearTurnoIdxMes(mes,ano,i=>i>=idx,i=>i+1);
-    inserirSlotMesCache(mes,ano,idx);
-  }catch(e){
-    console.error('inserirSlotMesNaPosicao:',e);
-    throw e;
-  }
+  const estrutura=obterTurnosDoMes(mes,ano);
+  // Após o registro estrutural já ter sido criado, a estrutura contém a linha nova.
+  // Os dados antigos ocupavam 0..N-2; só deslocamos os índices antigos >= idx.
+  const maxAntigo=Math.max(-1,estrutura.length-2);
+  const indices=[];for(let i=idx;i<=maxAntigo;i++)indices.push(i);
+  const passos=await deslocarTurnoIdxMesSeguro(mes,ano,indices,+1);
+  inserirSlotMesCache(mes,ano,idx);
+  return passos;
 }
 
-// Remove uma posição do snapshot mensal e desloca as linhas seguintes
-// sem trocar os profissionais de função/linha.
+// Remove APENAS linha comprovadamente vazia e desloca as inferiores de modo monotônico.
 async function removerSlotMesNaPosicao(mes,ano,idx){
-  try{
-    // Primeiro elimina somente os registros da linha removida.
-    const {error:eDel}=await sb.from('escala_mensal').delete()
-      .eq('mes',mes).eq('ano',ano).eq('turno_idx',idx);
+  const linha=await consultarLinhaMes(mes,ano,idx);
+  if(linha.ativos.length){
+    const nomes=linha.ativos.slice(0,5).map(r=>String(r.valor||'').replace(/\s+/g,' ').trim()).join(' | ');
+    throw new Error(`EXCLUSÃO BLOQUEADA: esta linha possui ${linha.ativos.length} registro(s) com profissional/valor. ${nomes?('Ex.: '+nomes):''}`);
+  }
+
+  // As linhas vazias podem ter snapshots vazios; removê-los libera o índice para o deslocamento.
+  if(linha.rows.length){
+    const ids=linha.rows.map(r=>Number(r.id));
+    const {error:eDel}=await sb.from('escala_mensal').delete().in('id',ids);
     if(eDel)throw eDel;
-    // Depois remapeia todas as linhas inferiores em duas etapas seguras.
-    await remapearTurnoIdxMes(mes,ano,i=>i>idx,i=>i-1);
+  }
+
+  const estruturaAntes=obterTurnosDoMes(mes,ano);
+  const indices=[];for(let i=idx+1;i<estruturaAntes.length;i++)indices.push(i);
+  let passos=[];
+  try{
+    passos=await deslocarTurnoIdxMesSeguro(mes,ano,indices,-1);
     removerSlotMesCache(mes,ano,idx);
+    return {passos,linhasVaziasRemovidas:linha.rows};
   }catch(e){
-    console.error('removerSlotMesNaPosicao:',e);
+    try{await restaurarLinhasVaziasExcluidas(linha.rows);}catch(er){
+      throw new Error((e.message||e)+' | Falha ao restaurar snapshots vazios: '+(er.message||er));
+    }
     throw e;
   }
 }
-
 
 // Mantém meses já gerados independentes quando a Base recebe uma nova linha.
 // O novo turno da Base fica oculto nos snapshots existentes e só entra em novas escalas.
@@ -6295,30 +6406,70 @@ async function removerTurnoBase(ordem){
 async function adicionarTurnoMes(mes,ano,label,area,horas,noturno,cls){
   const k=keyMes(mes,ano);
   const overrides=TURNOS_MES_OVERRIDES[k]||[];
-  // Novas adições usam ordem >= 1000 para distinguir da lógica antiga
-  // e permitir agrupamento sem migrar turnos mensais já existentes.
   const maxAdd=overrides.filter(o=>o.acao==='add'&&o.ordem>=1000)
     .reduce((m,o)=>Math.max(m,o.ordem),999);
   const ordem=maxAdd+1;
-  // Usa a estrutura do próprio mês, e nunca o array global da tela.
-  const estruturaAtual=obterTurnosDoMes(mes,ano);
-  const posInsercao=indiceInsercaoTurno(estruturaAtual,cls);
+  const estruturaAntes=obterTurnosDoMes(mes,ano);
+  const posInsercao=indiceInsercaoTurno(estruturaAntes,cls);
+
+  let novoId=null;
+  let passosInsercao=[];
+  let estruturaCriada=false;
   try{
-    const {data,error}=await sb.from('turnos_mes').upsert({
+    await validarIntegridadeEstruturalMes(mes,ano);
+    showToast('Criando backup de segurança antes de alterar a estrutura...');
+    await gerarBackupEstruturalMes(mes,ano,'ANTES_ADICIONAR_LINHA');
+
+    // 1) cria a identidade lógica estável da nova linha no mês
+    const {data,error}=await sb.from('turnos_mes').insert({
       mes,ano,ordem,acao:'add',label,area,horas,noturno,cls
-    },{onConflict:'mes,ano,ordem'}).select();
+    }).select();
     if(error)throw error;
+    novoId=data?.[0]?.id||null;
+    estruturaCriada=true;
 
-    // Abre a nova linha na mesma posição dentro do snapshot mensal.
-    await inserirSlotMesNaPosicao(mes,ano,posInsercao);
-
+    // Disponibiliza temporariamente no cache estrutural para o cálculo correto da nova extensão.
     if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
-    TURNOS_MES_OVERRIDES[k].push({id:data?.[0]?.id,ordem,acao:'add',l:label,a:area,h:horas,not:noturno,cls});
+    const reg={id:novoId,ordem,acao:'add',l:label,a:area,h:horas,not:noturno,cls};
+    TURNOS_MES_OVERRIDES[k].push(reg);
+
+    // 2) abre a posição nos dados, sem índices temporários altos
+    try{
+      passosInsercao=await inserirSlotMesNaPosicao(mes,ano,posInsercao);
+    }catch(e){
+      // rollback estrutural: remove a definição recém-criada
+      TURNOS_MES_OVERRIDES[k]=TURNOS_MES_OVERRIDES[k].filter(o=>!(o.acao==='add'&&o.ordem===ordem));
+      if(novoId)await sb.from('turnos_mes').delete().eq('id',novoId);
+      else await sb.from('turnos_mes').delete().eq('mes',mes).eq('ano',ano).eq('ordem',ordem);
+      throw e;
+    }
+
     aplicarTurnosDoMes(mes,ano);
+
+    // 3) verificação pós-operação: nenhum registro pode apontar além da estrutura
+    const estruturaDepois=obterTurnosDoMes(mes,ano);
+    const {data:chk,error:eChk}=await sb.from('escala_mensal').select('id,turno_idx')
+      .eq('mes',mes).eq('ano',ano).gte('turno_idx',estruturaDepois.length);
+    if(eChk)throw eChk;
+    if((chk||[]).length)throw new Error('Verificação final falhou: existem registros fora da estrutura após a inclusão.');
+
+    showToast('✓ Linha adicionada com backup e verificação de integridade');
     return true;
   }catch(e){
-    console.error('adicionarTurnoMes:',e);
-    showToast('Erro ao adicionar turno no mês: '+(e.message||'').slice(0,80),true);
+    console.error('adicionarTurnoMes seguro:',e);
+    // Se a falha ocorreu após o deslocamento, volta os registros às posições anteriores.
+    if(passosInsercao.length){
+      try{await _rollbackMovimentosMensais(passosInsercao);}catch(er){console.error('rollback inclusão mensal:',er);}
+    }
+    if(estruturaCriada){
+      try{
+        if(novoId)await sb.from('turnos_mes').delete().eq('id',novoId);
+        else await sb.from('turnos_mes').delete().eq('mes',mes).eq('ano',ano).eq('ordem',ordem).eq('acao','add');
+      }catch(er){console.error('rollback estrutura inclusão:',er);}
+    }
+    if(TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=TURNOS_MES_OVERRIDES[k].filter(o=>!(o.acao==='add'&&o.ordem===ordem));
+    showToast('Alteração cancelada: '+(e.message||'').slice(0,150),true);
+    try{await carregarTurnosMes();await carregarESCMES();}catch(_){ }
     return false;
   }
 }
@@ -6326,60 +6477,143 @@ async function adicionarTurnoMes(mes,ano,label,area,horas,noturno,cls){
 async function editarTurnoMes(mes,ano,ordemBase,label,area,horas,noturno,cls){
   const k=keyMes(mes,ano);
   try{
-    const {error}=await sb.from('turnos_mes').upsert({
+    const {data,error}=await sb.from('turnos_mes').upsert({
       mes,ano,ordem:ordemBase,acao:'edit',label,area,horas,noturno,cls
-    },{onConflict:'mes,ano,ordem'});
+    },{onConflict:'mes,ano,ordem'}).select();
     if(error)throw error;
     if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
     const idx=TURNOS_MES_OVERRIDES[k].findIndex(o=>o.ordem===ordemBase);
-    const reg={ordem:ordemBase,acao:'edit',l:label,a:area,h:horas,not:noturno,cls};
-    if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;
-    else TURNOS_MES_OVERRIDES[k].push(reg);
+    const reg={id:data?.[0]?.id,ordem:ordemBase,acao:'edit',l:label,a:area,h:horas,not:noturno,cls};
+    if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;else TURNOS_MES_OVERRIDES[k].push(reg);
     aplicarTurnosDoMes(mes,ano);
     return true;
   }catch(e){
     console.error('editarTurnoMes:',e);
-    showToast('Erro ao editar turno do mês: '+(e.message||'').slice(0,80),true);
+    showToast('Erro ao editar turno do mês: '+(e.message||'').slice(0,100),true);
+    return false;
+  }
+}
+
+// Edição de linha criada apenas no mês: atualiza a MESMA identidade lógica.
+// Para segurança, não permite trocar o bloco/classe da linha, pois isso mudaria sua posição visual.
+async function editarTurnoMesAdicionado(mes,ano,ordemAdd,label,area,horas,noturno,cls){
+  const k=keyMes(mes,ano);
+  const atual=(TURNOS_MES_OVERRIDES[k]||[]).find(o=>o.acao==='add'&&o.ordem===ordemAdd);
+  if(!atual){showToast('Linha mensal não encontrada para edição.',true);return false;}
+  if(classeBaseTurno(atual.cls)!==classeBaseTurno(cls)){
+    showToast('Por segurança, não é possível mover uma linha já criada para outro bloco. Crie uma nova linha vazia no bloco desejado e remova a antiga.',true);
+    return false;
+  }
+  try{
+    const {data,error}=await sb.from('turnos_mes').update({
+      label,area,horas,noturno,cls,atualizado_em:new Date().toISOString()
+    }).eq('mes',mes).eq('ano',ano).eq('ordem',ordemAdd).eq('acao','add').select();
+    if(error)throw error;
+    atual.l=label;atual.a=area;atual.h=horas;atual.not=noturno;atual.cls=cls;
+    if(data?.[0]?.id)atual.id=data[0].id;
+    aplicarTurnosDoMes(mes,ano);
+    return true;
+  }catch(e){
+    console.error('editarTurnoMesAdicionado:',e);
+    showToast('Erro ao editar linha mensal: '+(e.message||'').slice(0,100),true);
     return false;
   }
 }
 
 async function removerTurnoMes(mes,ano,ordem,isAdd){
   const k=keyMes(mes,ano);
+  const estruturaAntes=obterTurnosDoMes(mes,ano);
+  const idxVisual=isAdd
+    ?estruturaAntes.findIndex(t=>t._ordemAdd===ordem)
+    :estruturaAntes.findIndex(t=>t._ordemBase===ordem);
+  if(idxVisual<0){showToast('Linha não encontrada na estrutura do mês.',true);return false;}
+
+  // REGRA DE SEGURANÇA: primeiro exige que o mês esteja estruturalmente íntegro.
+  try{await validarIntegridadeEstruturalMes(mes,ano);}catch(e){showToast((e.message||e).slice(0,180),true);return false;}
+  // Depois, exclusão estrutural só é permitida se a linha estiver vazia.
+  let linha;
+  try{linha=await consultarLinhaMes(mes,ano,idxVisual);}catch(e){showToast('Não foi possível validar a linha antes da exclusão.',true);return false;}
+  if(linha.ativos.length){
+    showToast(`Exclusão bloqueada: a linha possui ${linha.ativos.length} registro(s) com profissional/valor. Esvazie a linha antes de removê-la.`,true);
+    return false;
+  }
+
+  const overrideAnterior=JSON.parse(JSON.stringify((TURNOS_MES_OVERRIDES[k]||[]).find(o=>o.ordem===ordem)||null));
+  let estruturaAlterada=false;
+  let dadosRemovidos=null;
   try{
+    showToast('Criando backup de segurança antes de excluir a linha...');
+    await gerarBackupEstruturalMes(mes,ano,'ANTES_EXCLUIR_LINHA');
+
+    // 1) desloca os dados somente depois de confirmar que a linha está vazia.
+    dadosRemovidos=await removerSlotMesNaPosicao(mes,ano,idxVisual);
+
+    // 2) altera a estrutura do mês APÓS os dados estarem seguros.
     if(isAdd){
-      const estruturaAtual=obterTurnosDoMes(mes,ano);
-      const idxVisual=estruturaAtual.findIndex(t=>t._ordemAdd===ordem);
       const {error}=await sb.from('turnos_mes').delete()
-        .eq('mes',mes).eq('ano',ano).eq('ordem',ordem);
+        .eq('mes',mes).eq('ano',ano).eq('ordem',ordem).eq('acao','add');
       if(error)throw error;
-      if(idxVisual>=0)await removerSlotMesNaPosicao(mes,ano,idxVisual);
+      estruturaAlterada=true;
       if(TURNOS_MES_OVERRIDES[k]){
         TURNOS_MES_OVERRIDES[k]=TURNOS_MES_OVERRIDES[k].filter(o=>!(o.acao==='add'&&o.ordem===ordem));
       }
     }else{
-      // Linha oriunda da Base dentro deste mês: identifica PRIMEIRO sua posição visual exata.
-      const estruturaAtual=obterTurnosDoMes(mes,ano);
-      const idxVisual=estruturaAtual.findIndex(t=>t._ordemBase===ordem);
       const {data,error}=await sb.from('turnos_mes').upsert({
         mes,ano,ordem,acao:'remove',label:null,area:null,horas:null,noturno:null,cls:null
       },{onConflict:'mes,ano,ordem'}).select();
       if(error)throw error;
+      estruturaAlterada=true;
       if(!TURNOS_MES_OVERRIDES[k])TURNOS_MES_OVERRIDES[k]=[];
       const idx=TURNOS_MES_OVERRIDES[k].findIndex(o=>o.ordem===ordem);
       const reg={id:data?.[0]?.id,ordem,acao:'remove'};
-      if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;
-      else TURNOS_MES_OVERRIDES[k].push(reg);
-
-      // CRÍTICO: remove a mesma posição dos dados do mês para que os profissionais
-      // das linhas seguintes continuem ligados às suas funções corretas.
-      if(idxVisual>=0)await removerSlotMesNaPosicao(mes,ano,idxVisual);
+      if(idx>=0)TURNOS_MES_OVERRIDES[k][idx]=reg;else TURNOS_MES_OVERRIDES[k].push(reg);
     }
+
     aplicarTurnosDoMes(mes,ano);
+    const estruturaDepois=obterTurnosDoMes(mes,ano);
+    const {data:fora,error:eFora}=await sb.from('escala_mensal').select('id,turno_idx')
+      .eq('mes',mes).eq('ano',ano).gte('turno_idx',estruturaDepois.length);
+    if(eFora)throw eFora;
+    if((fora||[]).length)throw new Error('Verificação final falhou: há registros fora da nova estrutura.');
+
+    showToast('✓ Linha vazia removida com backup e verificação de integridade');
     return true;
   }catch(e){
-    console.error('removerTurnoMes:',e);
-    showToast('Erro ao remover turno: '+(e.message||'').slice(0,80),true);
+    console.error('removerTurnoMes seguro:',e);
+
+    // Se a estrutura já havia sido alterada, restaura primeiro sua identidade anterior.
+    if(estruturaAlterada){
+      try{
+        if(isAdd){
+          if(overrideAnterior){
+            await sb.from('turnos_mes').insert({
+              mes,ano,ordem:overrideAnterior.ordem,acao:'add',label:overrideAnterior.l,area:overrideAnterior.a,
+              horas:overrideAnterior.h,noturno:overrideAnterior.not===true,cls:overrideAnterior.cls
+            });
+          }
+        }else{
+          if(overrideAnterior){
+            await sb.from('turnos_mes').upsert({
+              mes,ano,ordem:overrideAnterior.ordem,acao:overrideAnterior.acao,
+              label:overrideAnterior.l??null,area:overrideAnterior.a??null,horas:overrideAnterior.h??null,
+              noturno:overrideAnterior.not===true,cls:overrideAnterior.cls??null
+            },{onConflict:'mes,ano,ordem'});
+          }else{
+            await sb.from('turnos_mes').delete().eq('mes',mes).eq('ano',ano).eq('ordem',ordem);
+          }
+        }
+      }catch(er){console.error('rollback estrutura removerTurnoMes:',er);}
+    }
+
+    // Volta os dados à posição anterior.
+    if(dadosRemovidos){
+      try{
+        if(dadosRemovidos.passos?.length)await _rollbackMovimentosMensais(dadosRemovidos.passos);
+        await restaurarLinhasVaziasExcluidas(dadosRemovidos.linhasVaziasRemovidas||[]);
+      }catch(er){console.error('rollback removerTurnoMes:',er);}
+    }
+    showToast('Exclusão cancelada: '+(e.message||'').slice(0,150),true);
+    try{await carregarTurnosMes();await carregarESCMES();}catch(_){ }
     return false;
   }
 }
@@ -6397,7 +6631,7 @@ function abrirGerenciarTurnos(contexto){
     :'Alterações afetam SÓ a escala de '+MP[mesMes]+' '+mesAno+'. Não muda a base nem outros meses.';
   const aviso=contexto==='base'
     ?'⚠️ Alterações aqui afetam apenas escalas FUTURAS que forem geradas após a edição. Não modifica escalas já existentes (vigentes ou passadas).'
-    :'⚠️ Alterações afetam SOMENTE a escala deste mês. A escala base e outros meses não são tocados.';
+    :'🛡️ Modo protegido: alterações afetam SOMENTE este mês. Antes de adicionar/excluir linha o Kos gera backup automático, valida a integridade e bloqueia exclusão de linha com profissionais.';
   document.getElementById('mo-turnos-titulo').textContent=titulo;
   document.getElementById('mo-turnos-sub').textContent=sub;
   document.getElementById('mo-turnos-aviso-txt').textContent=aviso;
@@ -6596,10 +6830,9 @@ async function salvarTurno(){
       const listaMes=obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
       const t=listaMes[_turnoCtx.editIdx];
       if(t._ordemAdd!=null){
-        // É uma adição local: remover e recriar mantém a posição correta
-        // caso horário/categoria sejam alterados.
-        await removerTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemAdd,true);
-        ok=await adicionarTurnoMes(_turnoCtx.mes,_turnoCtx.ano,label,area,horas,noturno,cls);
+        // Linha criada apenas neste mês: preserva a MESMA identidade lógica.
+        // Não remove/recria, evitando qualquer deslocamento de profissionais.
+        ok=await editarTurnoMesAdicionado(_turnoCtx.mes,_turnoCtx.ano,t._ordemAdd,label,area,horas,noturno,cls);
       }else{
         ok=await editarTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemBase,label,area,horas,noturno,cls);
       }
@@ -6619,7 +6852,10 @@ function confirmarRemoverTurno(idx){
   const t=lista[idx];
   if(!t)return;
   const escopo=_turnoCtx.contexto==='base'?'da Escala Base (afetará novas gerações)':'da escala de '+MP[_turnoCtx.mes]+'/'+_turnoCtx.ano;
-  if(!confirm(`Remover o turno "${t.l}" ${escopo}?\n\nEssa ação pode ser desfeita.`))return;
+  const msg=_turnoCtx.contexto==='base'
+    ?`Remover o turno "${t.l}" ${escopo}?\n\nPor segurança, a exclusão será bloqueada se houver profissionais vinculados à linha.`
+    :`Remover o turno "${t.l}" ${escopo}?\n\nO Kos criará um backup automático e SÓ permitirá excluir se a linha estiver vazia.`;
+  if(!confirm(msg))return;
   _turnoCtx.editIdx=idx;
   removerTurnoAtual();
 }
