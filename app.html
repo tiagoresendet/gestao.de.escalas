@@ -5926,64 +5926,82 @@ function indiceInsercaoTurno(lista,cls){
   return lista.length;
 }
 
-// Insere uma posição vazia nos dados do snapshot de UM mês.
-// Necessário porque a posição da linha é também o turno_idx usado no banco.
-async function inserirSlotMesNaPosicao(mes,ano,idx){
-  const k=keyMes(mes,ano);
-  if(ESCMES[k]){
-    Object.keys(ESCMES[k]).forEach(chave=>{
-      if(chave==='A'||chave==='B'){
-        DA.forEach(ab=>{
-          if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,0,'');
-        });
-      }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
-        ESCMES[k][chave].splice(idx,0,undefined);
-      }
-    });
-  }
-  try{
-    const {data,error}=await sb.from('escala_mensal')
-      .select('id,turno_idx')
-      .eq('mes',mes).eq('ano',ano).gte('turno_idx',idx)
-      .order('turno_idx',{ascending:false});
+// Move os turno_idx de um mês em duas etapas, usando um offset temporário.
+// Isso evita colisões de chave durante inserção/exclusão e impede que nomes
+// "escorreguem" para linhas diferentes.
+async function remapearTurnoIdxMes(mes,ano,filtroFn,novoIdxFn){
+  const {data:rows,error:eRows}=await sb.from('escala_mensal')
+    .select('id,turno_idx').eq('mes',mes).eq('ano',ano);
+  if(eRows)throw eRows;
+  const afetados=(rows||[]).filter(r=>Number.isInteger(r.turno_idx)&&filtroFn(r.turno_idx));
+  if(!afetados.length)return;
+
+  const OFFSET=10000;
+  // Fase 1: tira todos os registros da faixa real de índices.
+  for(const r of afetados){
+    const {error}=await sb.from('escala_mensal')
+      .update({turno_idx:r.turno_idx+OFFSET}).eq('id',r.id);
     if(error)throw error;
-    for(const r of (data||[])){
-      const {error:e2}=await sb.from('escala_mensal').update({turno_idx:r.turno_idx+1}).eq('id',r.id);
-      if(e2)throw e2;
+  }
+  // Fase 2: grava o índice definitivo.
+  for(const r of afetados){
+    const {error}=await sb.from('escala_mensal')
+      .update({turno_idx:novoIdxFn(r.turno_idx)}).eq('id',r.id);
+    if(error)throw error;
+  }
+}
+
+// Atualiza o cache local SOMENTE depois do banco ter sido remapeado com sucesso.
+function inserirSlotMesCache(mes,ano,idx){
+  const k=keyMes(mes,ano);
+  if(!ESCMES[k])return;
+  Object.keys(ESCMES[k]).forEach(chave=>{
+    if(chave==='A'||chave==='B'){
+      DA.forEach(ab=>{
+        if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,0,'');
+      });
+    }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
+      ESCMES[k][chave].splice(idx,0,undefined);
     }
+  });
+}
+function removerSlotMesCache(mes,ano,idx){
+  const k=keyMes(mes,ano);
+  if(!ESCMES[k])return;
+  Object.keys(ESCMES[k]).forEach(chave=>{
+    if(chave==='A'||chave==='B'){
+      DA.forEach(ab=>{
+        if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,1);
+      });
+    }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
+      ESCMES[k][chave].splice(idx,1);
+    }
+  });
+}
+
+// Insere uma posição vazia no snapshot mensal mantendo cada profissional
+// ligado à mesma linha lógica.
+async function inserirSlotMesNaPosicao(mes,ano,idx){
+  try{
+    await remapearTurnoIdxMes(mes,ano,i=>i>=idx,i=>i+1);
+    inserirSlotMesCache(mes,ano,idx);
   }catch(e){
     console.error('inserirSlotMesNaPosicao:',e);
     throw e;
   }
 }
 
-// Remove uma posição dos dados do snapshot de UM mês e desloca as linhas seguintes
-// mantendo os profissionais associados às mesmas linhas visuais.
+// Remove uma posição do snapshot mensal e desloca as linhas seguintes
+// sem trocar os profissionais de função/linha.
 async function removerSlotMesNaPosicao(mes,ano,idx){
-  const k=keyMes(mes,ano);
-  if(ESCMES[k]){
-    Object.keys(ESCMES[k]).forEach(chave=>{
-      if(chave==='A'||chave==='B'){
-        DA.forEach(ab=>{
-          if(Array.isArray(ESCMES[k][chave]?.[ab]))ESCMES[k][chave][ab].splice(idx,1);
-        });
-      }else if(chave.startsWith('DIA_')&&Array.isArray(ESCMES[k][chave])){
-        ESCMES[k][chave].splice(idx,1);
-      }
-    });
-  }
   try{
+    // Primeiro elimina somente os registros da linha removida.
     const {error:eDel}=await sb.from('escala_mensal').delete()
       .eq('mes',mes).eq('ano',ano).eq('turno_idx',idx);
     if(eDel)throw eDel;
-    const {data:rows,error:eRows}=await sb.from('escala_mensal')
-      .select('id,turno_idx').eq('mes',mes).eq('ano',ano)
-      .gt('turno_idx',idx).order('turno_idx',{ascending:true});
-    if(eRows)throw eRows;
-    for(const r of (rows||[])){
-      const {error:e2}=await sb.from('escala_mensal').update({turno_idx:r.turno_idx-1}).eq('id',r.id);
-      if(e2)throw e2;
-    }
+    // Depois remapeia todas as linhas inferiores em duas etapas seguras.
+    await remapearTurnoIdxMes(mes,ano,i=>i>idx,i=>i-1);
+    removerSlotMesCache(mes,ano,idx);
   }catch(e){
     console.error('removerSlotMesNaPosicao:',e);
     throw e;
@@ -6234,8 +6252,9 @@ async function adicionarTurnoMes(mes,ano,label,area,horas,noturno,cls){
   const maxAdd=overrides.filter(o=>o.acao==='add'&&o.ordem>=1000)
     .reduce((m,o)=>Math.max(m,o.ordem),999);
   const ordem=maxAdd+1;
-  // TURNOS representa exatamente a ordem visual atual antes da inclusão.
-  const posInsercao=indiceInsercaoTurno(TURNOS,cls);
+  // Usa a estrutura do próprio mês, e nunca o array global da tela.
+  const estruturaAtual=obterTurnosDoMes(mes,ano);
+  const posInsercao=indiceInsercaoTurno(estruturaAtual,cls);
   try{
     const {data,error}=await sb.from('turnos_mes').upsert({
       mes,ano,ordem,acao:'add',label,area,horas,noturno,cls
@@ -6281,7 +6300,8 @@ async function removerTurnoMes(mes,ano,ordem,isAdd){
   const k=keyMes(mes,ano);
   try{
     if(isAdd){
-      const idxVisual=TURNOS.findIndex(t=>t._ordemAdd===ordem);
+      const estruturaAtual=obterTurnosDoMes(mes,ano);
+      const idxVisual=estruturaAtual.findIndex(t=>t._ordemAdd===ordem);
       const {error}=await sb.from('turnos_mes').delete()
         .eq('mes',mes).eq('ano',ano).eq('ordem',ordem);
       if(error)throw error;
@@ -6291,7 +6311,8 @@ async function removerTurnoMes(mes,ano,ordem,isAdd){
       }
     }else{
       // Linha oriunda da Base dentro deste mês: identifica PRIMEIRO sua posição visual exata.
-      const idxVisual=TURNOS.findIndex(t=>t._ordemBase===ordem);
+      const estruturaAtual=obterTurnosDoMes(mes,ano);
+      const idxVisual=estruturaAtual.findIndex(t=>t._ordemBase===ordem);
       const {data,error}=await sb.from('turnos_mes').upsert({
         mes,ano,ordem,acao:'remove',label:null,area:null,horas:null,noturno:null,cls:null
       },{onConflict:'mes,ano,ordem'}).select();
@@ -6337,7 +6358,7 @@ function abrirGerenciarTurnos(contexto){
 }
 
 function renderListaTurnos(){
-  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
   const isBase=_turnoCtx.contexto==='base';
   document.getElementById('mo-turnos-lista').innerHTML=lista.map((t,i)=>{
     const ordem=isBase?i:(t._ordemBase!=null?t._ordemBase:t._ordemAdd);
@@ -6414,7 +6435,7 @@ function abrirAddTurno(){
 
 function abrirEditTurno(idx){
   _turnoCtx.editIdx=idx;
-  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
   const t=lista[idx];
   if(!t)return;
   _turnoCtx.editIsAdd=(!_turnoCtx.contexto.includes('base'))&&(t._ordemAdd!=null);
@@ -6464,7 +6485,7 @@ function autoLabelTurno(){
   const area=document.getElementById('tu-area').value;
   const horario=document.getElementById('tu-horario-preset').value;
   if(horario==='custom')return;
-  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
   // Contar quantos já existem com mesmo horário+área
   const padrao=new RegExp('^'+horario.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+'+area+'\\b');
   const usados=lista.filter(t=>padrao.test(t.l));
@@ -6524,7 +6545,8 @@ async function salvarTurno(){
     if(_turnoCtx.contexto==='base'){
       ok=await editarTurnoBase(_turnoCtx.editIdx,label,area,horas,noturno,cls);
     }else{
-      const t=TURNOS[_turnoCtx.editIdx];
+      const listaMes=obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
+      const t=listaMes[_turnoCtx.editIdx];
       if(t._ordemAdd!=null){
         // É uma adição local: remover e recriar mantém a posição correta
         // caso horário/categoria sejam alterados.
@@ -6545,7 +6567,7 @@ async function salvarTurno(){
 }
 
 function confirmarRemoverTurno(idx){
-  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:TURNOS;
+  const lista=_turnoCtx.contexto==='base'?TURNOS_BASE:obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
   const t=lista[idx];
   if(!t)return;
   const escopo=_turnoCtx.contexto==='base'?'da Escala Base (afetará novas gerações)':'da escala de '+MP[_turnoCtx.mes]+'/'+_turnoCtx.ano;
@@ -6560,7 +6582,8 @@ async function removerTurnoAtual(){
   if(_turnoCtx.contexto==='base'){
     ok=await removerTurnoBase(_turnoCtx.editIdx);
   }else{
-    const t=TURNOS[_turnoCtx.editIdx];
+    const listaMes=obterTurnosDoMes(_turnoCtx.mes,_turnoCtx.ano);
+    const t=listaMes[_turnoCtx.editIdx];
     if(t._ordemAdd!=null){
       ok=await removerTurnoMes(_turnoCtx.mes,_turnoCtx.ano,t._ordemAdd,true);
     }else{
