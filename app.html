@@ -821,6 +821,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
             </div>
             <button class="btn btn-a btn-sm" onclick="pdfRelatorio()">📄 PDF Geral</button>
             <button class="btn btn-g btn-sm" onclick="exportXLSXRel()">📊 Excel</button>
+            <button class="btn btn-g btn-sm" onclick="abrirDiagnosticoEscala()" title="Somente leitura — não altera dados">🛠 Diagnóstico da Escala</button>
           </div>
         </div>
         <!-- Abas: Internos / Externos -->
@@ -1563,6 +1564,31 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
 </div>
 
 <div class="toast" id="toast"></div>
+
+
+<!-- ══ DIAGNÓSTICO DA ESCALA — SOMENTE LEITURA ══ -->
+<div class="mo" id="mo-diagnostico-escala">
+  <div class="m-box" style="max-width:900px">
+    <div class="m-t">🛠 Diagnóstico da Escala</div>
+    <div class="m-s">Ferramenta de recuperação em <strong>somente leitura</strong>. Não grava, não exclui e não altera nenhum registro do Supabase.</div>
+    <div class="al warn" style="margin-bottom:12px">
+      <span>⚠️</span>
+      <div style="font-size:12px"><strong>Importante:</strong> use esta ferramenta antes de qualquer nova edição estrutural. O relatório servirá para reconstruir a posição correta dos profissionais com segurança.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:12px">
+      <div class="fg" style="margin:0"><label class="fl">Mês</label><select class="fs" id="diag-mes"></select></div>
+      <div class="fg" style="margin:0"><label class="fl">Ano</label><input class="fi" id="diag-ano" type="number" min="2020" max="2100"></div>
+      <button class="btn btn-p" id="btn-diag-gerar" onclick="gerarDiagnosticoEscala()">🔎 Gerar diagnóstico</button>
+    </div>
+    <div id="diag-status" style="font-size:11px;color:var(--text2);margin-bottom:8px"></div>
+    <textarea id="diag-saida" class="fta" readonly style="min-height:360px;font-family:var(--mono);font-size:10px;line-height:1.45;white-space:pre;overflow:auto" placeholder="O relatório aparecerá aqui..."></textarea>
+    <div class="m-act">
+      <button class="btn btn-g" onclick="copiarDiagnosticoEscala()">📋 Copiar relatório</button>
+      <button class="btn btn-a" onclick="baixarDiagnosticoEscala()">⬇ Baixar .txt</button>
+      <button class="btn btn-g" onclick="fecharMo('mo-diagnostico-escala')">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -2837,6 +2863,7 @@ function abrirEditarMes(letra,ab,ti,turnoL,diaMes,el){
 // getSlotVal específico por dia do mês (pontual, não propaga)
 function getSlotValDia(mes,ano,semLetra,ab,ti,diaMes){
   const k=keyMes(mes,ano);
+  const possuiSnapshot=temSnapshot(mes,ano);
   // 1. Override por dia específico (manual_dia)
   if(ESCMES[k]&&ESCMES[k]['DIA_'+diaMes]&&ESCMES[k]['DIA_'+diaMes][ti]!==undefined){
     return ESCMES[k]['DIA_'+diaMes][ti];
@@ -2847,7 +2874,11 @@ function getSlotValDia(mes,ano,semLetra,ab,ti,diaMes){
     const v=ESCMES[k][semLetra][ab][ti];
     if(v!==undefined&&v!==null)return v;
   }
-  // 3. Fallback EB
+  // 3. Mês com snapshot próprio: ausência de registro significa VAGA.
+  // NUNCA buscar a Escala Base, pois isso faria nomes de outras linhas aparecerem
+  // em novas linhas mensais vazias após inclusão/exclusão de turnos.
+  if(possuiSnapshot)return '';
+  // 4. Compatibilidade: somente meses antigos/preview sem snapshot podem usar a Base.
   if(!EB[semLetra]||!EB[semLetra][ab])return '';
   return (EB[semLetra][ab]||[])[ti]||'';
 }
@@ -4183,15 +4214,18 @@ async function desfazerTrocaEscala(troca){
 // Retorna o valor do slot — prioridade ESCMES > SUBS > EB(template)
 function getSlotVal(mes,ano,semLetra,ab,ti){
   const k=keyMes(mes,ano);
+  const possuiSnapshot=temSnapshot(mes,ano);
   // 1. Snapshot do mês é fonte da verdade absoluta
   if(ESCMES[k]&&ESCMES[k][semLetra]&&ESCMES[k][semLetra][ab]){
     const v=ESCMES[k][semLetra][ab][ti];
     if(v!==undefined&&v!==null)return v;
   }
-  // 2. Substituições legacy (compat)
+  // 2. Se o mês já tem snapshot, slot ausente é VAGA — nunca herdar da Base.
+  if(possuiSnapshot)return '';
+  // 3. Substituições legacy (compat para meses sem snapshot)
   const sub=SUBS[keySub(mes,ano,semLetra,ab,ti)];
   if(sub!==undefined)return sub;
-  // 3. Fallback: Escala Base (preview de mês não publicado)
+  // 4. Fallback: Escala Base somente para preview/mês antigo sem snapshot
   return (EB[semLetra][ab]||[])[ti]||'';
 }
 
@@ -9092,6 +9126,182 @@ async function restaurarSessao(){
     if(curRole==='gestor')navTo('dashboard');else navTo('meu-plantao');
     return true;
   }catch(e){console.error('Restaurar sessão:',e);return false}
+}
+
+
+// ══════════════════════════════════════════════════════
+// DIAGNÓSTICO DA ESCALA — SOMENTE LEITURA
+// Nunca executa INSERT / UPDATE / DELETE / UPSERT.
+// ══════════════════════════════════════════════════════
+let _ultimoDiagnosticoEscala='';
+
+function abrirDiagnosticoEscala(){
+  if(!curUser?.isGestor){showToast('Apenas o gestor pode acessar o diagnóstico.',true);return;}
+  const sel=document.getElementById('diag-mes');
+  if(sel&&!sel.options.length){
+    sel.innerHTML=MP.slice(1).map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  }
+  const hoje=new Date();
+  if(sel)sel.value=String(typeof mesMes==='number'?mesMes:hoje.getMonth()+1);
+  const ano=document.getElementById('diag-ano');
+  if(ano)ano.value=String(typeof mesAno==='number'?mesAno:hoje.getFullYear());
+  const out=document.getElementById('diag-saida');
+  if(out)out.value='';
+  const st=document.getElementById('diag-status');
+  if(st)st.textContent='Nenhum dado foi alterado. Selecione o mês e gere o diagnóstico.';
+  abrirMo('mo-diagnostico-escala');
+}
+
+function _diagTextoValor(v){
+  if(v===null||v===undefined||v==='')return 'VAGA';
+  return String(v).replace(/\s+/g,' ').trim()||'VAGA';
+}
+
+function _diagEstruturaMes(turnosBase,turnosMes){
+  const base=(turnosBase||[]).slice().sort((a,b)=>(a.ordem??0)-(b.ordem??0)).map((r,i)=>({
+    origem:'BASE',ordem:Number.isInteger(r.ordem)?r.ordem:i,label:r.label||'',area:r.area||'',horas:r.horas,noturno:r.noturno===true,cls:r.cls||''
+  }));
+  const ovs=(turnosMes||[]).slice().sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+  const removidos=new Set(ovs.filter(o=>o.acao==='remove'&&o.ordem<100).map(o=>o.ordem));
+  const estrutura=[];
+  base.forEach((t,i)=>{
+    const ordem=Number.isInteger(t.ordem)?t.ordem:i;
+    if(removidos.has(ordem))return;
+    const e=ovs.find(o=>o.acao==='edit'&&o.ordem===ordem);
+    estrutura.push(e?{origem:'MES/edit',ordem:e.ordem,label:e.label||'',area:e.area||'',horas:e.horas,noturno:e.noturno===true,cls:e.cls||''}:t);
+  });
+  ovs.filter(o=>o.acao==='add').forEach(o=>estrutura.push({origem:'MES/add',ordem:o.ordem,label:o.label||'',area:o.area||'',horas:o.horas,noturno:o.noturno===true,cls:o.cls||''}));
+  return estrutura;
+}
+
+async function gerarDiagnosticoEscala(){
+  if(!curUser?.isGestor){showToast('Apenas o gestor pode executar o diagnóstico.',true);return;}
+  const mes=parseInt(document.getElementById('diag-mes')?.value,10);
+  const ano=parseInt(document.getElementById('diag-ano')?.value,10);
+  if(!mes||!ano){showToast('Selecione mês e ano.',true);return;}
+  const btn=document.getElementById('btn-diag-gerar');
+  const st=document.getElementById('diag-status');
+  const out=document.getElementById('diag-saida');
+  if(btn){btn.disabled=true;btn.textContent='Lendo...';}
+  if(st)st.textContent='Consultando Supabase em modo somente leitura...';
+  try{
+    const [rBase,rTM,rEM,rTR,rPUB,rEB]=await Promise.all([
+      sb.from('turnos_base').select('*').order('ordem',{ascending:true}),
+      sb.from('turnos_mes').select('*').eq('mes',mes).eq('ano',ano).order('ordem',{ascending:true}),
+      sb.from('escala_mensal').select('*').eq('mes',mes).eq('ano',ano).order('turno_idx',{ascending:true}).order('id',{ascending:true}),
+      sb.from('trocas').select('*').eq('mes',mes).eq('ano',ano).order('created_at',{ascending:true}),
+      sb.from('publicacoes').select('*').eq('mes',mes).eq('ano',ano),
+      sb.from('escala_base').select('*').order('semana',{ascending:true}).order('dia_semana',{ascending:true}).order('turno_idx',{ascending:true})
+    ]);
+    const erros=[rBase,rTM,rEM,rTR,rPUB,rEB].filter(r=>r.error).map(r=>r.error.message||String(r.error));
+    if(erros.length)throw new Error(erros.join(' | '));
+
+    const base=rBase.data||[], tm=rTM.data||[], em=rEM.data||[], trocas=rTR.data||[], pubs=rPUB.data||[], eb=rEB.data||[];
+    const estrutura=_diagEstruturaMes(base,tm);
+    const indices=[...new Set(em.map(r=>Number(r.turno_idx)).filter(Number.isFinite))].sort((a,b)=>a-b);
+    const maxIdx=indices.length?Math.max(...indices):-1;
+    const origens={};
+    em.forEach(r=>{const o=r.origem||'(sem origem)';origens[o]=(origens[o]||0)+1;});
+
+    const linhas=[];
+    linhas.push('KOS APP — DIAGNÓSTICO DE ESCALA (SOMENTE LEITURA)');
+    linhas.push('Gerado em: '+new Date().toLocaleString('pt-BR'));
+    linhas.push('Período: '+String(mes).padStart(2,'0')+'/'+ano);
+    linhas.push('IMPORTANTE: este relatório NÃO alterou nenhum dado.');
+    linhas.push('='.repeat(86));
+    linhas.push('');
+    linhas.push('RESUMO');
+    linhas.push('- Publicação: '+(pubs.length?JSON.stringify(pubs):'nenhum registro'));
+    linhas.push('- Turnos base: '+base.length);
+    linhas.push('- Overrides/estrutura do mês (turnos_mes): '+tm.length);
+    linhas.push('- Estrutura calculada do mês: '+estrutura.length+' linhas');
+    linhas.push('- Registros em escala_mensal: '+em.length);
+    linhas.push('- Índices encontrados: '+(indices.join(', ')||'nenhum'));
+    linhas.push('- Maior turno_idx: '+maxIdx);
+    linhas.push('- Origens: '+JSON.stringify(origens));
+    linhas.push('- Trocas no mês: '+trocas.length);
+    linhas.push('');
+
+    linhas.push('ESTRUTURA CALCULADA DO MÊS');
+    estrutura.forEach((t,i)=>linhas.push(`[${i}] ${t.label||'(sem label)'} | ${t.area||'-'} | ${t.horas??'-'}h | ${t.noturno?'NOTURNO':'DIURNO'} | cls=${t.cls||'-'} | origem=${t.origem} | ordemDB=${t.ordem}`));
+    if(!estrutura.length)linhas.push('(sem estrutura calculada)');
+    linhas.push('');
+
+    linhas.push('OVERRIDES BRUTOS — turnos_mes');
+    if(tm.length)tm.forEach(r=>linhas.push(JSON.stringify(r)));
+    else linhas.push('(nenhum)');
+    linhas.push('');
+
+    linhas.push('MAPA DE REGISTROS POR turno_idx — escala_mensal');
+    const porIdx={};
+    em.forEach(r=>{const k=String(r.turno_idx);(porIdx[k]||(porIdx[k]=[])).push(r);});
+    const idxTodos=[...new Set([...Array.from({length:Math.max(estrutura.length,maxIdx+1)},(_,i)=>i),...indices])].sort((a,b)=>a-b);
+    idxTodos.forEach(idx=>{
+      const t=estrutura[idx];
+      const arr=porIdx[String(idx)]||[];
+      linhas.push(`\n### turno_idx ${idx} — ${t?.label||'(SEM LINHA NA ESTRUTURA)'} — ${arr.length} registro(s)`);
+      if(!arr.length){linhas.push('  [SEM REGISTROS — posição vazia]');return;}
+      arr.forEach(r=>{
+        linhas.push(`  id=${r.id} | origem=${r.origem||'-'} | sem=${r.semana_letra||'-'} | dia_sem=${r.dia_semana??'-'} | dia_mes=${r.dia_mes??'-'} | valor=${_diagTextoValor(r.valor)}`);
+      });
+    });
+    linhas.push('');
+
+    linhas.push('POSSÍVEIS INCONSISTÊNCIAS');
+    let achou=false;
+    em.forEach(r=>{
+      if(Number(r.turno_idx)>=estrutura.length){linhas.push(`- Registro id=${r.id} aponta para turno_idx=${r.turno_idx}, mas a estrutura possui somente ${estrutura.length} linhas.`);achou=true;}
+      if(Number(r.turno_idx)<0){linhas.push(`- Registro id=${r.id} possui turno_idx negativo (${r.turno_idx}).`);achou=true;}
+    });
+    const porChave={};
+    em.forEach(r=>{
+      const chave=[r.semana_letra??'',r.dia_semana??'',r.dia_mes??'',r.turno_idx,r.origem??''].join('|');
+      (porChave[chave]||(porChave[chave]=[])).push(r);
+    });
+    Object.entries(porChave).forEach(([k,arr])=>{if(arr.length>1){linhas.push(`- Possível duplicidade ${k}: ${arr.length} registros (ids ${arr.map(x=>x.id).join(',')}).`);achou=true;}});
+    if(!achou)linhas.push('- Nenhuma inconsistência simples detectada automaticamente. O mapa bruto ainda deve ser conferido.');
+    linhas.push('');
+
+    linhas.push('TROCAS DO MÊS — BRUTO');
+    if(trocas.length)trocas.forEach(r=>linhas.push(JSON.stringify(r)));
+    else linhas.push('(nenhuma)');
+    linhas.push('');
+
+    linhas.push('ESCALA BASE ATUAL — BRUTO (referência, NÃO usar para sobrescrever o mês)');
+    eb.forEach(r=>linhas.push(JSON.stringify(r)));
+    linhas.push('');
+    linhas.push('FIM DO DIAGNÓSTICO');
+
+    _ultimoDiagnosticoEscala=linhas.join('\n');
+    if(out)out.value=_ultimoDiagnosticoEscala;
+    if(st)st.textContent=`✓ Leitura concluída: ${em.length} registros mensais, ${estrutura.length} linhas estruturais e ${trocas.length} trocas. Nenhum dado foi modificado.`;
+    showToast('✓ Diagnóstico gerado — somente leitura');
+  }catch(e){
+    console.error('gerarDiagnosticoEscala:',e);
+    if(st)st.textContent='Erro ao gerar diagnóstico: '+(e.message||e);
+    if(out)out.value='ERRO AO GERAR DIAGNÓSTICO\n'+(e.message||e);
+    showToast('Erro ao gerar diagnóstico',true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🔎 Gerar diagnóstico';}
+  }
+}
+
+async function copiarDiagnosticoEscala(){
+  const txt=document.getElementById('diag-saida')?.value||_ultimoDiagnosticoEscala;
+  if(!txt){showToast('Gere o diagnóstico primeiro.',true);return;}
+  try{await navigator.clipboard.writeText(txt);showToast('✓ Relatório copiado');}
+  catch(e){const el=document.getElementById('diag-saida');el?.select();document.execCommand('copy');showToast('✓ Relatório copiado');}
+}
+
+function baixarDiagnosticoEscala(){
+  const txt=document.getElementById('diag-saida')?.value||_ultimoDiagnosticoEscala;
+  if(!txt){showToast('Gere o diagnóstico primeiro.',true);return;}
+  const mes=String(parseInt(document.getElementById('diag-mes')?.value||'0',10)).padStart(2,'0');
+  const ano=document.getElementById('diag-ano')?.value||'';
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`Kos_Diagnostico_Escala_${ano}_${mes}.txt`;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 // ══ INICIALIZAÇÃO ══
