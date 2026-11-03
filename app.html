@@ -1582,6 +1582,20 @@ body{font-family:var(--font);background:var(--bg0);color:var(--text);font-size:1
     </div>
     <div id="diag-status" style="font-size:11px;color:var(--text2);margin-bottom:8px"></div>
     <textarea id="diag-saida" class="fta" readonly style="min-height:360px;font-family:var(--mono);font-size:10px;line-height:1.45;white-space:pre;overflow:auto" placeholder="O relatório aparecerá aqui..."></textarea>
+    <div id="rec-outubro-box" style="margin-top:14px;padding:12px;border:2px solid #dc2626;border-radius:10px;background:#fff7f7">
+      <div style="font-size:13px;font-weight:800;color:#b91c1c;margin-bottom:5px">🚑 Recuperação controlada — Outubro/2026</div>
+      <div style="font-size:11px;color:#7f1d1d;line-height:1.55;margin-bottom:10px">
+        Use somente para corrigir a corrupção diagnosticada nos índices finais da escala de outubro.
+        A recuperação <strong>não regenera a escala</strong>, não altera trocas e não toca nas linhas 0–11.
+        Antes de qualquer escrita, um backup JSON completo é baixado automaticamente.
+      </div>
+      <div id="rec-outubro-status" style="font-size:11px;color:var(--text2);margin-bottom:8px">Execute primeiro a prévia. Nenhum dado será alterado.</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-g btn-sm" onclick="previsualizarRecuperacaoOutubro()">🔎 Prévia da recuperação</button>
+        <button class="btn btn-a btn-sm" onclick="baixarBackupRecuperacaoOutubro()">💾 Baixar backup agora</button>
+        <button class="btn btn-d btn-sm" id="btn-rec-outubro" onclick="executarRecuperacaoOutubro()" disabled>🚑 Recuperar outubro/2026</button>
+      </div>
+    </div>
     <div class="m-act">
       <button class="btn btn-g" onclick="copiarDiagnosticoEscala()">📋 Copiar relatório</button>
       <button class="btn btn-a" onclick="baixarDiagnosticoEscala()">⬇ Baixar .txt</button>
@@ -9336,6 +9350,199 @@ async function bootApp(){
 }
 document.addEventListener('DOMContentLoaded',bootApp);
 if(document.readyState!=='loading'){bootApp();}
+
+// ══════════════════════════════════════════════════════
+// RECUPERAÇÃO CONTROLADA OUTUBRO/2026
+// Corrige SOMENTE a assinatura de corrupção confirmada pelo diagnóstico:
+// PED(1) noturno -> idx 12; PED(2) noturno -> idx 13.
+// Não toca nas linhas 0–11, em trocas ou na estrutura turnos_mes.
+// ══════════════════════════════════════════════════════
+let _recOutubroPreviewOk=false;
+let _recOutubroUltimoBackup=null;
+
+async function _recCarregarPacoteOutubro(){
+  const [rEM,rTM,rTR,rPUB]=await Promise.all([
+    sb.from('escala_mensal').select('*').eq('mes',10).eq('ano',2026).order('id',{ascending:true}),
+    sb.from('turnos_mes').select('*').eq('mes',10).eq('ano',2026).order('ordem',{ascending:true}),
+    sb.from('trocas').select('*').eq('mes',10).eq('ano',2026).order('created_at',{ascending:true}),
+    sb.from('publicacoes').select('*').eq('mes',10).eq('ano',2026)
+  ]);
+  const erro=[rEM,rTM,rTR,rPUB].find(r=>r.error)?.error;
+  if(erro)throw erro;
+  return {
+    gerado_em:new Date().toISOString(),
+    periodo:'10/2026',
+    escala_mensal:rEM.data||[],
+    turnos_mes:rTM.data||[],
+    trocas:rTR.data||[],
+    publicacoes:rPUB.data||[]
+  };
+}
+
+function _recAssinaturaOutubro(rows){
+  const por={};
+  (rows||[]).forEach(r=>{
+    const i=Number(r.turno_idx);
+    por[i]=(por[i]||0)+1;
+  });
+  return por;
+}
+
+function _recValidarAssinaturaOutubro(rows){
+  const por=_recAssinaturaOutubro(rows);
+  const idx12=por[12]||0, idx13=por[13]||0, idx14=por[14]||0, idx15=por[15]||0;
+  const especiais=(rows||[]).filter(r=>Number(r.turno_idx)===14);
+  const origens14=especiales.map(r=>String(r.origem||'')).sort();
+  const padrao14=especiais.length===2&&origens14.includes('snapshot')&&origens14.includes('manual');
+  return {
+    ok:idx12===0&&idx13>0&&idx14===2&&idx15>0&&padrao14,
+    por,idx12,idx13,idx14,idx15,especiais
+  };
+}
+
+function _recDownloadJson(obj,nome){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=nome;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+async function baixarBackupRecuperacaoOutubro(){
+  if(!curUser?.isGestor){showToast('Apenas o gestor pode gerar o backup.',true);return;}
+  const st=document.getElementById('rec-outubro-status');
+  try{
+    if(st)st.textContent='Lendo dados para backup...';
+    const pacote=await _recCarregarPacoteOutubro();
+    _recOutubroUltimoBackup=pacote;
+    const ts=new Date().toISOString().replace(/[:.]/g,'-');
+    _recDownloadJson(pacote,`Kos_Backup_ANTES_RECUPERACAO_Outubro_2026_${ts}.json`);
+    if(st)st.innerHTML='<strong style="color:var(--green)">✓ Backup baixado.</strong> Guarde esse arquivo antes de prosseguir.';
+    showToast('✓ Backup de outubro baixado');
+    return pacote;
+  }catch(e){
+    console.error('baixarBackupRecuperacaoOutubro:',e);
+    if(st)st.textContent='Erro ao gerar backup: '+(e.message||e);
+    showToast('Erro ao gerar backup',true);
+    throw e;
+  }
+}
+
+async function previsualizarRecuperacaoOutubro(){
+  if(!curUser?.isGestor){showToast('Apenas o gestor pode executar a prévia.',true);return;}
+  const st=document.getElementById('rec-outubro-status');
+  const btn=document.getElementById('btn-rec-outubro');
+  _recOutubroPreviewOk=false;
+  if(btn)btn.disabled=true;
+  try{
+    if(st)st.textContent='Conferindo a assinatura atual do banco...';
+    const pacote=await _recCarregarPacoteOutubro();
+    const v=_recValidarAssinaturaOutubro(pacote.escala_mensal);
+    if(!v.ok){
+      if(st)st.innerHTML='<strong style="color:var(--red)">BLOQUEADO:</strong> o banco não está mais com a mesma assinatura do diagnóstico. Nenhuma alteração foi feita. Gere um novo diagnóstico antes de qualquer recuperação.';
+      showToast('Recuperação bloqueada: dados mudaram desde o diagnóstico',true);
+      return;
+    }
+    const snap14=v.especiais.find(r=>r.origem==='snapshot');
+    const man14=v.especiais.find(r=>r.origem==='manual');
+    if(!snap14||!man14){
+      if(st)st.textContent='BLOQUEADO: os dois registros especiais do índice 14 não foram encontrados.';
+      return;
+    }
+    _recOutubroPreviewOk=true;
+    if(btn)btn.disabled=false;
+    if(st)st.innerHTML=
+      '<strong style="color:var(--green)">Prévia validada.</strong> Nenhum dado foi alterado.<br>'+
+      `• ${v.idx13} registro(s) do índice 13 → PED (1), índice 12<br>`+
+      `• ${v.idx15} registro(s) do índice 15 → PED (2), índice 13<br>`+
+      `• snapshot especial id=${snap14.id} do índice 14 → PED (1), índice 12<br>`+
+      `• alteração manual id=${man14.id} do índice 14 → PED (2), índice 13<br>`+
+      '• linhas 0–11 permanecerão intocadas.';
+  }catch(e){
+    console.error('previsualizarRecuperacaoOutubro:',e);
+    if(st)st.textContent='Erro na prévia: '+(e.message||e);
+    showToast('Erro ao gerar prévia',true);
+  }
+}
+
+async function _recMoverIds(ids,novoIdx){
+  for(const id of ids){
+    const {error}=await sb.from('escala_mensal').update({turno_idx:novoIdx}).eq('id',id);
+    if(error)throw error;
+  }
+}
+
+async function executarRecuperacaoOutubro(){
+  if(!curUser?.isGestor){showToast('Apenas o gestor pode executar a recuperação.',true);return;}
+  if(!_recOutubroPreviewOk){
+    showToast('Execute e valide a prévia antes da recuperação.',true);return;
+  }
+  const st=document.getElementById('rec-outubro-status');
+  const btn=document.getElementById('btn-rec-outubro');
+  const ok1=confirm(
+    'RECUPERAÇÃO DE OUTUBRO/2026\\n\\n'+
+    'Esta operação corrigirá SOMENTE os índices das duas linhas noturnas de Pediatria.\\n'+
+    'As linhas 0–11 não serão alteradas.\\n\\n'+
+    'Um backup JSON será baixado automaticamente ANTES da escrita.\\n\\n'+
+    'Deseja prosseguir?'
+  );
+  if(!ok1)return;
+  const frase=prompt('Para confirmar, digite exatamente: RECUPERAR OUTUBRO');
+  if(frase!=='RECUPERAR OUTUBRO'){
+    showToast('Recuperação cancelada — confirmação incorreta.',true);return;
+  }
+
+  if(btn)btn.disabled=true;
+  try{
+    if(st)st.textContent='Revalidando banco antes da recuperação...';
+    // Releitura imediata: impede execução se qualquer dado mudou depois da prévia.
+    const pacote=await _recCarregarPacoteOutubro();
+    const v=_recValidarAssinaturaOutubro(pacote.escala_mensal);
+    if(!v.ok)throw new Error('A assinatura do banco mudou após a prévia. Operação cancelada sem alterações.');
+
+    // Backup obrigatório, anterior a qualquer UPDATE.
+    _recOutubroUltimoBackup=pacote;
+    const ts=new Date().toISOString().replace(/[:.]/g,'-');
+    _recDownloadJson(pacote,`Kos_Backup_ANTES_RECUPERACAO_Outubro_2026_${ts}.json`);
+    if(st)st.textContent='Backup baixado. Iniciando remapeamento controlado...';
+
+    const rows=pacote.escala_mensal;
+    const ids13=rows.filter(r=>Number(r.turno_idx)===13).map(r=>r.id);
+    const ids15=rows.filter(r=>Number(r.turno_idx)===15).map(r=>r.id);
+    const reg14Snap=rows.find(r=>Number(r.turno_idx)===14&&r.origem==='snapshot');
+    const reg14Manual=rows.find(r=>Number(r.turno_idx)===14&&r.origem==='manual');
+    if(!reg14Snap||!reg14Manual)throw new Error('Registros especiais do índice 14 não encontrados.');
+
+    // Fase temporária: tira todos os registros envolvidos dos índices reais.
+    await _recMoverIds(ids13,10013);
+    await _recMoverIds(ids15,10015);
+    await _recMoverIds([reg14Snap.id],10014);
+    await _recMoverIds([reg14Manual.id],10024);
+
+    // Destino definitivo comprovado pelo diagnóstico/trocas.
+    await _recMoverIds(ids13,12);              // PED (1)
+    await _recMoverIds([reg14Snap.id],12);     // snapshot B/SAB de PED (1)
+    await _recMoverIds(ids15,13);              // PED (2)
+    await _recMoverIds([reg14Manual.id],13);   // manual 31/10 de PED (2)
+
+    // Recarrega o estado do app sem regenerar a escala.
+    if(typeof carregarESCMES==='function')await carregarESCMES();
+    if(typeof carregarTurnosMes==='function')await carregarTurnosMes();
+    if(typeof aplicarTurnosDoMes==='function')aplicarTurnosDoMes(10,2026);
+    if(typeof renderAll==='function')renderAll();
+
+    _recOutubroPreviewOk=false;
+    if(st)st.innerHTML='<strong style="color:var(--green)">✓ Recuperação concluída.</strong> A página foi recarregada a partir do banco. Confira outubro antes de qualquer outra edição estrutural.';
+    showToast('✓ Outubro recuperado — confira a escala');
+  }catch(e){
+    console.error('executarRecuperacaoOutubro:',e);
+    if(st)st.innerHTML='<strong style="color:var(--red)">ERRO:</strong> '+(e.message||e)+'<br>Não faça novas alterações. Guarde o backup baixado.';
+    showToast('Erro na recuperação — não faça novas alterações',true);
+  }finally{
+    if(btn)btn.disabled=!_recOutubroPreviewOk;
+  }
+}
+
 </script>
 </body>
 </html>
